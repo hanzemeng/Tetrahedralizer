@@ -21,27 +21,27 @@ public class TetrahedralMeshDrawer : MonoBehaviour
             mesh.vertices = tetrahedralMesh.vertices.ToArray();
             List<int> triangles = new List<int>();
 
-            for(UInt32 i=0; i<tetrahedralMesh.tetrahedrons.Count; i+=4)
+            for(Int32 i=0; i<tetrahedralMesh.tetrahedrons.Count; i+=4)
             {
-                UInt32 p0 = tetrahedralMesh.tetrahedrons[(int)i+0];
-                UInt32 p1 = tetrahedralMesh.tetrahedrons[(int)i+1];
-                UInt32 p2 = tetrahedralMesh.tetrahedrons[(int)i+2];
-                UInt32 p3 = tetrahedralMesh.tetrahedrons[(int)i+3];
-                triangles.Add((int)p0);
-                triangles.Add((int)p1);
-                triangles.Add((int)p3);
+                Int32 p0 = tetrahedralMesh.tetrahedrons[i+0];
+                Int32 p1 = tetrahedralMesh.tetrahedrons[i+1];
+                Int32 p2 = tetrahedralMesh.tetrahedrons[i+2];
+                Int32 p3 = tetrahedralMesh.tetrahedrons[i+3];
+                triangles.Add(p0);
+                triangles.Add(p1);
+                triangles.Add(p3);
 
-                triangles.Add((int)p1);
-                triangles.Add((int)p2);
-                triangles.Add((int)p3);
+                triangles.Add(p1);
+                triangles.Add(p2);
+                triangles.Add(p3);
 
-                triangles.Add((int)p2);
-                triangles.Add((int)p0);
-                triangles.Add((int)p3);
+                triangles.Add(p2);
+                triangles.Add(p0);
+                triangles.Add(p3);
 
-                triangles.Add((int)p0);
-                triangles.Add((int)p2);
-                triangles.Add((int)p1);
+                triangles.Add(p0);
+                triangles.Add(p2);
+                triangles.Add(p1);
             }
             mesh.triangles = triangles.ToArray();
             mesh.RecalculateNormals();

@@ -6,7 +6,7 @@ using UnityEngine;
 [PreferBinarySerialization]
 public class TetrahedralMesh : ScriptableObject
 {
-    public List<UInt32> tetrahedrons;
+    public List<Int32> tetrahedrons;
     public List<Vector3> vertices;
 
     public Mesh mesh;

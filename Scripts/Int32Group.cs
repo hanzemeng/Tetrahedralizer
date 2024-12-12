@@ -2,17 +2,17 @@ using System;
 using System.Collections.Generic;
 
 [Serializable]
-public struct NineUInt32
+public struct NineInt32
 {
-    public UInt32 p0,p1,p2,p3,p4,p5,p6,p7,p8;
+    public Int32 p0,p1,p2,p3,p4,p5,p6,p7,p8;
 
-    public UInt32 this[UInt32 index]
+    public Int32 this[Int32 index]
     {
         get => GetValue(index);
         set => SetValue(index,value);
     }
 
-    public UInt32 GetValue(UInt32 index)
+    public Int32 GetValue(Int32 index)
     {
         switch(index) 
         {
@@ -38,7 +38,7 @@ public struct NineUInt32
             throw new Exception($"index {index} out of range.");
         }
     }
-    public void SetValue(UInt32 index, UInt32 value)
+    public void SetValue(Int32 index, Int32 value)
     {
         switch(index) 
         {
@@ -77,22 +77,22 @@ public struct NineUInt32
 
 
 [Serializable]
-public class ListUInt32
+public class ListInt32
 {
-    public List<UInt32> list;
+    public List<Int32> list;
 
-    public ListUInt32()
+    public ListInt32()
     {
-        list = new List<UInt32>();
+        list = new List<Int32>();
     }
 
-    public UInt32 this[UInt32 index]
+    public Int32 this[Int32 index]
     {
-        get => list[(int)index];
-        set => list[(int)index] = value;
+        get => list[index];
+        set => list[index] = value;
     }
 
-    public void Add(UInt32 v)
+    public void Add(Int32 v)
     {
         list.Add(v);
     }
