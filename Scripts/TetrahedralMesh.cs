@@ -11,9 +11,9 @@ public class TetrahedralMesh : ScriptableObject
 
     public Mesh mesh;
 
-    //public TetrahedralMesh()
-    //{
-    //    tetrahedrons = new List<UInt32>();
-    //    vertices = new List<Vector3>();
-    //}
+    public TetrahedralMesh()
+    {
+        tetrahedrons = new List<Int32>();
+        vertices = new List<Vector3>();
+    }
 }

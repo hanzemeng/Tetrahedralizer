@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 
 
-public class Point2D
+public struct Point2D
 {
     public double x;
     public double y;
@@ -14,7 +14,7 @@ public class Point2D
     }
 }
 
-public class Point3D
+public struct Point3D
 {
     public double x;
     public double y;
@@ -29,8 +29,8 @@ public class Point3D
     public Point3D(Vector3 point)
     {
         this.x = point.x;
-        this.y = point.z;
         this.z = point.y;
+        this.y = point.z;
     }
 
     public double GetAxis(int n)
@@ -50,7 +50,7 @@ public class Point3D
 
     public Vector3 ToVector3()
     {
-        return new Vector3((float)x, (float)z,(float)y);
+        return new Vector3((float)x, (float)y, (float)z);
     }
 
     public void Normalize()

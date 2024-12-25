@@ -7,13 +7,48 @@ using System.Runtime.InteropServices;
 
 public class Tetrahedralizer
 {
-    private byte[] buffer;
-    private MeshVertexDataMapper meshVertexDataMapper;
+    #if UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
+    private const string TETRAHEDRALIZER_LIBRARY_NAME = "TetrahedralizerLibMacOS";
+    #elif UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
+    private const string TETRAHEDRALIZER_LIBRARY_NAME = "TetrahedralizerLibWindows";
+    #else
+    // please compile the library yourself
+    #endif
+
+    [DllImport (TETRAHEDRALIZER_LIBRARY_NAME)]
+    static extern IntPtr tetrahedralize(byte[] dll_input);
+    [DllImport (TETRAHEDRALIZER_LIBRARY_NAME)]
+    static extern IntPtr approximate_position(Int32 n, double[] dll_input);
+
+
+
+    public struct Settings
+    {
+        public bool remapVertexData;
+        public double degenerateTetrahedronRatio;
+
+        public Settings(bool remapVertexData, double degenerateTetrahedronRatio)
+        {
+            this.remapVertexData = remapVertexData;
+            this.degenerateTetrahedronRatio = degenerateTetrahedronRatio;
+        }
+    }
+
+
+    private byte[] m_buffer;
+    private MeshVertexDataMapper m_meshVertexDataMapper;
+    private Settings m_settings;
 
     public Tetrahedralizer()
     {
-        buffer = new byte[8];
-        meshVertexDataMapper = new MeshVertexDataMapper();
+        m_buffer = new byte[8];
+        m_meshVertexDataMapper = new MeshVertexDataMapper();
+
+        m_settings = new Settings(false, 0.05d);
+    }
+    public void SetSettings(Settings settings)
+    {
+        m_settings = settings;
     }
 
     public void MeshToTetrahedralizedMesh(Mesh mesh, TetrahedralizedMesh tetrahedralizedMesh)
@@ -32,29 +67,29 @@ public class Tetrahedralizer
             for(int i=0; i<8; i++)
             {
                 byte b = (byte)(iv & 0xff);
-                buffer[i] = b;
+                m_buffer[i] = b;
                 iv >>= 8;
             }
 
             for(int i=0; i<8; i++)
             {
-                input.Add(buffer[i]);
+                input.Add(m_buffer[i]);
             }
         }
         void WriteInt32(int v)
         {
-            Int32 iv = (Int32)v;
+            UInt32 iv = (UInt32)v;
 
             for(int i=0; i<4; i++)
             {
                 byte b = (byte)(iv & 0xff);
-                buffer[i] = b;
+                m_buffer[i] = b;
                 iv >>= 8;
             }
 
             for(int i=0; i<4; i++)
             {
-                input.Add(buffer[i]);
+                input.Add(m_buffer[i]);
             }
         }
 
@@ -111,8 +146,6 @@ public class Tetrahedralizer
         }
 
 
-        [DllImport ("libTetrahedralizerLib")]
-        static extern IntPtr tetrahedralize(byte[] dll_input);
         IntPtr ptr = tetrahedralize(input.ToArray());
 
 
@@ -120,26 +153,26 @@ public class Tetrahedralizer
         //{
         //    for(int i = 0; i<8; i++)
         //    {
-        //        buffer[i] = Marshal.ReadByte(ptr);
+        //        m_buffer[i] = Marshal.ReadByte(ptr);
         //        ptr = IntPtr.Add(ptr,1);
         //    }
-        //    return BitConverter.ToDouble(buffer,0);
+        //    return BitConverter.ToDouble(m_buffer,0);
         //}
         Int32 ReadInt32()
         {
             for(int i = 0; i<4; i++)
             {
-                buffer[i] = Marshal.ReadByte(ptr);
+                m_buffer[i] = Marshal.ReadByte(ptr);
                 ptr = IntPtr.Add(ptr,1);
             }
-            return BitConverter.ToInt32(buffer,0);
+            return BitConverter.ToInt32(m_buffer,0);
         }
 
 
         Int32 newVerticesCount = ReadInt32();
         for(Int32 i = 0; i<newVerticesCount; i++)
         {
-            NineInt32 nineInt32;
+            NineInt32 nineInt32 = new NineInt32();
             for(Int32 j=0; j<9; j++)
             {
                 nineInt32[j] = ReadInt32();
@@ -162,7 +195,7 @@ public class Tetrahedralizer
         }
     }
 
-    public void TetrahedralizedMeshToTetrahedralMesh(TetrahedralizedMesh tetrahedralizedMesh, TetrahedralMesh tetrahedralMesh, bool remapVertexData)
+    public void TetrahedralizedMeshToTetrahedralMesh(TetrahedralizedMesh tetrahedralizedMesh, TetrahedralMesh tetrahedralMesh)
     {
         if(!BitConverter.IsLittleEndian)
         {
@@ -183,9 +216,6 @@ public class Tetrahedralizer
         IntPtr ptr;
         byte[] bs = new byte[8];
 
-
-        [DllImport ("libTetrahedralizerLib")]
-        static extern IntPtr approximate_position(Int32 n, double[] dll_input);
 
         double ReadDouble()
         {
@@ -218,10 +248,15 @@ public class Tetrahedralizer
             vertices.Add(new Vector3((float)x,(float)y,(float)z));
         }
 
-        if(!remapVertexData)
+        List<int> tetrahedrons = tetrahedralizedMesh.tetrahedrons.Select(i=>i).ToList();
+
+        if(!m_settings.remapVertexData)
         {
+            TetrahedralMeshUtility.RemoveDuplicateVertices(vertices, tetrahedrons);
+            TetrahedralMeshUtility.RemoveDegenerateTetrahedrons(vertices, tetrahedrons, m_settings.degenerateTetrahedronRatio);
+
             tetrahedralMesh.vertices = vertices;
-            tetrahedralMesh.tetrahedrons = tetrahedralizedMesh.tetrahedrons.Select(i=>i).ToList();
+            tetrahedralMesh.tetrahedrons = tetrahedrons;
             tetrahedralMesh.mesh = null;
             return;
         }
@@ -257,7 +292,7 @@ public class Tetrahedralizer
             }
         }
 
-        meshVertexDataMapper.AssignSourceMesh(tetrahedralizedMesh.originalMesh);
+        m_meshVertexDataMapper.AssignSourceMesh(tetrahedralizedMesh.originalMesh);
         int uniqueOriginalVerticesCount = tetrahedralizedMesh.originalVerticesMappings.Count;
 
         (double, int)[] vertexMatchData = new (double, int)[9];
@@ -288,7 +323,7 @@ public class Tetrahedralizer
                     {
                         cv = tetrahedralizedMesh.originalVerticesMappings[v].list[0];
                     }
-                    meshVertexDataMapper.CopyVertexData(cv);
+                    m_meshVertexDataMapper.CopyVertexData(cv);
                 }
                 else
                 {
@@ -326,7 +361,7 @@ public class Tetrahedralizer
                         ts[0] = Vector3.Cross(ep1,ep2).magnitude / triArea;
                         ts[1] = Vector3.Cross(ep2,ep0).magnitude / triArea;
                         ts[2] = Vector3.Cross(ep0,ep1).magnitude / triArea;
-                        meshVertexDataMapper.InterpolateVertexData(3,vertices[v],ps,ts);
+                        m_meshVertexDataMapper.InterpolateVertexData(3,vertices[v],ps,ts);
                     }
 
                     if(5 == n)
@@ -344,7 +379,7 @@ public class Tetrahedralizer
                             ps[1] = vertexMatchData[1].Item2;
                             ts[0] = t;
                             ts[1] = 1d-t;
-                            meshVertexDataMapper.InterpolateVertexData(2,vertices[v],ps,ts);
+                            m_meshVertexDataMapper.InterpolateVertexData(2,vertices[v],ps,ts);
                         }
                         else
                         {
@@ -377,25 +412,27 @@ public class Tetrahedralizer
             ProcessVertex(f2);
         }
 
-        for(int i=0; i<tetrahedralizedMesh.tetrahedrons.Count; i+=4)
+        TetrahedralMeshUtility.RemoveDegenerateTetrahedrons(vertices, tetrahedrons, m_settings.degenerateTetrahedronRatio);
+        for(int i=0; i<tetrahedrons.Count; i+=4)
         {
-            int p0 = tetrahedralizedMesh.tetrahedrons[i+0];
-            int p1 = tetrahedralizedMesh.tetrahedrons[i+1];
-            int p2 = tetrahedralizedMesh.tetrahedrons[i+2];
-            int p3 = tetrahedralizedMesh.tetrahedrons[i+3];
+            int p0 = tetrahedrons[i+0];
+            int p1 = tetrahedrons[i+1];
+            int p2 = tetrahedrons[i+2];
+            int p3 = tetrahedrons[i+3];
             ProcessFacet(p0,p1,p3);
             ProcessFacet(p1,p2,p3);
             ProcessFacet(p2,p0,p3);
             ProcessFacet(p0,p2,p1);
         }
 
-        Mesh mesh = meshVertexDataMapper.MakeMesh();
-        mesh.triangles = Enumerable.Range(0,3*tetrahedralizedMesh.tetrahedrons.Count).Select(i=>i).ToArray();
+        Mesh mesh = m_meshVertexDataMapper.MakeMesh();
+        mesh.triangles = Enumerable.Range(0,3*tetrahedrons.Count).Select(i=>i).ToArray();
         mesh.RecalculateBounds();
         mesh.RecalculateNormals();
         mesh.RecalculateTangents();
+
+        tetrahedralMesh.tetrahedrons = null;
+        tetrahedralMesh.vertices = null;
         tetrahedralMesh.mesh = mesh;
-
     }
-
 }
