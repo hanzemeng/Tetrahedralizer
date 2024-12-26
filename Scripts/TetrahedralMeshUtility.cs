@@ -1,3 +1,6 @@
+namespace Hanzzz.Tetrahedralizer
+{
+
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -93,4 +96,6 @@ public static class TetrahedralMeshUtility
             i--;
         }
     }
+}
+
 }

@@ -1,4 +1,6 @@
 #if UNITY_EDITOR
+namespace Hanzzz.Tetrahedralizer
+{
 
 using UnityEngine;
 using UnityEditor;
@@ -22,4 +24,5 @@ public class TetrahedralMeshEditor : Editor
     }
 }
 
+}
 #endif

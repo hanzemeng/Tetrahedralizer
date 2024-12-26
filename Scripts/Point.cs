@@ -1,3 +1,6 @@
+namespace Hanzzz.Tetrahedralizer
+{
+
 using System;
 using UnityEngine;
 
@@ -103,4 +106,6 @@ public struct Point3D
     {
         return Math.Sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
     }
+}
+
 }

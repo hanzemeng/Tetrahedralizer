@@ -1,3 +1,6 @@
+namespace Hanzzz.Tetrahedralizer
+{
+
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -16,4 +19,6 @@ public class TetrahedralMesh : ScriptableObject
         tetrahedrons = new List<Int32>();
         vertices = new List<Vector3>();
     }
+}
+
 }

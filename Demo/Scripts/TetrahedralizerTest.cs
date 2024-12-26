@@ -1,3 +1,6 @@
+namespace Hanzzz.Tetrahedralizer
+{
+
 using UnityEngine;
 
 [ExecuteInEditMode]
@@ -183,4 +186,6 @@ public class TetrahedralizerTest : MonoBehaviour
     //    mesh.RecalculateTangents();
     //    meshFilter.mesh = mesh;
     //}
+}
+
 }

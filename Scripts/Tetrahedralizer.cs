@@ -1,3 +1,6 @@
+namespace Hanzzz.Tetrahedralizer
+{
+
 using UnityEngine;
 using System;
 using System.Linq;
@@ -435,4 +438,6 @@ public class Tetrahedralizer
         tetrahedralMesh.vertices = null;
         tetrahedralMesh.mesh = mesh;
     }
+}
+
 }

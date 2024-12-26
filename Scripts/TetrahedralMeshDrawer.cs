@@ -1,3 +1,6 @@
+namespace Hanzzz.Tetrahedralizer
+{
+
 using System;
 using System.Linq;
 using System.Collections.Generic;
@@ -120,4 +123,6 @@ public class TetrahedralMeshDrawer : MonoBehaviour
             GetComponent<MeshFilter>().mesh = tetrahedralMesh.mesh;
         }
     }
+}
+
 }

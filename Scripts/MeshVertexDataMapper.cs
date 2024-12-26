@@ -1,3 +1,6 @@
+namespace Hanzzz.Tetrahedralizer
+{
+
 using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
@@ -179,4 +182,6 @@ public class MeshVertexDataMapper
         res.SetVertexBufferParams(m_targetPositions.Count, m_sourceVertexAttributeDescriptors);
         return res;
     }
+}
+
 }

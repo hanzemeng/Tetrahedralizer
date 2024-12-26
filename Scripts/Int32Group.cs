@@ -1,3 +1,6 @@
+namespace Hanzzz.Tetrahedralizer
+{
+
 using System;
 using System.Collections.Generic;
 
@@ -100,4 +103,6 @@ public class ListInt32
     {
         list.Clear();
     }
+}
+
 }
