@@ -63,7 +63,7 @@ vector<double> m_polyhedrons_winding_numbers;
 
 vector<bool> m_graph_label;
 
-vector<byte> m_dll_out;
+vector<uint8_t> m_dll_out;
 
 vector<uint32_t> m_vector_i_0;
 vector<uint32_t> m_vector_i_1;

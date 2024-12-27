@@ -166,7 +166,7 @@ void read_uint32(byte*& src, uint32_t& v)
     src += sizeof(uint32_t);
 }
 
-void write_double(byte* des, const double& v)
+void write_double(uint8_t* des, const double& v)
 {
     memcpy(des, &v, sizeof(double));
     for(uint32_t i=0; i<sizeof(double); i++)
@@ -175,7 +175,7 @@ void write_double(byte* des, const double& v)
     }
 }
 
-void write_uint32(byte* des, const uint32_t& v)
+void write_uint32(uint8_t* des, const uint32_t& v)
 {
     memcpy(des, &v, sizeof(uint32_t));
     for(uint32_t i=0; i<sizeof(uint32_t); i++)
@@ -200,7 +200,7 @@ output:
         <tetrahedron's 0th vertex>... <tetrahedron0's 3nd vertex>
         ...
 */
-extern "C" byte* tetrahedralize(byte* input)
+extern "C" __declspec(dllexport) uint8_t * tetrahedralize(byte* input)
 {
 //    ofstream MyFile("/Users/hanzemeng/Desktop/out.txt");
     initFPU();
@@ -242,7 +242,7 @@ extern "C" byte* tetrahedralize(byte* input)
     binary_space_partition();
     interior_characterization();
     
-    byte buffer[8];
+    uint8_t buffer[8];
     m_dll_out.clear();
     
     write_uint32(buffer, m_new_vertices_mappings.size());
@@ -333,7 +333,7 @@ extern "C" byte* tetrahedralize(byte* input)
     return m_dll_out.data();
 }
 
-extern "C" byte* approximate_position(uint32_t n, double* input)
+extern "C" __declspec(dllexport) uint8_t* approximate_position(uint32_t n, double* input)
 {
     explicitPoint3D ps[9];
     for(uint32_t i=0; i<n; i++)
@@ -355,7 +355,7 @@ extern "C" byte* approximate_position(uint32_t n, double* input)
     p->getApproxXYZCoordinates(x, y, z, true);
     delete p;
     
-    byte buffer[8];
+    uint8_t buffer[8];
     m_dll_out.clear();
     
     write_double(buffer, x);

@@ -84,7 +84,7 @@ extern vector<double> m_polyhedrons_winding_numbers;
 
 extern vector<bool> m_graph_label;
 
-extern vector<byte> m_dll_out;
+extern vector<uint8_t> m_dll_out;
 
 extern vector<uint32_t> m_vector_i_0;
 extern vector<uint32_t> m_vector_i_1;

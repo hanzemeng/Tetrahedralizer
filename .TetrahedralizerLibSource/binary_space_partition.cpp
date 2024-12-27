@@ -549,7 +549,7 @@ void binary_space_partition()
                             }
                             else
                             {
-                                u_int32_t new_i;
+                                uint32_t new_i;
                                 if(UNDEFINED_VALUE == m_polyhedrons_edges[e]->p2)
                                 {
                                     uint32_t oe0(m_polyhedrons_edges[e]->p0), oe1(m_polyhedrons_edges[e]->p1);
@@ -563,7 +563,7 @@ void binary_space_partition()
                                 m_polyhedrons_edges[e]->e0 = e0;
                                 m_polyhedrons_edges[e]->e1 = new_i;
                                 m_vector_i_2.push_back(e);
-                                u_int32_t bottom_e = m_polyhedrons_edges.size();
+                                uint32_t bottom_e = m_polyhedrons_edges.size();
                                 m_polyhedrons_edges.push_back(new PolyhedronEdge(m_polyhedrons_edges[e]));
                                 m_polyhedrons_edges[bottom_e]->e0 = new_i;
                                 m_polyhedrons_edges[bottom_e]->e1 = e1;
@@ -598,7 +598,7 @@ void binary_space_partition()
                             }
                             else if(1 == o1)
                             {
-                                u_int32_t new_i;
+                                uint32_t new_i;
                                 if(UNDEFINED_VALUE == m_polyhedrons_edges[e]->p2)
                                 {
                                     uint32_t oe0(m_polyhedrons_edges[e]->p0), oe1(m_polyhedrons_edges[e]->p1);
@@ -612,7 +612,7 @@ void binary_space_partition()
                                 m_polyhedrons_edges[e]->e0 = e1;
                                 m_polyhedrons_edges[e]->e1 = new_i;
                                 m_vector_i_2.push_back(e);
-                                u_int32_t bottom_e = m_polyhedrons_edges.size();
+                                uint32_t bottom_e = m_polyhedrons_edges.size();
                                 m_polyhedrons_edges.push_back(new PolyhedronEdge(m_polyhedrons_edges[e]));
                                 m_polyhedrons_edges[bottom_e]->e0 = new_i;
                                 m_polyhedrons_edges[bottom_e]->e1 = e0;
