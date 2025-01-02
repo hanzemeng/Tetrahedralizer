@@ -164,10 +164,10 @@ public class Tetrahedralizer
         }
         for(Int32 i = 0; i<triangles.Count; i+=3)
         {
-            if(triangles[i+0] == triangles[i+2] || triangles[i+0] == triangles[i+1] || triangles[i+2] == triangles[i+1])
-            {
-                throw new Exception("Triangle contains duplicate vertices.");
-            }
+            //if(triangles[i+0] == triangles[i+2] || triangles[i+0] == triangles[i+1] || triangles[i+2] == triangles[i+1])
+            //{
+            //    throw new Exception("Triangle contains duplicate vertices.");
+            //}
             WriteInt32(triangles[i+0]);
             WriteInt32(triangles[i+2]); // convert from left hand to right hand coordinate system
             WriteInt32(triangles[i+1]); // convert from left hand to right hand coordinate system
