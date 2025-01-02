@@ -84,6 +84,9 @@ extern vector<double> m_polyhedrons_winding_numbers;
 
 extern vector<bool> m_graph_label;
 
+extern vector<vector<uint32_t>> m_coplanar_constraints; // coplanar as well as adjacent
+extern vector<uint32_t> m_polyhedrons_facets_associations;
+
 extern vector<uint8_t> m_dll_out;
 
 extern vector<uint32_t> m_vector_i_0;
@@ -101,8 +104,9 @@ extern deque<uint32_t> m_deque_i_0;
 extern unordered_set<uint32_t> m_u_set_i_0;
 extern unordered_set<uint32_t> m_u_set_i_1;
 extern unordered_set<uint32_t> m_u_set_i_2;
+extern unordered_set<uint32_t> m_u_set_i_3;
 
-extern map<uint32_t,uint32_t> m_map_i_i_0;
+extern map<uint32_t,int> m_map_i_i_0;
 extern map<pair<uint32_t,uint32_t>,uint32_t> m_map_ii_i_0;
 extern map<pair<uint32_t,uint32_t>,vector<uint32_t>> m_map_ii_vector_i_0;
 extern map<tuple<uint32_t,uint32_t,uint32_t>,uint32_t> m_map_iii_i_0;

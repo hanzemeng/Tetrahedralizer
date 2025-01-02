@@ -5,6 +5,7 @@
 #include "delaunay_tetrahedralization.h"
 #include "binary_space_partition.h"
 #include "interior_characterization.h"
+#include "facet_association.h"
 using namespace std;
 
 
@@ -155,12 +156,12 @@ int main(int argc, char *argv[])
 }
 
 
-void read_double(byte*& src, double& v)
+void read_double(uint8_t*& src, double& v)
 {
     memcpy(&v, src, sizeof(double));
     src += sizeof(double);
 }
-void read_uint32(byte*& src, uint32_t& v)
+void read_uint32(uint8_t*& src, uint32_t& v)
 {
     memcpy(&v, src, sizeof(uint32_t));
     src += sizeof(uint32_t);
@@ -200,7 +201,7 @@ output:
         <tetrahedron's 0th vertex>... <tetrahedron0's 3nd vertex>
         ...
 */
-extern "C" __declspec(dllexport) uint8_t * tetrahedralize(byte* input)
+extern "C" __declspec(dllexport) uint8_t* tetrahedralize(uint8_t* input)
 {
 //    ofstream MyFile("/Users/hanzemeng/Desktop/out.txt");
     initFPU();
@@ -333,34 +334,90 @@ extern "C" __declspec(dllexport) uint8_t * tetrahedralize(byte* input)
     return m_dll_out.data();
 }
 
-extern "C" __declspec(dllexport) uint8_t* approximate_position(uint32_t n, double* input)
+extern "C" __declspec(dllexport) void load_tetrahedralized_mesh(uint8_t* input)
 {
-    explicitPoint3D ps[9];
-    for(uint32_t i=0; i<n; i++)
+    uint32_t ori_vertices_count, new_vertices_count, tetrahedrons_count;
+    read_uint32(input, ori_vertices_count);
+    read_uint32(input, new_vertices_count);
+    read_uint32(input, tetrahedrons_count);
+    read_uint32(input, m_constraints_count);
+    m_vertices_count = ori_vertices_count + new_vertices_count;
+    
+    m_vertices.clear();
+    for(uint32_t i=0; i<ori_vertices_count; i++)
     {
-        ps[i] = explicitPoint3D(input[3*i+0],input[3*i+1],input[3*i+2]);
+        double x,y,z;
+        read_double(input, x);
+        read_double(input, y);
+        read_double(input, z);
+        m_vertices.push_back(new explicitPoint3D(x,y,z));
+    }
+    uint32_t ps[9];
+    for(uint32_t i=0; i<new_vertices_count; i++)
+    {
+        for(uint32_t j=0; j<9; j++)
+        {
+            read_uint32(input, ps[j]);
+        }
+        if(UNDEFINED_VALUE == ps[5])
+        {
+            m_vertices.push_back(new implicitPoint3D_LPI(m_vertices[ps[0]]->toExplicit3D(),m_vertices[ps[1]]->toExplicit3D(),m_vertices[ps[2]]->toExplicit3D(),m_vertices[ps[3]]->toExplicit3D(),m_vertices[ps[4]]->toExplicit3D()));
+        }
+        else
+        {
+            m_vertices.push_back(new implicitPoint3D_TPI(m_vertices[ps[0]]->toExplicit3D(),m_vertices[ps[1]]->toExplicit3D(),m_vertices[ps[2]]->toExplicit3D(),m_vertices[ps[3]]->toExplicit3D(),m_vertices[ps[4]]->toExplicit3D(),m_vertices[ps[5]]->toExplicit3D(),m_vertices[ps[6]]->toExplicit3D(),m_vertices[ps[7]]->toExplicit3D(),m_vertices[ps[8]]->toExplicit3D()));
+        }
     }
     
-    genericPoint* p;
-    if(5 == n)
+    m_tetrahedrons.clear();
+    for(uint32_t i=0; i<4*tetrahedrons_count; i++)
     {
-        p = new implicitPoint3D_LPI(ps[0],ps[1],ps[2],ps[3],ps[4]);
+        uint32_t temp;
+        read_uint32(input, temp);
+        m_tetrahedrons.push_back(temp);
     }
-    else
+    m_constraints.clear();
+    for(uint32_t i=0; i<3*m_constraints_count; i++)
     {
-        p = new implicitPoint3D_TPI(ps[0],ps[1],ps[2],ps[3],ps[4],ps[5],ps[6],ps[7],ps[8]);
+        uint32_t temp;
+        read_uint32(input, temp);
+        m_constraints.push_back(temp);
     }
-    
-    double x,y,z;
-    p->getApproxXYZCoordinates(x, y, z, true);
-    delete p;
+}
+
+extern "C" __declspec(dllexport) void unload_tetrahedralized_mesh()
+{
+    for(uint32_t i=0; i<m_vertices.size(); i++)
+    {
+        delete m_vertices[i];
+    }
+}
+
+extern "C" __declspec(dllexport) uint8_t* approximate_positions()
+{
+    uint8_t buffer[8];
+    m_dll_out.clear();
+    for(uint32_t i=0; i<m_vertices.size(); i++)
+    {
+        double x,y,z;
+        m_vertices[i]->getApproxXYZCoordinates(x, y, z, true);
+        write_double(buffer, x);
+        write_double(buffer, y);
+        write_double(buffer, z);
+    }
+    return m_dll_out.data();
+}
+
+extern "C" __declspec(dllexport) uint8_t* associate_facets()
+{
+    facet_association();
     
     uint8_t buffer[8];
     m_dll_out.clear();
-    
-    write_double(buffer, x);
-    write_double(buffer, y);
-    write_double(buffer, z);
-    
+
+    for(uint32_t i=0; i<m_polyhedrons_facets_associations.size(); i++)
+    {
+        write_uint32(buffer, m_polyhedrons_facets_associations[i]);
+    }
     return m_dll_out.data();
 }

@@ -56,9 +56,9 @@ void binary_space_partition()
         }
     }
     
-    m_virtual_constraints_count = 0;
     // create virtual constraints
     {
+        m_virtual_constraints_count = 0;
         m_map_ii_vector_i_0.clear(); // key is an edge, value is the edge's incident constraints
         for(uint32_t i=0; i<3*m_constraints_count; i+=3)
         {
@@ -212,8 +212,11 @@ void binary_space_partition()
                     {
                         uint32_t n;
                         get_tetrahedron_neighbor(t, f, n);
-                        m_u_set_i_0.insert(n);
-                        m_queue_i_0.push(n);
+                        if(INFINITE_VERTEX != m_tetrahedrons[n+3])
+                        {
+                            m_u_set_i_0.insert(n);
+                            m_queue_i_0.push(n);
+                        }
                     }
 
                     if(edge_intersects_triangle(f0,f1,c0,c1,c2,o0))
@@ -255,6 +258,7 @@ void binary_space_partition()
                 }
             }
             
+            m_u_set_i_0.erase(UNDEFINED_VALUE);
             // if the constraint improperly intersects a tetrahedron, they are associated
             for(uint32_t t : m_u_set_i_0)
             {
@@ -434,7 +438,7 @@ void binary_space_partition()
             }
         }
     }
-
+    
     // slice each polyhedron with its list of improper constraints.
     {
         m_new_vertices_mappings.clear();
@@ -893,107 +897,7 @@ void add_virtual_constraint(uint32_t e0, uint32_t e1, uint32_t c) // e0 and e1 i
     throw "can't add virtual constraint";
 }
 
-bool has_vertex(uint32_t t, uint32_t v)
-{
-    return v == m_tetrahedrons[t+0] || v == m_tetrahedrons[t+1] || v == m_tetrahedrons[t+2] || v == m_tetrahedrons[t+3];
-}
 
-bool edge_intersects_triangle(uint32_t e0,uint32_t e1,uint32_t t0,uint32_t t1,uint32_t t2, uint32_t& o0)
-{
-    int oe01t01 = orient3d(e0,e1,t0,t1);
-    int oe01t12 = orient3d(e0,e1,t1,t2);
-    int oe01t20 = orient3d(e0,e1,t2,t0);
-    if(oe01t01 != oe01t12 || oe01t12 != oe01t20)
-    {
-        return false;
-    }
-    int oe0t012 = orient3d(e0,t0,t1,t2);
-    int oe1t012 = orient3d(e1,t0,t1,t2);
-    o0 = UNDEFINED_VALUE;
-    if(0 == oe0t012)
-    {
-        o0 = e0;
-    }
-    if(0 == oe1t012)
-    {
-        o0 = e1;
-    }
-    return oe0t012 != oe1t012;
-}
-
-void add_tetrahedron_incident(uint32_t p0, unordered_set<uint32_t>& visited, queue<uint32_t>& to_be_visited, unordered_set<uint32_t>& res_set, queue<uint32_t>& res_queue)
-{
-    visited.clear();
-    visited.insert(UNDEFINED_VALUE);
-    clear_queue(to_be_visited);
-    to_be_visited.push(m_vertices_incidents[p0]);
-    while(!to_be_visited.empty())
-    {
-        uint32_t t = to_be_visited.front();
-        to_be_visited.pop();
-        if(visited.end() != visited.find(t))
-        {
-            continue;
-        }
-        visited.insert(t);
-
-        if(INFINITE_VERTEX == m_tetrahedrons[t+3])
-        {
-            continue;
-        }
-        if(!has_vertex(t,p0))
-        {
-            continue;
-        }
-        res_set.insert(t);
-        res_queue.push(t);
-        uint32_t n;
-        for(uint32_t f=0; f<4; f++)
-        {
-            get_tetrahedron_neighbor(t, f, n);
-            to_be_visited.push(n);
-        }
-    }
-}
-void add_tetrahedron_incident(uint32_t p0,uint32_t p1, unordered_set<uint32_t>& visited, queue<uint32_t>& to_be_visited, unordered_set<uint32_t>& res_set, queue<uint32_t>& res_queue)
-{
-    visited.clear();
-    visited.insert(UNDEFINED_VALUE);
-    clear_queue(to_be_visited);
-    to_be_visited.push(m_vertices_incidents[p0]);
-    while(!to_be_visited.empty())
-    {
-        uint32_t t = to_be_visited.front();
-        to_be_visited.pop();
-        if(visited.end() != visited.find(t))
-        {
-            continue;
-        }
-        visited.insert(t);
-
-        if(INFINITE_VERTEX == m_tetrahedrons[t+3])
-        {
-            continue;
-        }
-        bool b0 = has_vertex(t,p0);
-        bool b1 = has_vertex(t,p1);
-        if(!b0 && !b1)
-        {
-            continue;
-        }
-        if(b0 && b1)
-        {
-            res_set.insert(t);
-            res_queue.push(t);
-        }
-        uint32_t n;
-        for(uint32_t f=0; f<4; f++)
-        {
-            get_tetrahedron_neighbor(t, f, n);
-            to_be_visited.push(n);
-        }
-    }
-}
     
 void get_polyhedron_facet_vertices(uint32_t f, uint32_t& f0,uint32_t& f1,uint32_t& f2)
 {

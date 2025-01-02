@@ -92,6 +92,15 @@ int orient3d_ignore_axis(const explicitPoint3D& pp0,uint32_t p1,uint32_t p2,int 
     throw "wrong axis value";
 }
 
+bool vertex_in_segment(uint32_t p0,uint32_t s0,uint32_t s1, int axis)
+{
+    return genericPoint::pointInSegment(*m_vertices[p0],*m_vertices[s0],*m_vertices[s1], axis);
+}
+bool vertex_in_triangle(uint32_t p0,uint32_t t0,uint32_t t1,uint32_t t2, int axis)
+{
+    return genericPoint::pointInTriangle(*m_vertices[p0],*m_vertices[t0],*m_vertices[t1],*m_vertices[t2], axis);
+}
+
 
 void sort_ints(uint32_t& i0, uint32_t& i1)
 {
@@ -206,5 +215,112 @@ void get_tetrahedron_neighbor(uint32_t t, uint32_t i, uint32_t& n)
     else
     {
         n = m_neighbors[t+i] & 0xfffffffc;
+    }
+}
+
+bool has_vertex(uint32_t t, uint32_t v)
+{
+    return v == m_tetrahedrons[t+0] || v == m_tetrahedrons[t+1] || v == m_tetrahedrons[t+2] || v == m_tetrahedrons[t+3];
+}
+
+bool edge_intersects_triangle(uint32_t e0,uint32_t e1,uint32_t t0,uint32_t t1,uint32_t t2, uint32_t& o0)
+{
+    int oe01t01 = orient3d(e0,e1,t0,t1);
+    int oe01t12 = orient3d(e0,e1,t1,t2);
+    int oe01t20 = orient3d(e0,e1,t2,t0);
+    if(oe01t01 != oe01t12 || oe01t12 != oe01t20)
+    {
+        return false;
+    }
+    int oe0t012 = orient3d(e0,t0,t1,t2);
+    int oe1t012 = orient3d(e1,t0,t1,t2);
+    o0 = UNDEFINED_VALUE;
+    if(0 == oe0t012)
+    {
+        o0 = e0;
+    }
+    if(0 == oe1t012)
+    {
+        o0 = e1;
+    }
+    if(0 == oe0t012 && 0 == oe1t012)
+    {
+        o0 = UNDEFINED_VALUE;
+        return true;
+    }
+    return oe0t012 != oe1t012;
+}
+
+void add_tetrahedron_incident(uint32_t p0, unordered_set<uint32_t>& visited, queue<uint32_t>& to_be_visited, unordered_set<uint32_t>& res_set, queue<uint32_t>& res_queue)
+{
+    visited.clear();
+    visited.insert(UNDEFINED_VALUE);
+    clear_queue(to_be_visited);
+    to_be_visited.push(m_vertices_incidents[p0]);
+    while(!to_be_visited.empty())
+    {
+        uint32_t t = to_be_visited.front();
+        to_be_visited.pop();
+        if(visited.end() != visited.find(t))
+        {
+            continue;
+        }
+        visited.insert(t);
+
+        if(INFINITE_VERTEX == m_tetrahedrons[t+3])
+        {
+            continue;
+        }
+        if(!has_vertex(t,p0))
+        {
+            continue;
+        }
+        res_set.insert(t);
+        res_queue.push(t);
+        uint32_t n;
+        for(uint32_t f=0; f<4; f++)
+        {
+            get_tetrahedron_neighbor(t, f, n);
+            to_be_visited.push(n);
+        }
+    }
+}
+void add_tetrahedron_incident(uint32_t p0,uint32_t p1, unordered_set<uint32_t>& visited, queue<uint32_t>& to_be_visited, unordered_set<uint32_t>& res_set, queue<uint32_t>& res_queue)
+{
+    visited.clear();
+    visited.insert(UNDEFINED_VALUE);
+    clear_queue(to_be_visited);
+    to_be_visited.push(m_vertices_incidents[p0]);
+    while(!to_be_visited.empty())
+    {
+        uint32_t t = to_be_visited.front();
+        to_be_visited.pop();
+        if(visited.end() != visited.find(t))
+        {
+            continue;
+        }
+        visited.insert(t);
+
+        if(INFINITE_VERTEX == m_tetrahedrons[t+3])
+        {
+            continue;
+        }
+        bool b0 = has_vertex(t,p0);
+        bool b1 = has_vertex(t,p1);
+        if(!b0 && !b1)
+        {
+            continue;
+        }
+        if(b0 && b1)
+        {
+            res_set.insert(t);
+            res_queue.push(t);
+        }
+        uint32_t n;
+        for(uint32_t f=0; f<4; f++)
+        {
+            get_tetrahedron_neighbor(t, f, n);
+            to_be_visited.push(n);
+        }
     }
 }

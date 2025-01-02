@@ -22,6 +22,8 @@ int max_component_in_triangle_normal(uint32_t t0,uint32_t t1,uint32_t t2);
 int orient3d_ignore_axis(uint32_t p0,uint32_t p1,uint32_t p2,int axis);
 int orient3d_ignore_axis(const explicitPoint3D& pp0,uint32_t p1,uint32_t p2,int axis);
 
+bool vertex_in_segment(uint32_t p0,uint32_t s0,uint32_t s1,int axis);
+bool vertex_in_triangle(uint32_t p0,uint32_t t0,uint32_t t1,uint32_t t2,int axis);
 
 void sort_ints(uint32_t& i0, uint32_t& i1);
 void sort_ints(uint32_t& i0, uint32_t& i1, uint32_t& i2);
@@ -36,6 +38,13 @@ void get_tetrahedron_face(uint32_t t, uint32_t i, uint32_t& f0,uint32_t& f1,uint
 void get_tetrahedron_face(uint32_t t, uint32_t& f0,uint32_t& f1,uint32_t& f2);
 void get_tetrahedron_opposite_vertex(uint32_t t, uint32_t& p);
 void get_tetrahedron_neighbor(uint32_t t, uint32_t i, uint32_t& n);
+
+
+bool has_vertex(uint32_t t, uint32_t v);
+bool edge_intersects_triangle(uint32_t e0,uint32_t e1,uint32_t t0,uint32_t t1,uint32_t t2, uint32_t& o0);
+
+void add_tetrahedron_incident(uint32_t p0, unordered_set<uint32_t>& visited, queue<uint32_t>& to_be_visited, unordered_set<uint32_t>& res_set, queue<uint32_t>& res_queue);
+void add_tetrahedron_incident(uint32_t p0, uint32_t p1, unordered_set<uint32_t>& visited, queue<uint32_t>& to_be_visited, unordered_set<uint32_t>& res_set, queue<uint32_t>& res_queue);
 
 
 #endif

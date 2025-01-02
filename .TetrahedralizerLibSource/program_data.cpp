@@ -63,6 +63,9 @@ vector<double> m_polyhedrons_winding_numbers;
 
 vector<bool> m_graph_label;
 
+vector<vector<uint32_t>> m_coplanar_constraints;
+vector<uint32_t> m_polyhedrons_facets_associations;
+
 vector<uint8_t> m_dll_out;
 
 vector<uint32_t> m_vector_i_0;
@@ -80,8 +83,9 @@ deque<uint32_t> m_deque_i_0;
 unordered_set<uint32_t> m_u_set_i_0;
 unordered_set<uint32_t> m_u_set_i_1;
 unordered_set<uint32_t> m_u_set_i_2;
+unordered_set<uint32_t> m_u_set_i_3;
 
-map<uint32_t,uint32_t> m_map_i_i_0;
+map<uint32_t,int> m_map_i_i_0;
 map<pair<uint32_t,uint32_t>,uint32_t> m_map_ii_i_0;
 map<pair<uint32_t,uint32_t>,vector<uint32_t>> m_map_ii_vector_i_0;
 map<tuple<uint32_t,uint32_t,uint32_t>,uint32_t> m_map_iii_i_0;
