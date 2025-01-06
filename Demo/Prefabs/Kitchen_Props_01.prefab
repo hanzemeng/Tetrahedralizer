@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 6600446890701085523}
   - component: {fileID: 6246913357125762950}
   m_Layer: 0
-  m_Name: KitchenProps_01
+  m_Name: Kitchen_Props_01
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

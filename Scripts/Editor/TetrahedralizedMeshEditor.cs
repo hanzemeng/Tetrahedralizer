@@ -18,10 +18,15 @@ public class TetrahedralizedMeshEditor : Editor
     {
         //base.OnInspectorGUI();
 
-        EditorGUILayout.ObjectField("Original Mesh",tetrahedralizedMesh.originalMesh,typeof(Mesh),false);
+        EditorGUILayout.ObjectField("Original Mesh: ",tetrahedralizedMesh.originalMesh,typeof(Mesh),false);
         EditorGUILayout.LabelField($"Original Vertices Count: {tetrahedralizedMesh.originalVerticesMappings.Count}");
         EditorGUILayout.LabelField($"New Vertices Count: {tetrahedralizedMesh.newVerticesMappings.Count}");
         EditorGUILayout.LabelField($"Tetrahedrons Count: {tetrahedralizedMesh.tetrahedrons.Count / 4}");
+
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField($"WARNING: Do not modify this scriptable object in the inspector.");
+        EditorGUILayout.LabelField($"Please use the tetrahedralizer window in");
+        EditorGUILayout.LabelField($"{TetrahedralizerEditorWindow.MENU_PATH} to modify.");
     }
 }
 

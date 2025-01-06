@@ -182,6 +182,16 @@ public class MeshVertexDataMapper
         res.SetVertexBufferParams(m_targetPositions.Count, m_sourceVertexAttributeDescriptors);
         return res;
     }
+
+    public void ClearTarget()
+    {
+        m_targetPositions.Clear();
+        m_targetColors.Clear();
+        for(int i=0; i<8; i++)
+        {
+            m_targetUVs[i].Clear();
+        }
+    }
 }
 
 }

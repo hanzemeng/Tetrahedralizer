@@ -17,7 +17,8 @@ public class TetrahedralizerEditorWindow : EditorWindow
     private float m_degenerateTetrahedronRatio;
 
 
-    [MenuItem("Window/Tetrahedralizer")]
+    public const string MENU_PATH = "Window/Tetrahedralizer";
+    [MenuItem(MENU_PATH)]
     public static void Open()
     {
         TetrahedralizerEditorWindow wnd = GetWindow<TetrahedralizerEditorWindow>();
@@ -29,8 +30,8 @@ public class TetrahedralizerEditorWindow : EditorWindow
     {
         m_tetrahedralizer = new Tetrahedralizer();
 
-        m_remapVertxData = false;
-        m_degenerateTetrahedronRatio = 0.05f;
+        m_remapVertxData = Tetrahedralizer.Settings.DEFAULT_remapVertexData;
+        m_degenerateTetrahedronRatio = (float)Tetrahedralizer.Settings.DEFAULT_degenerateTetrahedronRatio;
         Tetrahedralizer.Settings settings = new Tetrahedralizer.Settings(m_remapVertxData, m_degenerateTetrahedronRatio);
         m_tetrahedralizer.SetSettings(settings);
     }

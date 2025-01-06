@@ -85,27 +85,42 @@ public class Tetrahedralizer
 
     public struct Settings
     {
+        public const bool DEFAULT_remapVertexData = false;
+        public const double DEFAULT_degenerateTetrahedronRatio = 0.0d;
+
+
         public bool remapVertexData;
         public double degenerateTetrahedronRatio;
 
-        public Settings(bool remapVertexData, double degenerateTetrahedronRatio)
+        public Settings(bool remapVertexData=DEFAULT_remapVertexData, double degenerateTetrahedronRatio=DEFAULT_degenerateTetrahedronRatio)
         {
             this.remapVertexData = remapVertexData;
             this.degenerateTetrahedronRatio = degenerateTetrahedronRatio;
         }
     }
 
+    private Settings m_settings;
 
     private MeshVertexDataMapper m_meshVertexDataMapper;
-    private Settings m_settings;
+    private List<Vector3> m_originalVertices;
+    private List<Int32> m_originalTriangles;
+    private List<Int32> m_originalTrianglesSubmeshes;
+    private List<Int32> m_resultTrianglesSubmeshes;
+    private List<Int32> m_list_i_0;
 
     public Tetrahedralizer()
     {
         m_buffer = new byte[8];
         m_input = new List<byte>();
-        m_meshVertexDataMapper = new MeshVertexDataMapper();
 
-        m_settings = new Settings(false, 0.05d);
+        m_settings = new Settings();
+
+        m_meshVertexDataMapper = new MeshVertexDataMapper();
+        m_originalVertices = new List<Vector3>();
+        m_originalTriangles = new List<Int32>();
+        m_originalTrianglesSubmeshes = new List<Int32>();
+        m_resultTrianglesSubmeshes = new List<Int32>();
+        m_list_i_0 = new List<Int32>();
     }
     public void SetSettings(Settings settings)
     {
@@ -126,51 +141,50 @@ public class Tetrahedralizer
         tetrahedralizedMesh.newVerticesMappings.Clear();
         tetrahedralizedMesh.tetrahedrons.Clear();
 
-
-        List<Vector3> vertices = mesh.vertices.ToList();
-        List<int> triangles = mesh.triangles.ToList();
+        mesh.GetVertices(m_originalVertices);
+        m_originalTriangles = mesh.triangles.ToList();
         Dictionary<Vector3, Int32> mapping = new Dictionary<Vector3, Int32>();
 
-        for(Int32 i=0; i<vertices.Count; i++)
+        for(Int32 i=0; i<m_originalVertices.Count; i++)
         {
             Int32 ni;
-            if(!mapping.ContainsKey(vertices[i]))
+            if(!mapping.ContainsKey(m_originalVertices[i]))
             {
-                mapping[vertices[i]] = (Int32)mapping.Count;
+                mapping[m_originalVertices[i]] = (Int32)mapping.Count;
                 tetrahedralizedMesh.originalVerticesMappings.Add(new ListInt32());
             }
-            ni = mapping[vertices[i]];
+            ni = mapping[m_originalVertices[i]];
             tetrahedralizedMesh.originalVerticesMappings[ni].Add(i);
         }
 
-        for(Int32 i = 0; i<triangles.Count; i++)
+        for(Int32 i = 0; i<m_originalTriangles.Count; i++)
         {
-            triangles[i] = mapping[vertices[triangles[i]]];
+            m_originalTriangles[i] = mapping[m_originalVertices[m_originalTriangles[i]]];
         }
         foreach(var kvp in mapping)
         {
-            vertices[kvp.Value] = kvp.Key;
+            m_originalVertices[kvp.Value] = kvp.Key;
         }
-        vertices.RemoveRange(mapping.Count,vertices.Count-mapping.Count);
+        m_originalVertices.RemoveRange(mapping.Count,m_originalVertices.Count-mapping.Count);
 
         WriteInt32(mapping.Count);
-        WriteInt32(triangles.Count/3);
+        WriteInt32(m_originalTriangles.Count/3);
 
         for(Int32 i = 0; i<mapping.Count; i++)
         {
-            WriteDouble(vertices[i].x);
-            WriteDouble(vertices[i].z); // convert from left hand to right hand coordinate system
-            WriteDouble(vertices[i].y); // convert from left hand to right hand coordinate system
+            WriteDouble(m_originalVertices[i].x);
+            WriteDouble(m_originalVertices[i].z); // convert from left hand to right hand coordinate system
+            WriteDouble(m_originalVertices[i].y); // convert from left hand to right hand coordinate system
         }
-        for(Int32 i = 0; i<triangles.Count; i+=3)
+        for(Int32 i = 0; i<m_originalTriangles.Count; i+=3)
         {
             //if(triangles[i+0] == triangles[i+2] || triangles[i+0] == triangles[i+1] || triangles[i+2] == triangles[i+1])
             //{
             //    throw new Exception("Triangle contains duplicate vertices.");
             //}
-            WriteInt32(triangles[i+0]);
-            WriteInt32(triangles[i+2]); // convert from left hand to right hand coordinate system
-            WriteInt32(triangles[i+1]); // convert from left hand to right hand coordinate system
+            WriteInt32(m_originalTriangles[i+0]);
+            WriteInt32(m_originalTriangles[i+2]); // convert from left hand to right hand coordinate system
+            WriteInt32(m_originalTriangles[i+1]); // convert from left hand to right hand coordinate system
         }
 
 
@@ -212,10 +226,22 @@ public class Tetrahedralizer
         List<Vector3> vertices = new List<Vector3>();
         List<int> tetrahedrons = tetrahedralizedMesh.tetrahedrons.Select(i=>i).ToList();
 
+        tetrahedralizedMesh.originalMesh.GetVertices(m_originalVertices);
 
-        Vector3[] originalVertices = tetrahedralizedMesh.originalMesh.vertices;
-        Int32[] originalTriangles = tetrahedralizedMesh.originalMesh.triangles;
-        Int32[] originalTrianglesMappings = new Int32[originalTriangles.Length];
+        m_originalTriangles.Clear();
+        m_originalTrianglesSubmeshes.Clear();
+        Int32 originalSubmeshesCount = tetrahedralizedMesh.originalMesh.subMeshCount;
+        for(Int32 i=0; i<originalSubmeshesCount; i++)
+        {
+            tetrahedralizedMesh.originalMesh.GetTriangles(m_list_i_0,i);
+            for(Int32 j=0; j<m_list_i_0.Count/3; j++)
+            {
+                m_originalTrianglesSubmeshes.Add(i);
+            }
+            m_originalTriangles.AddRange(m_list_i_0);
+        }
+
+        Int32[] originalTrianglesMappings = new Int32[m_originalTriangles.Count];
         for(Int32 i=0; i<tetrahedralizedMesh.originalVerticesMappings.Count; i++)
         {
             foreach(Int32 v in tetrahedralizedMesh.originalVerticesMappings[i].list)
@@ -227,11 +253,11 @@ public class Tetrahedralizer
         WriteInt32(tetrahedralizedMesh.originalVerticesMappings.Count);
         WriteInt32(tetrahedralizedMesh.newVerticesMappings.Count);
         WriteInt32(tetrahedralizedMesh.tetrahedrons.Count/4);
-        WriteInt32(originalTriangles.Length/3);
+        WriteInt32(m_originalTriangles.Count/3);
 
         for(Int32 i=0; i<tetrahedralizedMesh.originalVerticesMappings.Count; i++)
         {
-            Vector3 p = originalVertices[tetrahedralizedMesh.originalVerticesMappings[i][0]];
+            Vector3 p = m_originalVertices[tetrahedralizedMesh.originalVerticesMappings[i][0]];
             WriteDouble(p.x);
             WriteDouble(p.z);  // convert from left hand to right hand coordinate system
             WriteDouble(p.y);  // convert from left hand to right hand coordinate system
@@ -250,11 +276,11 @@ public class Tetrahedralizer
             WriteInt32(tetrahedralizedMesh.tetrahedrons[i+3]); // convert from left hand to right hand coordinate system
             WriteInt32(tetrahedralizedMesh.tetrahedrons[i+2]); // convert from left hand to right hand coordinate system
         }
-        for(Int32 i=0; i<originalTriangles.Length; i+=3)
+        for(Int32 i=0; i<m_originalTriangles.Count; i+=3)
         {
-            WriteInt32(originalTrianglesMappings[originalTriangles[i+0]]);
-            WriteInt32(originalTrianglesMappings[originalTriangles[i+2]]); // convert from left hand to right hand coordinate system
-            WriteInt32(originalTrianglesMappings[originalTriangles[i+1]]); // convert from left hand to right hand coordinate system
+            WriteInt32(originalTrianglesMappings[m_originalTriangles[i+0]]);
+            WriteInt32(originalTrianglesMappings[m_originalTriangles[i+2]]); // convert from left hand to right hand coordinate system
+            WriteInt32(originalTrianglesMappings[m_originalTriangles[i+1]]); // convert from left hand to right hand coordinate system
         }
 
         load_tetrahedralized_mesh(m_input.ToArray());
@@ -284,6 +310,8 @@ public class Tetrahedralizer
         Int32 UNDEFINED_VALUE = -1;
 
         m_meshVertexDataMapper.AssignSourceMesh(tetrahedralizedMesh.originalMesh);
+        m_resultTrianglesSubmeshes.Clear();
+        m_list_i_0.Clear();
         int[] ps = new int[3];
         double[] ts = new double[3];
         void ProcessFacet(Int32 p0, Int32 p1, Int32 p2)
@@ -292,20 +320,23 @@ public class Tetrahedralizer
             Int32 c1 = ReadInt32(ref ptr);
             Int32 c2 = ReadInt32(ref ptr);
 
-            if(UNDEFINED_VALUE == c0 || UNDEFINED_VALUE == c1 || UNDEFINED_VALUE == c2)
+            if(UNDEFINED_VALUE == c0 || UNDEFINED_VALUE == c1 || UNDEFINED_VALUE == c2 ||
+               m_originalTrianglesSubmeshes[c0] != m_originalTrianglesSubmeshes[c1] ||
+               m_originalTrianglesSubmeshes[c1] != m_originalTrianglesSubmeshes[c2])
             {
                 m_meshVertexDataMapper.AddDefaultValue(vertices[p0]);
                 m_meshVertexDataMapper.AddDefaultValue(vertices[p1]);
                 m_meshVertexDataMapper.AddDefaultValue(vertices[p2]);
+                m_resultTrianglesSubmeshes.Add(originalSubmeshesCount);
                 return;
             }
 
             void BarycentricWeight(int t0,int t1,int t2,int p)
             {
-                double triArea = Vector3.Cross(originalVertices[t1] - originalVertices[t0], originalVertices[t2] - originalVertices[t0]).magnitude;
-                Vector3 ep0 = originalVertices[t0] - vertices[p];
-                Vector3 ep1 = originalVertices[t1] - vertices[p];
-                Vector3 ep2 = originalVertices[t2] - vertices[p];
+                double triArea = Vector3.Cross(m_originalVertices[t1] - m_originalVertices[t0], m_originalVertices[t2] - m_originalVertices[t0]).magnitude;
+                Vector3 ep0 = m_originalVertices[t0] - vertices[p];
+                Vector3 ep1 = m_originalVertices[t1] - vertices[p];
+                Vector3 ep2 = m_originalVertices[t2] - vertices[p];
                 ps[0] = t0;
                 ps[1] = t1;
                 ps[2] = t2;
@@ -315,9 +346,10 @@ public class Tetrahedralizer
                 m_meshVertexDataMapper.InterpolateVertexData(3,vertices[p],ps,ts);
             }
 
-            BarycentricWeight(originalTriangles[3*c0+0],originalTriangles[3*c0+1],originalTriangles[3*c0+2], p0);
-            BarycentricWeight(originalTriangles[3*c1+0],originalTriangles[3*c1+1],originalTriangles[3*c1+2], p1);
-            BarycentricWeight(originalTriangles[3*c2+0],originalTriangles[3*c2+1],originalTriangles[3*c2+2], p2);
+            BarycentricWeight(m_originalTriangles[3*c0+0],m_originalTriangles[3*c0+1],m_originalTriangles[3*c0+2], p0);
+            BarycentricWeight(m_originalTriangles[3*c1+0],m_originalTriangles[3*c1+1],m_originalTriangles[3*c1+2], p1);
+            BarycentricWeight(m_originalTriangles[3*c2+0],m_originalTriangles[3*c2+1],m_originalTriangles[3*c2+2], p2);
+            m_resultTrianglesSubmeshes.Add(m_originalTrianglesSubmeshes[c0]);
         }
         
         for(Int32 i=0; i<tetrahedralizedMesh.tetrahedrons.Count; i+=4)
@@ -332,7 +364,22 @@ public class Tetrahedralizer
             ProcessFacet(p3,p1,p2);
         }
         Mesh mesh = m_meshVertexDataMapper.MakeMesh();
-        mesh.triangles = Enumerable.Range(0,3*tetrahedrons.Count).Select(i => i).ToArray();
+        mesh.subMeshCount = originalSubmeshesCount + 1;
+        for(Int32 i=0; i<originalSubmeshesCount+1; i++)
+        {
+            m_list_i_0.Clear();
+            for(Int32 j=0; j<m_resultTrianglesSubmeshes.Count; j++)
+            {
+                if(i == m_resultTrianglesSubmeshes[j])
+                {
+                    m_list_i_0.Add(3*j+0);
+                    m_list_i_0.Add(3*j+1);
+                    m_list_i_0.Add(3*j+2);
+                }
+            }
+            mesh.SetTriangles(m_list_i_0, i);
+        }
+        //mesh.triangles = Enumerable.Range(0,3*tetrahedrons.Count).Select(i => i).ToArray();
         mesh.RecalculateBounds();
         mesh.RecalculateNormals();
         mesh.RecalculateTangents();

@@ -20,7 +20,12 @@ public class TetrahedralMeshEditor : Editor
 
         EditorGUILayout.LabelField($"Vertices Count: {tetrahedralMesh.vertices.Count}");
         EditorGUILayout.LabelField($"Tetrahedrons Count: {tetrahedralMesh.tetrahedrons.Count / 4}");
-        EditorGUILayout.ObjectField("Generated Mesh", tetrahedralMesh.mesh, typeof(Mesh), false);
+        EditorGUILayout.ObjectField("Generated Mesh: ", tetrahedralMesh.mesh, typeof(Mesh), false);
+
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField($"WARNING: Do not modify this scriptable object in the inspector.");
+        EditorGUILayout.LabelField($"Please use the tetrahedralizer window in");
+        EditorGUILayout.LabelField($"{TetrahedralizerEditorWindow.MENU_PATH} to modify.");
     }
 }
 
