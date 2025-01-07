@@ -2,7 +2,8 @@
 namespace Hanzzz.Tetrahedralizer
 {
 
-using UnityEngine;
+using System;
+using UnityEngine.Rendering;
 using UnityEditor;
 
 [CustomEditor(typeof(TetrahedralMesh))]
@@ -18,14 +19,23 @@ public class TetrahedralMeshEditor : Editor
     {
         //base.OnInspectorGUI();
 
-        EditorGUILayout.LabelField($"Vertices Count: {tetrahedralMesh.vertices.Count}");
-        EditorGUILayout.LabelField($"Tetrahedrons Count: {tetrahedralMesh.tetrahedrons.Count / 4}");
-        EditorGUILayout.ObjectField("Generated Mesh: ", tetrahedralMesh.mesh, typeof(Mesh), false);
-
-        EditorGUILayout.Space();
-        EditorGUILayout.LabelField($"WARNING: Do not modify this scriptable object in the inspector.");
-        EditorGUILayout.LabelField($"Please use the tetrahedralizer window in");
-        EditorGUILayout.LabelField($"{TetrahedralizerEditorWindow.MENU_PATH} to modify.");
+        if(0 != tetrahedralMesh.tetrahedrons.Count)
+        {
+            EditorGUILayout.LabelField($"Tetrahedrons Count: {tetrahedralMesh.tetrahedrons.Count / 4}");
+            EditorGUILayout.LabelField($"Vertices Count: {tetrahedralMesh.vertices.Count}");
+        }
+        else
+        {
+            EditorGUILayout.LabelField($"Tetrahedrons Count: {tetrahedralMesh.facetsSubmeshes.Count / 4}");
+            EditorGUILayout.LabelField($"Vertices Count: {tetrahedralMesh.vertices.Count}");
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Vertex Data:");
+            foreach(Int32 i in tetrahedralMesh.vertexAttributeDescriptors)
+            {
+                VertexAttributeDescriptor v = VertexAttributeDescriptorSerializer.ToVertexAttributeDescriptor(i);
+                EditorGUILayout.LabelField(v.ToString());
+            }
+        }
     }
 }
 

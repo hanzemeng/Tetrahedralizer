@@ -12,16 +12,10 @@ public class TetrahedralMeshDrawer : MonoBehaviour
     public TetrahedralMesh tetrahedralMesh;
     public Material[] materials;
     public bool asIndividualTetrahedron;
-    private bool m_asIndividualTetrahedron;
     [Range(0f,1f)] public float scale = 1f;
     
     private void OnValidate()
     {
-        if(m_asIndividualTetrahedron != asIndividualTetrahedron)
-        {
-            m_asIndividualTetrahedron = asIndividualTetrahedron;
-            UpdateMesh();
-        }
         UpdateScale();
     }
 
@@ -34,7 +28,7 @@ public class TetrahedralMeshDrawer : MonoBehaviour
         {
             return;
         }
-        if(null == tetrahedralMesh.mesh)
+        if(0 != tetrahedralMesh.tetrahedrons.Count)
         {
             if(asIndividualTetrahedron)
             {
@@ -115,33 +109,18 @@ public class TetrahedralMeshDrawer : MonoBehaviour
         }
         else
         {
+            List<Int32> temp = new List<Int32>();
+            List<Int32> triangleSubmeshes = new List<Int32>();
+            List<Vector3> vertices = new List<Vector3>();
+            MeshVertexDataMapper mvdm = new MeshVertexDataMapper();
+
+            mvdm.AssignSourceTetrahedralMesh(tetrahedralMesh);
+            Int32 submeshCount = tetrahedralMesh.GetSubmeshesCount();
+            tetrahedralMesh.GetFacetsSubmeshes(triangleSubmeshes);
+
             if(asIndividualTetrahedron)
             {
-                List<Int32> temp = new List<Int32>();
-                List<Int32> triangleSubmeshes = new List<Int32>();
-                List<Vector3> vertices = new List<Vector3>();
-                MeshVertexDataMapper mvdm = new MeshVertexDataMapper();
-
-                mvdm.AssignSourceMesh(tetrahedralMesh.mesh);
-                Int32 submeshCount = tetrahedralMesh.mesh.subMeshCount;
-                Int32 triangleCount = 0;
-                for(Int32 i=0; i<submeshCount; i++)
-                {
-                    triangleCount += (Int32)tetrahedralMesh.mesh.GetIndexCount(i);
-                }
-                triangleCount /= 3;
-                triangleSubmeshes.AddRange(Enumerable.Range(0,triangleCount));
-
-                for(Int32 i=0; i<submeshCount; i++)
-                {
-                    tetrahedralMesh.mesh.GetTriangles(temp, i);
-                    for(Int32 j=0; j<temp.Count; j+=3)
-                    {
-                        triangleSubmeshes[temp[j]/3] = i;
-                    }
-                }
-
-                for(Int32 i=0; i<triangleCount; i+=4)
+                for(Int32 i=0; i<triangleSubmeshes.Count; i+=4)
                 {
                     for(Int32 j=0; j<12; j++)
                     {
@@ -178,7 +157,37 @@ public class TetrahedralMeshDrawer : MonoBehaviour
             }
             else
             {
-                CreateGameObject(tetrahedralMesh.mesh);
+                for(Int32 i=0; i<3*triangleSubmeshes.Count; i++)
+                {
+                    mvdm.CopyVertexData(i);
+                }
+
+                Mesh mesh = mvdm.MakeMesh();
+                mesh.subMeshCount = submeshCount;
+                for(Int32 i=0; i<submeshCount; i++)
+                {
+                    temp.Clear();
+                    for(Int32 j=0; j<triangleSubmeshes.Count; j++)
+                    {
+                        if(i == triangleSubmeshes[j])
+                        {
+                            temp.Add(3*j+0);
+                            temp.Add(3*j+1);
+                            temp.Add(3*j+2);
+                        }
+                            
+                    }
+                    mesh.SetTriangles(temp,i);
+                }
+                    
+                mesh.RecalculateBounds();
+                mesh.RecalculateNormals();
+                mesh.RecalculateTangents();
+
+                mesh.GetVertices(vertices);
+                Vector3 center = AdjustVerticesCenter(vertices);
+                mesh.SetVertices(vertices);
+                CreateGameObject(mesh, center);
             }
         }
     }

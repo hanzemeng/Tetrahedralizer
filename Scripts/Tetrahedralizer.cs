@@ -302,7 +302,6 @@ public class Tetrahedralizer
 
             tetrahedralMesh.vertices = vertices;
             tetrahedralMesh.tetrahedrons = tetrahedrons;
-            tetrahedralMesh.mesh = null;
             return;
         }
         
@@ -363,6 +362,10 @@ public class Tetrahedralizer
             double volume = TetrahedralMeshUtility.CalculateTetrahedronVolume(vertices[p0],vertices[p1],vertices[p2],vertices[p3]);
             if(volume < averageVolume*m_settings.degenerateTetrahedronRatio)
             {
+                for(Int32 j=0; j<12; j++)
+                {
+                    ReadInt32(ref ptr);
+                }
                 continue;
             }
             ProcessFacet(p0,p1,p3);
@@ -370,30 +373,9 @@ public class Tetrahedralizer
             ProcessFacet(p0,p3,p2);
             ProcessFacet(p3,p1,p2);
         }
-        Mesh mesh = m_meshVertexDataMapper.MakeMesh();
-        mesh.subMeshCount = originalSubmeshesCount + 1;
-        for(Int32 i=0; i<originalSubmeshesCount+1; i++)
-        {
-            m_list_i_0.Clear();
-            for(Int32 j=0; j<m_resultTrianglesSubmeshes.Count; j++)
-            {
-                if(i == m_resultTrianglesSubmeshes[j])
-                {
-                    m_list_i_0.Add(3*j+0);
-                    m_list_i_0.Add(3*j+1);
-                    m_list_i_0.Add(3*j+2);
-                }
-            }
-            mesh.SetTriangles(m_list_i_0, i);
-        }
-        //mesh.triangles = Enumerable.Range(0,3*tetrahedrons.Count).Select(i => i).ToArray();
-        mesh.RecalculateBounds();
-        mesh.RecalculateNormals();
-        mesh.RecalculateTangents();
 
-        tetrahedralMesh.tetrahedrons = null;
-        tetrahedralMesh.vertices = null;
-        tetrahedralMesh.mesh = mesh;
+        m_meshVertexDataMapper.MakeTetrahedralMesh(tetrahedralMesh);
+        tetrahedralMesh.SetFacetsSubmeshes(m_resultTrianglesSubmeshes);
 
         unload_tetrahedralized_mesh();
     }

@@ -78,6 +78,29 @@ public class MeshVertexDataMapper
         }
     }
 
+    public void AssignSourceTetrahedralMesh(TetrahedralMesh sourceMesh)
+    {
+        m_sourceVertexAttributeDescriptors = sourceMesh.GetVertexAttributeDescriptors();
+
+        sourceMesh.GetVertices(m_sourcePositions);
+        m_targetPositions.Clear();
+
+        if(m_hasColor = sourceMesh.HasVertexAttribute(VertexAttribute.Color))
+        {
+            sourceMesh.GetColors(m_sourceColors);
+            m_targetColors.Clear();
+        }
+
+        for(int i=0; i<8; i++)
+        {
+            if(m_hasUV[i] = sourceMesh.HasVertexAttribute(VertexAttribute.TexCoord0+i))
+            {
+                sourceMesh.GetUVs(i, m_sourceUVs[i]);
+                m_targetUVs[i].Clear();
+            }
+        }
+    }
+
     public int GetTargetVertexCount()
     {
         return m_targetPositions.Count;
@@ -181,6 +204,24 @@ public class MeshVertexDataMapper
         }
         res.SetVertexBufferParams(m_targetPositions.Count, m_sourceVertexAttributeDescriptors);
         return res;
+    }
+
+    public void MakeTetrahedralMesh(TetrahedralMesh tetrahedralMesh)
+    {
+        tetrahedralMesh.tetrahedrons.Clear();
+        tetrahedralMesh.SetVertices(m_targetPositions);
+        if(m_hasColor)
+        {
+            tetrahedralMesh.SetColors(m_targetColors);
+        }
+        for(int i=0; i<8; i++)
+        {
+            if(m_hasUV[i])
+            {
+                tetrahedralMesh.SetUVs(i,m_targetUVs[i]);
+            }
+        }
+        tetrahedralMesh.SetVertexAttributeDescriptors(m_sourceVertexAttributeDescriptors);
     }
 
     public void ClearTarget()
