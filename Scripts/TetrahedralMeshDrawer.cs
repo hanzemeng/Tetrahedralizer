@@ -12,10 +12,16 @@ public class TetrahedralMeshDrawer : MonoBehaviour
     public TetrahedralMesh tetrahedralMesh;
     public Material[] materials;
     public bool asIndividualTetrahedron;
+    private bool m_asIndividualTetrahedron;
     [Range(0f,1f)] public float scale = 1f;
     
     private void OnValidate()
     {
+        if(m_asIndividualTetrahedron != asIndividualTetrahedron)
+        {
+            m_asIndividualTetrahedron = asIndividualTetrahedron;
+            UpdateMesh();
+        }
         UpdateScale();
     }
 

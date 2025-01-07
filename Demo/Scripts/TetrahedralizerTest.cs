@@ -1,20 +1,32 @@
 namespace Hanzzz.Tetrahedralizer
 {
 
+using System.Linq;
 using UnityEngine;
 
 [ExecuteInEditMode]
 public class TetrahedralizerTest : MonoBehaviour
 {
     public MeshFilter targetMeshFilter;
+    public MeshRenderer targetMeshRenderer;
+    public Material interiorMaterial;
     public TetrahedralMeshDrawer tetrahedralMeshDrawer;
-    public Tetrahedralizer tetrahedralizer;
+
+    private Tetrahedralizer tetrahedralizer;
     public bool remapVertexData;
     public float degenerateTetrahedronRatio;
 
     private void OnEnable()
     {
         tetrahedralizer = new Tetrahedralizer();
+    }
+
+    private void OnValidate()
+    {
+        if(null != targetMeshFilter)
+        {
+            targetMeshRenderer = targetMeshFilter.GetComponent<MeshRenderer>();
+        }
     }
 
     [ContextMenu("Test")]
@@ -27,6 +39,7 @@ public class TetrahedralizerTest : MonoBehaviour
         tetrahedralizer.MeshToTetrahedralizedMesh(targetMeshFilter.sharedMesh, tm0);
         tetrahedralizer.TetrahedralizedMeshToTetrahedralMesh(tm0, tm1);
         tetrahedralMeshDrawer.tetrahedralMesh = tm1;
+        tetrahedralMeshDrawer.materials = targetMeshRenderer.sharedMaterials.Concat(new Material[]{interiorMaterial}).ToArray();
         tetrahedralMeshDrawer.UpdateMesh();
     }
 
