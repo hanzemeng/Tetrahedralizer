@@ -33,6 +33,20 @@ public static class TetrahedralMeshUtility
         return Math.Abs(det) / 6d;
     }
 
+    public static double CalculateAverageVolume(List<Vector3> vertices, List<int> tetrahedrons)
+    {
+        double averageVolume = 0d;
+        for(int i=0; i<tetrahedrons.Count; i+=4)
+        {
+            Vector3 p0 = vertices[tetrahedrons[i+0]];
+            Vector3 p1 = vertices[tetrahedrons[i+1]];
+            Vector3 p2 = vertices[tetrahedrons[i+2]];
+            Vector3 p3 = vertices[tetrahedrons[i+3]];
+            averageVolume += CalculateTetrahedronVolume(p0,p1,p2,p3);
+        }
+        averageVolume /= (double)(tetrahedrons.Count/4);
+        return averageVolume;
+    }
 
     private static Dictionary<Vector3, int> m_mapping = new Dictionary<Vector3, int>();
     public static void RemoveDuplicateVertices(List<Vector3> vertices, List<int> indexes)

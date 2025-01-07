@@ -12,7 +12,7 @@ public class TetrahedralMeshDrawer : MonoBehaviour
     public TetrahedralMesh tetrahedralMesh;
     public Material[] materials;
     public bool asIndividualTetrahedron;
-    [Range(0f,1f)] public float scale;
+    [Range(0f,1f)] public float scale = 1f;
     
     private void OnValidate()
     {
@@ -62,6 +62,7 @@ public class TetrahedralMeshDrawer : MonoBehaviour
                     Vector3 center = AdjustVerticesCenter(vertices);
                     mesh.vertices = vertices;
                     mesh.triangles = triangles;
+                    mesh.RecalculateBounds();
                     mesh.RecalculateNormals();
                     mesh.RecalculateTangents();
 
@@ -99,6 +100,7 @@ public class TetrahedralMeshDrawer : MonoBehaviour
                 }
                 mesh.vertices = vertices.ToArray();
                 mesh.triangles = Enumerable.Range(0,tetrahedralMesh.tetrahedrons.Count/4*12).Select(i => i).ToArray();
+                mesh.RecalculateBounds();
                 mesh.RecalculateNormals();
                 mesh.RecalculateTangents();
 
@@ -158,6 +160,7 @@ public class TetrahedralMeshDrawer : MonoBehaviour
                         }
                         mesh.SetTriangles(temp,j);
                     }
+                    mesh.RecalculateBounds();
                     mesh.RecalculateNormals();
                     mesh.RecalculateTangents();
 

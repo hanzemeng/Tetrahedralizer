@@ -351,13 +351,20 @@ public class Tetrahedralizer
             BarycentricWeight(m_originalTriangles[3*c2+0],m_originalTriangles[3*c2+1],m_originalTriangles[3*c2+2], p2);
             m_resultTrianglesSubmeshes.Add(m_originalTrianglesSubmeshes[c0]);
         }
-        
+
+        double averageVolume = TetrahedralMeshUtility.CalculateAverageVolume(vertices,tetrahedrons);
         for(Int32 i=0; i<tetrahedralizedMesh.tetrahedrons.Count; i+=4)
         {
             Int32 p0 = tetrahedralizedMesh.tetrahedrons[i+0];
             Int32 p1 = tetrahedralizedMesh.tetrahedrons[i+1];
             Int32 p2 = tetrahedralizedMesh.tetrahedrons[i+2];
             Int32 p3 = tetrahedralizedMesh.tetrahedrons[i+3];
+
+            double volume = TetrahedralMeshUtility.CalculateTetrahedronVolume(vertices[p0],vertices[p1],vertices[p2],vertices[p3]);
+            if(volume < averageVolume*m_settings.degenerateTetrahedronRatio)
+            {
+                continue;
+            }
             ProcessFacet(p0,p1,p3);
             ProcessFacet(p1,p0,p2);
             ProcessFacet(p0,p3,p2);
