@@ -208,7 +208,8 @@ public class MeshVertexDataMapper
 
     public void MakeTetrahedralMesh(TetrahedralMesh tetrahedralMesh)
     {
-        tetrahedralMesh.tetrahedrons.Clear();
+        tetrahedralMesh.Clear();
+
         tetrahedralMesh.SetVertices(m_targetPositions);
         if(m_hasColor)
         {

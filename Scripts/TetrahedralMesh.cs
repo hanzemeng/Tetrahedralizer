@@ -49,9 +49,30 @@ public class TetrahedralMesh : ScriptableObject
         facetsSubmeshes = new List<Int32>();
     }
 
+    public void Clear()
+    {
+        tetrahedrons.Clear();
+        vertices.Clear();
+        vertexAttributeDescriptors.Clear();
+        colors.Clear();
+        uvs0.Clear();
+        uvs1.Clear();
+        uvs2.Clear();
+        uvs3.Clear();
+        uvs4.Clear();
+        uvs5.Clear();
+        uvs6.Clear();
+        uvs7.Clear();
+        facetsSubmeshes.Clear();
+    }
+
     public void SetVertexAttributeDescriptors(VertexAttributeDescriptor[] source)
     {
-        vertexAttributeDescriptors = source.Select(i=>VertexAttributeDescriptorSerializer.ToInt32(i)).ToList();
+        vertexAttributeDescriptors.Clear();
+        for(Int32 i=0; i<source.Length; i++)
+        {
+            vertexAttributeDescriptors.Add(VertexAttributeDescriptorSerializer.ToInt32(source[i]));
+        }
     }
     public VertexAttributeDescriptor[] GetVertexAttributeDescriptors()
     {
