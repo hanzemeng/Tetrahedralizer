@@ -26,6 +26,7 @@ set (SOURCES
 binary_space_partition.cpp
 delaunay_tetrahedralization.cpp
 interior_characterization.cpp
+facet_association.cpp
 main.cpp
 program_data.cpp
 utility.cpp
