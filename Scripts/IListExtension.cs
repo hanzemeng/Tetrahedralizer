@@ -1,3 +1,6 @@
+namespace Hanzzz.Tetrahedralizer
+{
+
 using System;
 using System.Collections.Generic;
 
@@ -11,4 +14,6 @@ public static class IListExtension
             des.Add(src[i]);
         }
     }
+}
+
 }
