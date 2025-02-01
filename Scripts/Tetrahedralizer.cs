@@ -301,7 +301,7 @@ public class Tetrahedralizer
             TetrahedralMeshUtility.RemoveDegenerateTetrahedrons(vertices, tetrahedrons, m_settings.degenerateTetrahedronRatio);
 
             tetrahedralMesh.Clear();
-            tetrahedralMesh.SetVertices(vertices);
+            tetrahedralMesh.vertices = vertices;
             tetrahedralMesh.tetrahedrons = tetrahedrons;
             return;
         }

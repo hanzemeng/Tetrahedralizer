@@ -181,14 +181,15 @@ public class TetrahedralMeshDrawer : MonoBehaviour
                     }
                     mesh.SetTriangles(temp,i);
                 }
-                    
-                mesh.RecalculateBounds();
-                mesh.RecalculateNormals();
-                mesh.RecalculateTangents();
 
                 mesh.GetVertices(vertices);
                 Vector3 center = AdjustVerticesCenter(vertices);
                 mesh.SetVertices(vertices);
+
+                mesh.RecalculateBounds();
+                mesh.RecalculateNormals();
+                mesh.RecalculateTangents();
+
                 CreateGameObject(mesh, center);
             }
         }
