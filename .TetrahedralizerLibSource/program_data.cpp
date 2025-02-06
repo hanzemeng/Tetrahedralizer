@@ -76,8 +76,6 @@ vector<uint32_t> m_vector_i_3;
 queue<uint32_t> m_queue_i_0;
 queue<uint32_t> m_queue_i_1;
 
-stack<uint32_t> m_stack_i_0;
-
 deque<uint32_t> m_deque_i_0;
 
 unordered_set<uint32_t> m_u_set_i_0;
@@ -85,8 +83,8 @@ unordered_set<uint32_t> m_u_set_i_1;
 unordered_set<uint32_t> m_u_set_i_2;
 unordered_set<uint32_t> m_u_set_i_3;
 
-map<uint32_t,int> m_map_i_i_0;
-map<pair<uint32_t,uint32_t>,uint32_t> m_map_ii_i_0;
-map<pair<uint32_t,uint32_t>,vector<uint32_t>> m_map_ii_vector_i_0;
-map<tuple<uint32_t,uint32_t,uint32_t>,uint32_t> m_map_iii_i_0;
-map<uint32_t,tuple<uint32_t,uint32_t,uint32_t>> m_map_i_iii_0;
+unordered_map<uint32_t,int> m_u_map_i_i_0;
+unordered_map<pair<uint32_t,uint32_t>,uint32_t,pair_hash> m_u_map_ii_i_0;
+unordered_map<pair<uint32_t,uint32_t>,vector<uint32_t>,pair_hash> m_u_map_ii_vector_i_0;
+unordered_map<tuple<uint32_t,uint32_t,uint32_t>,uint32_t,trio_hash> m_u_map_iii_i_0;
+unordered_map<uint32_t,tuple<uint32_t,uint32_t,uint32_t>> m_u_map_i_iii_0;

@@ -10,8 +10,8 @@ void binary_space_partition()
         m_vertices_incidents.resize(m_vertices_count);
         m_tetrahedrons_polyhedrons_mapping.resize(m_tetrahedrons.size()/4);
 
-        m_map_ii_i_0.clear();
-        m_map_iii_i_0.clear();
+        m_u_map_ii_i_0.clear();
+        m_u_map_iii_i_0.clear();
         
         for(uint32_t i=0; i<m_tetrahedrons.size(); i+=4)
         {
@@ -59,7 +59,7 @@ void binary_space_partition()
     // create virtual constraints
     {
         m_virtual_constraints_count = 0;
-        m_map_ii_vector_i_0.clear(); // key is an edge, value is the edge's incident constraints
+        m_u_map_ii_vector_i_0.clear(); // key is an edge, value is the edge's incident constraints
         for(uint32_t i=0; i<3*m_constraints_count; i+=3)
         {
             uint32_t c0 = m_constraints[i+0];
@@ -69,17 +69,17 @@ void binary_space_partition()
             uint32_t t0 = c0;
             uint32_t t1 = c1;
             sort_ints(t0,t1);
-            m_map_ii_vector_i_0[{t0,t1}].push_back(i);
+            m_u_map_ii_vector_i_0[{t0,t1}].push_back(i);
             t0 = c1;
             t1 = c2;
             sort_ints(t0,t1);
-            m_map_ii_vector_i_0[{t0,t1}].push_back(i);
+            m_u_map_ii_vector_i_0[{t0,t1}].push_back(i);
             t0 = c2;
             t1 = c0;
             sort_ints(t0,t1);
-            m_map_ii_vector_i_0[{t0,t1}].push_back(i);
+            m_u_map_ii_vector_i_0[{t0,t1}].push_back(i);
         }
-        for(auto& it : m_map_ii_vector_i_0)
+        for(auto& it : m_u_map_ii_vector_i_0)
         {
             uint32_t e0 = it.first.first;
             uint32_t e1 = it.first.second;
@@ -140,7 +140,7 @@ void binary_space_partition()
             uint32_t c1 = m_constraints[i+1];
             uint32_t c2 = m_constraints[i+2];
 
-            // m_u_set_i_0 stores the polyhedrons that incident at one of the point of the ith constraint
+            // m_u_set_i_0 stores improperly intersected tetrahedrons
             // m_u_set_i_1 stores visited polyhedrons
             // m_queue_i_0 stores tetrahedrons to be visited
             m_u_set_i_0.clear();
@@ -165,11 +165,17 @@ void binary_space_partition()
                 {
                     continue;
                 }
-                if(!has_vertex(t,c0) && !has_vertex(t,c1) && !has_vertex(t,c2))
+                
+                int int_type = tt_intersection(m_tetrahedrons[t+0], m_tetrahedrons[t+1], m_tetrahedrons[t+2], m_tetrahedrons[t+3], c0, c1, c2);
+                if(0 == int_type)
                 {
                     continue;
                 }
-                m_u_set_i_0.insert(t);
+                if(2 == int_type)
+                {
+                    m_u_set_i_0.insert(t);
+                }
+                
                 uint32_t n;
                 for(uint32_t f=0; f<4; f++)
                 {
@@ -178,263 +184,11 @@ void binary_space_partition()
                 }
             }
 
-            
-            // m_u_set_i_1 stores visited polyhedrons
-            // m_queue_i_0 stores polyhedrons to be visited
-            m_u_set_i_1.clear();
-            m_u_set_i_1.insert(UNDEFINED_VALUE);
-            for(uint32_t t : m_u_set_i_0)
-            {
-                m_queue_i_0.push(t);
-            }
-            while(!m_queue_i_0.empty())
-            {
-                uint32_t t = m_queue_i_0.front();
-                m_queue_i_0.pop();
-
-                if(m_u_set_i_1.end() != m_u_set_i_1.find(t))
-                {
-                    continue;
-                }
-                m_u_set_i_1.insert(t);
-
-                if(INFINITE_VERTEX == m_tetrahedrons[t+3])
-                {
-                    continue;
-                }
-
-                for(uint32_t f=0; f<4; f++)
-                {
-                    uint32_t f0,f1,f2;
-                    uint32_t o0;
-                    get_tetrahedron_face(t,f,f0,f1,f2);
-                    if(edge_intersects_triangle(c0,c1,f0,f1,f2,o0) || edge_intersects_triangle(c1,c2,f0,f1,f2,o0) || edge_intersects_triangle(c2,c0,f0,f1,f2,o0))
-                    {
-                        uint32_t n;
-                        get_tetrahedron_neighbor(t, f, n);
-                        if(INFINITE_VERTEX != m_tetrahedrons[n+3])
-                        {
-                            m_u_set_i_0.insert(n);
-                            m_queue_i_0.push(n);
-                        }
-                    }
-
-                    if(edge_intersects_triangle(f0,f1,c0,c1,c2,o0))
-                    {
-                        m_u_set_i_0.insert(t);
-                        if(UNDEFINED_VALUE == o0)
-                        {
-                            add_tetrahedron_incident(f0,f1,m_u_set_i_2,m_queue_i_1,m_u_set_i_0, m_queue_i_0);
-                        }
-                        else
-                        {
-                            add_tetrahedron_incident(o0,m_u_set_i_2,m_queue_i_1,m_u_set_i_0,m_queue_i_0);
-                        }
-                    }
-                    if(edge_intersects_triangle(f1,f2,c0,c1,c2,o0))
-                    {
-                        m_u_set_i_0.insert(t);
-                        if(UNDEFINED_VALUE == o0)
-                        {
-                            add_tetrahedron_incident(f1,f2,m_u_set_i_2,m_queue_i_1,m_u_set_i_0,m_queue_i_0);
-                        }
-                        else
-                        {
-                            add_tetrahedron_incident(o0,m_u_set_i_2,m_queue_i_1,m_u_set_i_0,m_queue_i_0);
-                        }
-                    }
-                    if(edge_intersects_triangle(f2,f0,c0,c1,c2,o0))
-                    {
-                        m_u_set_i_0.insert(t);
-                        if(UNDEFINED_VALUE == o0)
-                        {
-                            add_tetrahedron_incident(f2,f0,m_u_set_i_2,m_queue_i_1,m_u_set_i_0,m_queue_i_0);
-                        }
-                        else
-                        {
-                            add_tetrahedron_incident(o0,m_u_set_i_2,m_queue_i_1,m_u_set_i_0,m_queue_i_0);
-                        }
-                    }
-                }
-            }
-            
             m_u_set_i_0.erase(UNDEFINED_VALUE);
             // if the constraint improperly intersects a tetrahedron, they are associated
             for(uint32_t t : m_u_set_i_0)
             {
-                uint32_t t0 = m_tetrahedrons[t+0];
-                uint32_t t1 = m_tetrahedrons[t+1];
-                uint32_t t2 = m_tetrahedrons[t+2];
-                uint32_t t3 = m_tetrahedrons[t+3];
-                int ot0c012 = orient3d(t0,c0,c1,c2);
-                int ot1c012 = orient3d(t1,c0,c1,c2);
-                int ot2c012 = orient3d(t2,c0,c1,c2);
-                int ot3c012 = orient3d(t3,c0,c1,c2);
-
-                uint32_t zero_count;
-                improper_intersection_helper_0(t0,t1,t2,t3,ot0c012,ot1c012,ot2c012,ot3c012,zero_count);
-                if(4 == zero_count) // should not happen
-                {
-                    continue;
-                }
-                
-                if(3 == zero_count)
-                {
-                    continue;
-                }
-                
-                if(2 == zero_count)
-                {
-                    if(ot2c012 == ot3c012)
-                    {
-                        continue;
-                    }
-                    if(vertex_in_inner_triangle(t0,c0,c1,c2) || vertex_in_inner_triangle(t1,c0,c1,c2))
-                    {
-                        m_polyhedrons_intersect_constraints[m_tetrahedrons_polyhedrons_mapping[t/4]].push_back(i);
-                        continue;
-                    }
-
-                    if(vertex_in_triangle(t0,c0,c1,c2) && vertex_in_triangle(t1,c0,c1,c2))
-                    {
-                        if( (vertex_in_segment(t0,c0,c1) && vertex_in_segment(t1,c0,c1)) ||
-                            (vertex_in_segment(t0,c1,c2) && vertex_in_segment(t1,c1,c2)) ||
-                            (vertex_in_segment(t0,c2,c0) && vertex_in_segment(t1,c2,c0)))
-                        {
-                            if(inner_segment_cross_triangle(t2,t3,c0,c1,c2))
-                            {
-                                m_polyhedrons_intersect_constraints[m_tetrahedrons_polyhedrons_mapping[t/4]].push_back(i);
-                                continue;
-                            }
-                            else
-                            {
-                                if( inner_segment_cross_inner_triangle(c0,c1,t2,t3,t0) || 
-                                    inner_segment_cross_inner_triangle(c1,c2,t2,t3,t0) ||
-                                    inner_segment_cross_inner_triangle(c2,c0,t2,t3,t0) ||
-                                    inner_segment_cross_inner_triangle(c0,c1,t2,t3,t1) ||
-                                    inner_segment_cross_inner_triangle(c1,c2,t2,t3,t1) ||
-                                    inner_segment_cross_inner_triangle(c2,c0,t2,t3,t1))
-                                {
-                                    m_polyhedrons_intersect_constraints[m_tetrahedrons_polyhedrons_mapping[t/4]].push_back(i);
-                                }
-                                else
-                                {
-                                    continue;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            m_polyhedrons_intersect_constraints[m_tetrahedrons_polyhedrons_mapping[t/4]].push_back(i);
-                            continue;
-                        }
-                    }
-                    else if(vertex_in_triangle(t0,c0,c1,c2) || vertex_in_triangle(t1,c0,c1,c2))
-                    {
-                        if( inner_segment_cross_inner_segment(t0,t1,c0,c1) ||
-                            inner_segment_cross_inner_segment(t0,t1,c1,c2) ||
-                            inner_segment_cross_inner_segment(t0,t1,c2,c0))
-                        {
-                            m_polyhedrons_intersect_constraints[m_tetrahedrons_polyhedrons_mapping[t/4]].push_back(i);
-                            continue;
-                        }
-                        if(inner_segment_cross_triangle(t2,t3,c0,c1,c2))
-                        {
-                            m_polyhedrons_intersect_constraints[m_tetrahedrons_polyhedrons_mapping[t/4]].push_back(i);
-                            continue;
-                        }
-                        if( inner_segment_cross_inner_triangle(c0,c1,t2,t3,t0) ||
-                            inner_segment_cross_inner_triangle(c1,c2,t2,t3,t0) ||
-                            inner_segment_cross_inner_triangle(c2,c0,t2,t3,t0) ||
-                            inner_segment_cross_inner_triangle(c0,c1,t2,t3,t1) ||
-                            inner_segment_cross_inner_triangle(c1,c2,t2,t3,t1) ||
-                            inner_segment_cross_inner_triangle(c2,c0,t2,t3,t1))
-                        {
-                            m_polyhedrons_intersect_constraints[m_tetrahedrons_polyhedrons_mapping[t/4]].push_back(i);
-                            continue;
-                        }
-                    }
-                    else
-                    {
-                        m_polyhedrons_intersect_constraints[m_tetrahedrons_polyhedrons_mapping[t/4]].push_back(i);
-                        continue;
-                    }
-                }
-                else if(1 == zero_count)
-                {
-                    if(ot1c012 == ot2c012 && ot2c012 == ot3c012)
-                    {
-                        continue;
-                    }
-                    if(!vertex_in_triangle(t0,c0,c1,c2))
-                    {
-                        m_polyhedrons_intersect_constraints[m_tetrahedrons_polyhedrons_mapping[t/4]].push_back(i);
-                        continue;
-                    }
-                    if(vertex_in_inner_triangle(t0,c0,c1,c2))
-                    {
-                        m_polyhedrons_intersect_constraints[m_tetrahedrons_polyhedrons_mapping[t/4]].push_back(i);
-                        continue;
-                    }
-
-                    uint32_t td, te1, te2;
-                    if(ot2c012 == ot3c012 && ot1c012 != ot2c012)
-                    {
-                        td = t1;
-                        te1 = t2;
-                        te2 = t3;
-                    }
-                    else if(ot1c012 == ot3c012 && ot2c012 != ot1c012)
-                    {
-                        td = t2;
-                        te1 = t1;
-                        te2 = t3;
-                    }
-                    else if(ot1c012 == ot2c012 && ot3c012 != ot1c012)
-                    {
-                        td = t3;
-                        te1 = t1;
-                        te2 = t2;
-                    }
-                    else
-                    {
-                        throw "the paper does not account for this case";
-                    }
-                    if( inner_segment_cross_triangle(td,te1,c0,c1,c2) ||
-                        inner_segment_cross_triangle(td,te2,c0,c1,c2) ||
-                        inner_segment_cross_inner_triangle(c0,c1,t0,td,te1) ||
-                        inner_segment_cross_inner_triangle(c1,c2,t0,td,te1) ||
-                        inner_segment_cross_inner_triangle(c2,c0,t0,td,te1) ||
-                        inner_segment_cross_inner_triangle(c0,c1,t0,td,te2) ||
-                        inner_segment_cross_inner_triangle(c1,c2,t0,td,te2) ||
-                        inner_segment_cross_inner_triangle(c2,c0,t0,td,te2) ||
-                        inner_segment_cross_inner_triangle(c0,c1,td,te2,te1) ||
-                        inner_segment_cross_inner_triangle(c1,c2,td,te2,te1) ||
-                        inner_segment_cross_inner_triangle(c2,c0,td,te2,te1))
-                    {
-                        m_polyhedrons_intersect_constraints[m_tetrahedrons_polyhedrons_mapping[t/4]].push_back(i);
-                        continue;
-                    }
-                }
-                else
-                {
-                    uint32_t s = 0;
-                    s += inner_segment_cross_triangle(t0,t1,c0,c1,c2);
-                    s += inner_segment_cross_triangle(t0,t2,c0,c1,c2);
-                    s += inner_segment_cross_triangle(t0,t3,c0,c1,c2);
-                    s += inner_segment_cross_triangle(t1,t2,c0,c1,c2);
-                    s += inner_segment_cross_triangle(t1,t3,c0,c1,c2);
-                    s += inner_segment_cross_triangle(t2,t3,c0,c1,c2);
-                    s += (inner_segment_cross_inner_triangle(c0,c1,t1,t2,t3) || inner_segment_cross_inner_triangle(c1,c2,t1,t2,t3) || inner_segment_cross_inner_triangle(c2,c0,t1,t2,t3));
-                    s += (inner_segment_cross_inner_triangle(c0,c1,t0,t2,t3) || inner_segment_cross_inner_triangle(c1,c2,t0,t2,t3) || inner_segment_cross_inner_triangle(c2,c0,t0,t2,t3));
-                    s += (inner_segment_cross_inner_triangle(c0,c1,t0,t1,t3) || inner_segment_cross_inner_triangle(c1,c2,t0,t1,t3) || inner_segment_cross_inner_triangle(c2,c0,t0,t1,t3));
-                    s += (inner_segment_cross_inner_triangle(c0,c1,t0,t1,t2) || inner_segment_cross_inner_triangle(c1,c2,t0,t1,t2) || inner_segment_cross_inner_triangle(c2,c0,t0,t1,t2));
-                    if(s>=3)
-                    {
-                        m_polyhedrons_intersect_constraints[m_tetrahedrons_polyhedrons_mapping[t/4]].push_back(i);
-                        continue;
-                    }
-                }
+                m_polyhedrons_intersect_constraints[m_tetrahedrons_polyhedrons_mapping[t/4]].push_back(i);
             }
         }
     }
@@ -444,9 +198,11 @@ void binary_space_partition()
         m_new_vertices_mappings.clear();
         for(auto it=m_polyhedrons_intersect_constraints.begin(); it!=m_polyhedrons_intersect_constraints.end(); it++)
         {
+            
             while(!it->second.empty())
             {
                 uint32_t i = it->first;
+
                 uint32_t c = it->second.back();
                 it->second.pop_back();
                 uint32_t c0 = m_constraints[c+0];
@@ -456,7 +212,7 @@ void binary_space_partition()
                 m_vector_i_0.clear(); // top polyhedron's facets
                 m_vector_i_1.clear(); // bottom polyhedron's facets
                 m_u_set_i_0.clear(); // edges on the constraint
-                m_map_i_iii_0.clear(); // keys are processed edges, values are (intersection vertex, top edge, bottom edge)
+                m_u_map_i_iii_0.clear(); // keys are processed edges, values are (intersection vertex, top edge, bottom edge)
                 for(uint32_t f : m_polyhedrons[i]->facets)
                 {
                     uint32_t i0(UNDEFINED_VALUE), i1(UNDEFINED_VALUE);
@@ -466,9 +222,9 @@ void binary_space_partition()
                     
                     for(uint32_t e : m_polyhedrons_facets[f]->edges)
                     {
-                        if(m_map_i_iii_0.end() != m_map_i_iii_0.find(e))
+                        if(m_u_map_i_iii_0.end() != m_u_map_i_iii_0.find(e))
                         {
-                            auto [i_p,top_e,bottom_e] = m_map_i_iii_0[e];
+                            auto [i_p,top_e,bottom_e] = m_u_map_i_iii_0[e];
                             if(UNDEFINED_VALUE == i_p && top_e == UNDEFINED_VALUE && bottom_e == UNDEFINED_VALUE)
                             {
                                 m_u_set_i_0.insert(e); // e is on the constraint
@@ -506,19 +262,19 @@ void binary_space_partition()
                             {
                                 m_u_set_i_0.insert(e);
                                 has_edge_on_constraint = true;
-                                m_map_i_iii_0[e] = {UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE};
+                                m_u_map_i_iii_0[e] = {UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE};
                             }
                             else
                             {
                                 if(1 == o1)
                                 {
                                     m_vector_i_2.push_back(e);
-                                    m_map_i_iii_0[e] = {e0,e,UNDEFINED_VALUE};
+                                    m_u_map_i_iii_0[e] = {e0,e,UNDEFINED_VALUE};
                                 }
                                 else
                                 {
                                     m_vector_i_3.push_back(e);
-                                    m_map_i_iii_0[e] = {e0,UNDEFINED_VALUE,e};
+                                    m_u_map_i_iii_0[e] = {e0,UNDEFINED_VALUE,e};
                                 }
                                 
                                 if(UNDEFINED_VALUE == i0 || e0 == i0)
@@ -536,7 +292,7 @@ void binary_space_partition()
                             if(0 == o1)
                             {
                                 m_vector_i_2.push_back(e);
-                                m_map_i_iii_0[e] = {e1,e,UNDEFINED_VALUE};
+                                m_u_map_i_iii_0[e] = {e1,e,UNDEFINED_VALUE};
                                 if(UNDEFINED_VALUE == i0 || e1 == i0)
                                 {
                                     i0 = e1;
@@ -549,7 +305,7 @@ void binary_space_partition()
                             else if(1 == o1)
                             {
                                 m_vector_i_2.push_back(e);
-                                m_map_i_iii_0[e] = {UNDEFINED_VALUE,e,UNDEFINED_VALUE};
+                                m_u_map_i_iii_0[e] = {UNDEFINED_VALUE,e,UNDEFINED_VALUE};
                             }
                             else
                             {
@@ -573,7 +329,7 @@ void binary_space_partition()
                                 m_polyhedrons_edges[bottom_e]->e1 = e1;
                                 m_vector_i_3.push_back(bottom_e);
                                 
-                                m_map_i_iii_0[e] = {new_i,e,bottom_e};
+                                m_u_map_i_iii_0[e] = {new_i,e,bottom_e};
                                 
                                 if(UNDEFINED_VALUE == i0 || new_i == i0)
                                 {
@@ -590,7 +346,7 @@ void binary_space_partition()
                             if(0 == o1)
                             {
                                 m_vector_i_3.push_back(e);
-                                m_map_i_iii_0[e] = {e1,UNDEFINED_VALUE,e};
+                                m_u_map_i_iii_0[e] = {e1,UNDEFINED_VALUE,e};
                                 if(UNDEFINED_VALUE == i0 || e1 == i0)
                                 {
                                     i0 = e1;
@@ -622,7 +378,7 @@ void binary_space_partition()
                                 m_polyhedrons_edges[bottom_e]->e1 = e0;
                                 m_vector_i_3.push_back(bottom_e);
                                 
-                                m_map_i_iii_0[e] = {new_i,e,bottom_e};
+                                m_u_map_i_iii_0[e] = {new_i,e,bottom_e};
                                 if(UNDEFINED_VALUE == i0 || new_i == i0)
                                 {
                                     i0 = new_i;
@@ -635,7 +391,7 @@ void binary_space_partition()
                             else
                             {
                                 m_vector_i_3.push_back(e);
-                                m_map_i_iii_0[e] = {UNDEFINED_VALUE,UNDEFINED_VALUE,e};
+                                m_u_map_i_iii_0[e] = {UNDEFINED_VALUE,UNDEFINED_VALUE,e};
                             }
                         }
                     }
@@ -744,7 +500,7 @@ void binary_space_partition()
                 }
                 
                 
-                for(auto [k, v] : m_map_i_iii_0)
+                for(auto [k, v] : m_u_map_i_iii_0)
                 {
                     uint32_t original_e = k;
                     uint32_t i_e = get<0>(v);
@@ -839,12 +595,12 @@ void binary_space_partition()
 uint32_t find_or_add_edge(uint32_t p0, uint32_t p1)
 {
     sort_ints(p0,p1);
-    if(m_map_ii_i_0.end() != m_map_ii_i_0.find({p0,p1}))
+    if(m_u_map_ii_i_0.end() != m_u_map_ii_i_0.find({p0,p1}))
     {
-        return m_map_ii_i_0[{p0,p1}];
+        return m_u_map_ii_i_0[{p0,p1}];
     }
 
-    m_map_ii_i_0[{p0,p1}] = m_polyhedrons_edges.size();
+    m_u_map_ii_i_0[{p0,p1}] = m_polyhedrons_edges.size();
 
     PolyhedronEdge* e = new PolyhedronEdge();
     e->e0 = p0;
@@ -858,11 +614,11 @@ uint32_t find_or_add_edge(uint32_t p0, uint32_t p1)
 uint32_t find_or_add_facet(uint32_t e0, uint32_t e1, uint32_t e2, uint32_t p0, uint32_t p1,  uint32_t p2)
 {
     sort_ints(e0,e1,e2);
-    if(m_map_iii_i_0.end() != m_map_iii_i_0.find({e0,e1,e2}))
+    if(m_u_map_iii_i_0.end() != m_u_map_iii_i_0.find({e0,e1,e2}))
     {
-        return m_map_iii_i_0[{e0,e1,e2}];
+        return m_u_map_iii_i_0[{e0,e1,e2}];
     }
-    m_map_iii_i_0[{e0,e1,e2}] = m_polyhedrons_facets.size();
+    m_u_map_iii_i_0[{e0,e1,e2}] = m_polyhedrons_facets.size();
     PolyhedronFacet* f = new PolyhedronFacet();
     f->edges.push_back(e0);
     f->edges.push_back(e1);
@@ -915,114 +671,158 @@ void get_polyhedron_facet_vertices(uint32_t f, uint32_t& f0,uint32_t& f1,uint32_
     }
 }
 
-void improper_intersection_helper_0(uint32_t& t0,uint32_t& t1,uint32_t& t2,uint32_t& t3,int& o0,int& o1,int& o2,int& o3, uint32_t& zero_count)
+// 0 no int, 1 int ex, 2 int in
+uint32_t tt_intersection(uint32_t t0, uint32_t t1, uint32_t t2, uint32_t t3, uint32_t c0, uint32_t c1, uint32_t c2)
 {
-    zero_count = 0;
-    zero_count += 0 == o0;
-    zero_count += 0 == o1;
-    zero_count += 0 == o2;
-    zero_count += 0 == o3;
-    if(0 == zero_count || 4 == zero_count) // 4 == zero_count should not happen
+    // neighbors order: 0,1,2  1,0,3  0,2,3,  2,1,3
+    int oc0t012 = orient3d(t0, t1, t2, c0);
+    int oc1t012 = orient3d(t0, t1, t2, c1);
+    int oc2t012 = orient3d(t0, t1, t2, c2);
+    int oc0t103 = orient3d(t1, t0, t3, c0);
+    int oc1t103 = orient3d(t1, t0, t3, c1);
+    int oc2t103 = orient3d(t1, t0, t3, c2);
+    int oc0t023 = orient3d(t0, t2, t3, c0);
+    int oc1t023 = orient3d(t0, t2, t3, c1);
+    int oc2t023 = orient3d(t0, t2, t3, c2);
+    int oc0t213 = orient3d(t2, t1, t3, c0);
+    int oc1t213 = orient3d(t2, t1, t3, c1);
+    int oc2t213 = orient3d(t2, t1, t3, c2);
+    
+    bool int_in =
+    (1==oc0t012 && oc0t012==oc0t103 && oc0t012==oc0t023 && oc0t012==oc0t213) ||
+    (1==oc1t012 && oc1t012==oc1t103 && oc1t012==oc1t023 && oc1t012==oc1t213) ||
+    (1==oc2t012 && oc2t012==oc2t103 && oc2t012==oc2t023 && oc2t012==oc2t213) ||
+    inner_segment_cross_inner_triangle(t0,t1,c0,c1,c2) ||
+    inner_segment_cross_inner_triangle(t0,t2,c0,c1,c2) ||
+    inner_segment_cross_inner_triangle(t0,t3,c0,c1,c2) ||
+    inner_segment_cross_inner_triangle(t1,t2,c0,c1,c2) ||
+    inner_segment_cross_inner_triangle(t1,t3,c0,c1,c2) ||
+    inner_segment_cross_inner_triangle(t2,t3,c0,c1,c2) ||
+    inner_segment_cross_inner_triangle(c0,c1,t1,t2,t3) ||
+    inner_segment_cross_inner_triangle(c1,c2,t1,t2,t3) ||
+    inner_segment_cross_inner_triangle(c2,c0,t1,t2,t3) ||
+    inner_segment_cross_inner_triangle(c0,c1,t0,t2,t3) ||
+    inner_segment_cross_inner_triangle(c1,c2,t0,t2,t3) ||
+    inner_segment_cross_inner_triangle(c2,c0,t0,t2,t3) ||
+    inner_segment_cross_inner_triangle(c0,c1,t0,t1,t3) ||
+    inner_segment_cross_inner_triangle(c1,c2,t0,t1,t3) ||
+    inner_segment_cross_inner_triangle(c2,c0,t0,t1,t3) ||
+    inner_segment_cross_inner_triangle(c0,c1,t0,t1,t2) ||
+    inner_segment_cross_inner_triangle(c1,c2,t0,t1,t2) ||
+    inner_segment_cross_inner_triangle(c2,c0,t0,t1,t2);
+    if(int_in)
     {
-        return;
+        return 2;
     }
-
-    if(1 == zero_count) // put the zero orient point as t0; while keeping 1 == orient3d(t0,t1,t2,t3)
+    
+    bool int_no =
+    segment_cross_triangle(t0,t1,c0,c1,c2) ||
+    segment_cross_triangle(t0,t2,c0,c1,c2) ||
+    segment_cross_triangle(t0,t3,c0,c1,c2) ||
+    segment_cross_triangle(t1,t2,c0,c1,c2) ||
+    segment_cross_triangle(t1,t3,c0,c1,c2) ||
+    segment_cross_triangle(t2,t3,c0,c1,c2) ||
+    segment_cross_triangle(c0,c1,t1,t2,t3) ||
+    segment_cross_triangle(c1,c2,t1,t2,t3) ||
+    segment_cross_triangle(c2,c0,t1,t2,t3) ||
+    segment_cross_triangle(c0,c1,t0,t2,t3) ||
+    segment_cross_triangle(c1,c2,t0,t2,t3) ||
+    segment_cross_triangle(c2,c0,t0,t2,t3) ||
+    segment_cross_triangle(c0,c1,t0,t1,t3) ||
+    segment_cross_triangle(c1,c2,t0,t1,t3) ||
+    segment_cross_triangle(c2,c0,t0,t1,t3) ||
+    segment_cross_triangle(c0,c1,t0,t1,t2) ||
+    segment_cross_triangle(c1,c2,t0,t1,t2) ||
+    segment_cross_triangle(c2,c0,t0,t1,t2);
+    
+    if(!int_no)
     {
-        if(0 == o1)
-        {
-            swap(t0,t1);
-            swap(o0,o1);
-            swap(t2,t3);
-            swap(o2,o3);
-        }
-        else if(0 == o2)
-        {
-            swap(t0,t2);
-            swap(o0,o2);
-            swap(t1,t3);
-            swap(o1,o3);
-        }
-        else if(0 == o3)
-        {
-            swap(t0,t3);
-            swap(o0,o3);
-            swap(t1,t2);
-            swap(o1,o2);
-        }
+        return 0;
     }
-    else if(2 == zero_count)// put the zero orient points as t0, t1; while keeping 1 == orient3d(t0,t1,t2,t3)
-    {
-        if(0 == o0)
-        {
-            if(0 == o2)
-            {
-                swap(t1,t2);
-                swap(o1,o2);
-                swap(t2,t3);
-                swap(o2,o3);
-            }
-            else if(0 == o3)
-            {
-                swap(t1,t3);
-                swap(o1,o3);
-                swap(t2,t3);
-                swap(o2,o3);
-            }
-        }
-        else if(0 == o1)
-        {
-            if(0 == o2)
-            {
-                swap(t0,t1);
-                swap(o0,o1);
-                swap(t1,t2);
-                swap(o1,o2);
-            }
-            else// if(0 == o3)
-            {
-                swap(t0,t1);
-                swap(o0,o1);
-                swap(t1,t3);
-                swap(o1,o3);
-            }
-        }
-        else// if(0 == o2)
-        {
-            swap(t0,t2);
-            swap(o0,o2);
-            swap(t1,t3);
-            swap(o1,o3);
-        }
-    }
-    else// if(3 == zero_count)// put the non-zero orient points as t3; while keeping 1 == orient3d(t0,t1,t2,t3)
-    {
-         if(0 != o0)
-         {
-             swap(t0,t3);
-             swap(o0,o3);
-             swap(t1,t2);
-             swap(o1,o2);
-            
-         }
-         else if(0 != o1)
-         {
-             swap(t1,t3);
-             swap(o1,o3);
-             swap(t0,t2);
-             swap(o0,o2);
-            
-         }
-         else if(0 != o2)
-         {
-             swap(t2,t3);
-             swap(o2,o3);
-             swap(t0,t1);
-             swap(o0,o1);
-         }
-    }
-
-    assert(1 == orient3d(t0,t1,t2,t3));
+    
+    
+//    int temp_on[3];
+//    int temp_on_i = 0;
+//    int temp_out[3];
+//    int temp_out_i = 0;
+//    
+//    int on_tet_count = 0;
+//    if((0==oc0t012 && vertex_in_triangle(c0, t0, t1, t2)) ||
+//       (0==oc0t023 && vertex_in_triangle(c0, t0, t2, t3)) ||
+//       (0==oc0t103 && vertex_in_triangle(c0, t1, t0, t3)) ||
+//       (0==oc0t213 && vertex_in_triangle(c0, t2, t1, t3)))
+//    {
+//        on_tet_count++;
+//        temp_on[temp_on_i++] = c0;
+//    }
+//    else
+//    {
+//        temp_out[temp_out_i++] = c0;
+//    }
+//    if((0==oc1t012 && vertex_in_triangle(c1, t0, t1, t2)) ||
+//       (0==oc1t023 && vertex_in_triangle(c1, t0, t2, t3)) ||
+//       (0==oc1t103 && vertex_in_triangle(c1, t1, t0, t3)) ||
+//       (0==oc1t213 && vertex_in_triangle(c1, t2, t1, t3)))
+//    {
+//        on_tet_count++;
+//        temp_on[temp_on_i++] = c1;
+//    }
+//    else
+//    {
+//        temp_out[temp_out_i++] = c1;
+//    }
+//    if((0==oc2t012 && vertex_in_triangle(c2, t0, t1, t2)) ||
+//       (0==oc2t023 && vertex_in_triangle(c2, t0, t2, t3)) ||
+//       (0==oc2t103 && vertex_in_triangle(c2, t1, t0, t3)) ||
+//       (0==oc2t213 && vertex_in_triangle(c2, t2, t1, t3)))
+//    {
+//        on_tet_count++;
+//        temp_on[temp_on_i++] = c2;
+//    }
+//    else
+//    {
+//        temp_out[temp_out_i++] = c2;
+//    }
+//    
+//    if(2 == on_tet_count)
+//    {
+//        bool res =
+//        (0 == orient3d(temp_on[0], temp_out[0], t0, t1) && inner_segment_cross_inner_segment(temp_on[0], temp_out[0], t0, t1)) ||
+//        (0 == orient3d(temp_on[0], temp_out[0], t0, t2) && inner_segment_cross_inner_segment(temp_on[0], temp_out[0], t0, t2)) ||
+//        (0 == orient3d(temp_on[0], temp_out[0], t0, t3) && inner_segment_cross_inner_segment(temp_on[0], temp_out[0], t0, t3)) ||
+//        (0 == orient3d(temp_on[0], temp_out[0], t1, t2) && inner_segment_cross_inner_segment(temp_on[0], temp_out[0], t1, t2)) ||
+//        (0 == orient3d(temp_on[0], temp_out[0], t1, t3) && inner_segment_cross_inner_segment(temp_on[0], temp_out[0], t1, t3)) ||
+//        (0 == orient3d(temp_on[0], temp_out[0], t2, t3) && inner_segment_cross_inner_segment(temp_on[0], temp_out[0], t2, t3)) ||
+//        (0 == orient3d(temp_on[1], temp_out[0], t0, t1) && inner_segment_cross_inner_segment(temp_on[1], temp_out[0], t0, t1)) ||
+//        (0 == orient3d(temp_on[1], temp_out[0], t0, t2) && inner_segment_cross_inner_segment(temp_on[1], temp_out[0], t0, t2)) ||
+//        (0 == orient3d(temp_on[1], temp_out[0], t0, t3) && inner_segment_cross_inner_segment(temp_on[1], temp_out[0], t0, t3)) ||
+//        (0 == orient3d(temp_on[1], temp_out[0], t1, t2) && inner_segment_cross_inner_segment(temp_on[1], temp_out[0], t1, t2)) ||
+//        (0 == orient3d(temp_on[1], temp_out[0], t1, t3) && inner_segment_cross_inner_segment(temp_on[1], temp_out[0], t1, t3)) ||
+//        (0 == orient3d(temp_on[1], temp_out[0], t2, t3) && inner_segment_cross_inner_segment(temp_on[1], temp_out[0], t2, t3));
+//
+//        if(res)
+//        {
+//            return 2;
+//        }
+//    }
+//    else if(3 == on_tet_count)
+//    {
+//        bool res =
+//        (0 == orient3d(t0, t1, t2, c0) && 0 == orient3d(t0, t1, t2, c1) && 0 == orient3d(t0, t1, t2, c2)) ||
+//        (0 == orient3d(t0, t2, t3, c0) && 0 == orient3d(t0, t2, t3, c1) && 0 == orient3d(t0, t2, t3, c2)) ||
+//        (0 == orient3d(t1, t0, t3, c0) && 0 == orient3d(t1, t0, t3, c1) && 0 == orient3d(t1, t0, t3, c2)) ||
+//        (0 == orient3d(t2, t1, t3, c0) && 0 == orient3d(t2, t1, t3, c1) && 0 == orient3d(t2, t1, t3, c2));
+//        if(res)
+//        {
+//            return 1;
+//        }
+//        else
+//        {
+//            return 2;
+//        }
+//    }
+    
+    return 1;
 }
 
 uint32_t add_LPI(uint32_t e0, uint32_t e1, uint32_t p0,uint32_t p1,uint32_t p2)

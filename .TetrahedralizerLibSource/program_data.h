@@ -8,6 +8,7 @@
 #include <deque>
 #include <unordered_set>
 #include <map>
+#include <unordered_map>
 #include <cassert>
 #include <numbers>
 #include "include/implicit_point.h"
@@ -54,6 +55,25 @@ struct NineUInt32
     NineUInt32(uint32_t i0,uint32_t i1,uint32_t i2,uint32_t i3,uint32_t i4,uint32_t i5,uint32_t i6,uint32_t i7,uint32_t i8);
 };
 
+struct pair_hash
+{
+public:
+    template <typename T, typename U>
+    std::size_t operator()(const std::pair<T, U> &x) const
+    {
+        return std::hash<T>()(x.first) ^ std::hash<U>()(x.second);
+    }
+};
+
+struct trio_hash
+{
+public:
+    template <typename T, typename U, typename V>
+    std::size_t operator()(const std::tuple<T, U, V> &x) const
+    {
+        return std::hash<T>()(std::get<0>(x)) ^ std::hash<U>()(std::get<1>(x)) ^ std::hash<V>()(std::get<2>(x));
+    }
+};
 
 
 extern uint32_t m_vertices_count;
@@ -97,8 +117,6 @@ extern vector<uint32_t> m_vector_i_3;
 extern queue<uint32_t> m_queue_i_0;
 extern queue<uint32_t> m_queue_i_1;
 
-extern stack<uint32_t> m_stack_i_0;
-
 extern deque<uint32_t> m_deque_i_0;
 
 extern unordered_set<uint32_t> m_u_set_i_0;
@@ -106,10 +124,10 @@ extern unordered_set<uint32_t> m_u_set_i_1;
 extern unordered_set<uint32_t> m_u_set_i_2;
 extern unordered_set<uint32_t> m_u_set_i_3;
 
-extern map<uint32_t,int> m_map_i_i_0;
-extern map<pair<uint32_t,uint32_t>,uint32_t> m_map_ii_i_0;
-extern map<pair<uint32_t,uint32_t>,vector<uint32_t>> m_map_ii_vector_i_0;
-extern map<tuple<uint32_t,uint32_t,uint32_t>,uint32_t> m_map_iii_i_0;
-extern map<uint32_t,tuple<uint32_t,uint32_t,uint32_t>> m_map_i_iii_0;
+extern unordered_map<uint32_t,int> m_u_map_i_i_0;
+extern unordered_map<pair<uint32_t,uint32_t>,uint32_t,pair_hash> m_u_map_ii_i_0;
+extern unordered_map<pair<uint32_t,uint32_t>,vector<uint32_t>,pair_hash> m_u_map_ii_vector_i_0;
+extern unordered_map<tuple<uint32_t,uint32_t,uint32_t>,uint32_t,trio_hash> m_u_map_iii_i_0;
+extern unordered_map<uint32_t,tuple<uint32_t,uint32_t,uint32_t>> m_u_map_i_iii_0;
 
 #endif

@@ -156,9 +156,9 @@ void delaunay_tetrahedralization()
         }
         
         // tetrahedralize hole
-        // m_map_ii_i_0 stores newly created triangles that do not have neighbors
+        // m_u_map_ii_i_0 stores newly created triangles that do not have neighbors
         {
-            m_map_ii_i_0.clear();
+            m_u_map_ii_i_0.clear();
             for(uint32_t tri : m_u_set_i_0)
             {
                 uint32_t f0,f1,f2;
@@ -340,9 +340,9 @@ void delaunay_tetrahedralization(const unordered_set<uint32_t>& input_vertices)
         }
         
         // tetrahedralize hole
-        // m_map_ii_i_0 stores newly created triangles that do not have neighbors
+        // m_u_map_ii_i_0 stores newly created triangles that do not have neighbors
         {
-            m_map_ii_i_0.clear();
+            m_u_map_ii_i_0.clear();
             for(uint32_t tri : m_u_set_i_0)
             {
                 uint32_t f0,f1,f2;
@@ -491,16 +491,16 @@ void remove_tetrahedron(uint32_t t)
 void tetrahedralize_hole_helper(uint32_t p0, uint32_t p1, uint32_t t)
 {
     sort_ints(p0,p1);
-    map<pair<uint32_t,uint32_t>,uint32_t>::iterator it;
-    if(m_map_ii_i_0.end() != (it=m_map_ii_i_0.find({p0,p1})))
+    auto it = m_u_map_ii_i_0.find({p0,p1});
+    if(m_u_map_ii_i_0.end() != it)
     {
         uint32_t n = it->second;
         m_neighbors[t] = n;
         m_neighbors[n] = t;
-        m_map_ii_i_0.erase(it);
+        m_u_map_ii_i_0.erase(it);
     }
     else
     {
-        m_map_ii_i_0[{p0,p1}] = t;
+        m_u_map_ii_i_0[{p0,p1}] = t;
     }
 }

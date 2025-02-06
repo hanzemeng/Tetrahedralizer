@@ -14,6 +14,7 @@ bool vertex_in_triangle(uint32_t p0,uint32_t t0,uint32_t t1,uint32_t t2);
 bool inner_segment_cross_inner_triangle(uint32_t s0,uint32_t s1,uint32_t t0,uint32_t t1,uint32_t t2);
 bool inner_segment_cross_triangle(uint32_t s0,uint32_t s1,uint32_t t0,uint32_t t1,uint32_t t2);
 bool inner_segment_cross_inner_segment(uint32_t s0,uint32_t s1,uint32_t s2,uint32_t s3);
+bool segment_cross_triangle(uint32_t s0,uint32_t s1,uint32_t t0,uint32_t t1, uint32_t t2);
 
 // let n = (x,y,z) be the normal of the triangle <t0,t1,t2>; let m = max(|x|, |y|, |z|).
 // returns 0 if m == |x|; 1 if m == |y|; 2 if m == |z|

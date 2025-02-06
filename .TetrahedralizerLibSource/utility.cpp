@@ -52,6 +52,21 @@ bool inner_segment_cross_inner_segment(uint32_t s0,uint32_t s1,uint32_t s2,uint3
 {
     return genericPoint::innerSegmentsCross(*m_vertices[s0],*m_vertices[s1],*m_vertices[s2],*m_vertices[s3]);
 }
+bool segment_cross_triangle(uint32_t s0,uint32_t s1,uint32_t t0,uint32_t t1, uint32_t t2)
+{
+    if(inner_segment_cross_triangle(s0, s1, t0, t1, t2))
+    {
+        return true;
+    }
+ 
+    if(0 == orient3d(s0,t0,t1,t2) && 0 == orient3d(s1,t0,t1,t2))
+    {
+        return false;
+    }
+    return
+    (0 == orient3d(s0,t0,t1,t2) && vertex_in_triangle(s0, t0, t1, t2)) ||
+    (0 == orient3d(s1,t0,t1,t2) && vertex_in_triangle(s1, t0, t1, t2));
+}
 int max_component_in_triangle_normal(uint32_t t0,uint32_t t1,uint32_t t2)
 {
     return genericPoint::maxComponentInTriangleNormal(

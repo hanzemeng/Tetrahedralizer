@@ -4,7 +4,7 @@ void facet_association()
 {
     // calculate tetrahedron neighbors and vertices incidents
     {
-        m_map_iii_i_0.clear();
+        m_u_map_iii_i_0.clear();
         m_neighbors.resize(m_tetrahedrons.size());
         m_vertices_incidents.resize(m_vertices_count);
         for(uint32_t i=0; i<m_neighbors.size(); i++)
@@ -16,17 +16,17 @@ void facet_association()
             uint32_t p0,p1,p2;
             get_tetrahedron_face(i, p0, p1, p2);
             sort_ints(p0,p1,p2);
-            auto it = m_map_iii_i_0.find({p0,p1,p2});
-            if(m_map_iii_i_0.end() != it)
+            auto it = m_u_map_iii_i_0.find({p0,p1,p2});
+            if(m_u_map_iii_i_0.end() != it)
             {
                 uint32_t n = it->second;
                 m_neighbors[i] = n;
                 m_neighbors[n] = i;
-                m_map_iii_i_0.erase(it);
+                m_u_map_iii_i_0.erase(it);
             }
             else
             {
-                m_map_iii_i_0[{p0,p1,p2}] = i;
+                m_u_map_iii_i_0[{p0,p1,p2}] = i;
             }
             
             m_vertices_incidents[m_tetrahedrons[i]] = i&0xfffffffc;
@@ -35,7 +35,7 @@ void facet_association()
     
     // calculate constraint neighbors
     {
-        m_map_ii_i_0.clear();
+        m_u_map_ii_i_0.clear();
         m_vector_i_0.resize(3*m_constraints_count); // m_vector_i_0 is constraint neighbors
         for(uint32_t i=0; i<3*m_constraints_count; i++)
         {
@@ -49,17 +49,17 @@ void facet_association()
                 uint32_t p1 = m_constraints[i+(j+1)%3];
                 sort_ints(p0,p1);
                 
-                auto it = m_map_ii_i_0.find({p0,p1});
-                if(m_map_ii_i_0.end() != it)
+                auto it = m_u_map_ii_i_0.find({p0,p1});
+                if(m_u_map_ii_i_0.end() != it)
                 {
                     uint32_t n = it->second;
                     m_vector_i_0[i+j] = n;
                     m_vector_i_0[n] = i+j;
-                    m_map_ii_i_0.erase(it);
+                    m_u_map_ii_i_0.erase(it);
                 }
                 else
                 {
-                    m_map_ii_i_0[{p0,p1}] = i+j;
+                    m_u_map_ii_i_0[{p0,p1}] = i+j;
                 }
             }
         }
@@ -139,7 +139,7 @@ void facet_association()
         
         for(uint32_t i=0; i<m_coplanar_constraints.size(); i++)
         {
-            m_map_i_i_0.clear(); // stores vertices orients
+            m_u_map_i_i_0.clear(); // stores vertices orients
             for(uint32_t j=0; j<m_coplanar_constraints[i].size(); j++)
             {
                 uint32_t c = m_coplanar_constraints[i][j];
@@ -214,27 +214,27 @@ void facet_association()
                     uint32_t t2 = m_tetrahedrons[t+2];
                     uint32_t t3 = m_tetrahedrons[t+3];
                     
-                    if(m_map_i_i_0.end() == m_map_i_i_0.find(t0))
+                    if(m_u_map_i_i_0.end() == m_u_map_i_i_0.find(t0))
                     {
-                        m_map_i_i_0[t0] = orient3d(c0,c1,c2,t0);
+                        m_u_map_i_i_0[t0] = orient3d(c0,c1,c2,t0);
                     }
-                    if(m_map_i_i_0.end() == m_map_i_i_0.find(t1))
+                    if(m_u_map_i_i_0.end() == m_u_map_i_i_0.find(t1))
                     {
-                        m_map_i_i_0[t1] = orient3d(c0,c1,c2,t1);
+                        m_u_map_i_i_0[t1] = orient3d(c0,c1,c2,t1);
                     }
-                    if(m_map_i_i_0.end() == m_map_i_i_0.find(t2))
+                    if(m_u_map_i_i_0.end() == m_u_map_i_i_0.find(t2))
                     {
-                        m_map_i_i_0[t2] = orient3d(c0,c1,c2,t2);
+                        m_u_map_i_i_0[t2] = orient3d(c0,c1,c2,t2);
                     }
-                    if(m_map_i_i_0.end() == m_map_i_i_0.find(t3))
+                    if(m_u_map_i_i_0.end() == m_u_map_i_i_0.find(t3))
                     {
-                        m_map_i_i_0[t3] = orient3d(c0,c1,c2,t3);
+                        m_u_map_i_i_0[t3] = orient3d(c0,c1,c2,t3);
                     }
                     
-                    int o0 = m_map_i_i_0[t0];
-                    int o1 = m_map_i_i_0[t1];
-                    int o2 = m_map_i_i_0[t2];
-                    int o3 = m_map_i_i_0[t3];
+                    int o0 = m_u_map_i_i_0[t0];
+                    int o1 = m_u_map_i_i_0[t1];
+                    int o2 = m_u_map_i_i_0[t2];
+                    int o3 = m_u_map_i_i_0[t3];
                     
                     if(o0 == o1 && o1 == o2 && o2 == o3 && 0 != o0)
                     {
@@ -264,12 +264,12 @@ void facet_association()
                         bool is_coplanar_face = true;
                         for(uint32_t l=0; l<3; l++)
                         {
-                            if(m_map_i_i_0.end() == m_map_i_i_0.find(ps[l]))
+                            if(m_u_map_i_i_0.end() == m_u_map_i_i_0.find(ps[l]))
                             {
-                                m_map_i_i_0[ps[l]] = orient3d(c0,c1,c2,ps[l]);
+                                m_u_map_i_i_0[ps[l]] = orient3d(c0,c1,c2,ps[l]);
                             }
                             
-                            if(0 != m_map_i_i_0[ps[l]])
+                            if(0 != m_u_map_i_i_0[ps[l]])
                             {
                                 is_coplanar_face = false;
                                 break;

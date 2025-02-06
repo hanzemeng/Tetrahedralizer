@@ -46,7 +46,6 @@ int main(int argc, char *argv[])
     }
     m_constraints_count -= removed_constraints_count;
 
-        
     delaunay_tetrahedralization();
     binary_space_partition();
     interior_characterization();
