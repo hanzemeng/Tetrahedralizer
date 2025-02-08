@@ -15,7 +15,8 @@ public class Tetrahedralizer
     #elif UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
     private const string TETRAHEDRALIZER_LIBRARY_NAME = "TetrahedralizerLibWindows";
     #else
-    // please compile the library yourself
+    // please compile the library yourself and update TETRAHEDRALIZER_LIBRARY_NAME to the appropriate name 
+    private const string TETRAHEDRALIZER_LIBRARY_NAME = "TetrahedralizerLibMacOS";
     #endif
 
     [DllImport(TETRAHEDRALIZER_LIBRARY_NAME)]
