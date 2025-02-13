@@ -1,0 +1,26 @@
+The following assets uses Dance Animations FREE by Kevin Iglesias under Standard Unity Asset Store EULA:
+Tetrahedralizer/Demo/Materials/Dance_Animations_Material.mat
+Tetrahedralizer/Demo/Meshes/Male_Dancer_Dummy.fbx
+Tetrahedralizer/Demo/Prefabs/Male_Dummy_Dancer.prefab
+Tetrahedralizer/Demo/Textures/DanceTextures.png
+
+The following assets uses Low Poly Skeleton by asoliddev under Standard Unity Asset Store EULA:
+Tetrahedralizer/Demo/Materials/Bone_1.mat
+Tetrahedralizer/Demo/Meshes/Skeleton.fbx
+Tetrahedralizer/Demo/Prefabs/Skeleton.prefab
+
+The following assets uses Low Poly Food Lite by JustCreate [Ukraine heart] under Standard Unity Asset Store EULA:
+Tetrahedralizer/Demo/Materials/LP_FoodLite_MAIN.mat
+Tetrahedralizer/Demo/Meshes/Donut_02.fbx
+Tetrahedralizer/Demo/Meshes/Kitchen_Props_01.fbx
+Tetrahedralizer/Demo/Prefabs/Donut_02.prefab
+Tetrahedralizer/Demo/Prefabs/Kitchen_Props_01.prefab
+Tetrahedralizer/Demo/Textures/LowPolyFoodLiteTexture_01.png
+
+The following assets uses Fighter Jet Low Poly by Raptor3D under Standard Unity Asset Store EULA:
+Tetrahedralizer/Demo/Meshes/FA_N26_LE.fbx
+Tetrahedralizer/Demo/Prefabs/FA_N26_LE.prefab
+
+The following assets uses Protein Models (https://www.thingiverse.com/thing:12283) by pmoews under Creative Commons - Attribution:
+Assets/Hanzzz/Tetrahedralizer/Demo/Meshes/Protein_Model.obj
+Assets/Hanzzz/Tetrahedralizer/Demo/Prefabs/Protein_Model.prefab
