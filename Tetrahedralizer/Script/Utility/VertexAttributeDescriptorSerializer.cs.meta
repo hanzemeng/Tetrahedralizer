@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 4bcce9504ec14464fb43e3d154150333
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 306196
+  packageName: Tetrahedralizer
+  packageVersion: 1.0.0
+  assetPath: Assets/Hanzzz/Tetrahedralizer/Scripts/VertexAttributeDescriptorSerializer.cs
+  uploadId: 733342
