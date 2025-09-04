@@ -20,7 +20,7 @@ public class TetrahedralizationPolyhedralization
 
         void ProcessFacet(int p0, int p1, int p2)
         {
-            TetrahedralizerLibraryUtility.SortInt3(ref p0, ref p1, ref p2);
+            TetrahedralizerUtility.SortInt3(ref p0, ref p1, ref p2);
             (int,int,int) tuple = (p0,p1,p2);
 
             int index;

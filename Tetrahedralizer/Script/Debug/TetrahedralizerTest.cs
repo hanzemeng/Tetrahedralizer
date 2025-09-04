@@ -60,8 +60,8 @@ public class TetrahedralizerTest : MonoBehaviour
         int[] weldedTriangles = mesh.triangles;
         Vector3[] vertices = mesh.vertices;
         int[] triangles = mesh.triangles;
-        List<List<int>> mapping = TetrahedralizerLibraryUtility.RemoveDuplicateVertices(weldedVertices, weldedTriangles);
-        List<double> weldedVerticesUnpack = TetrahedralizerLibraryUtility.UnpackVector3s(weldedVertices);
+        List<List<int>> mapping = TetrahedralizerUtility.RemoveDuplicateVertices(weldedVertices, weldedTriangles);
+        List<double> weldedVerticesUnpack = TetrahedralizerUtility.UnpackVector3s(weldedVertices);
 
         DelaunayTetrahedralization.DelaunayTetrahedralizationOutput DTOutput = new DelaunayTetrahedralization.DelaunayTetrahedralizationOutput();
         {
@@ -118,7 +118,7 @@ public class TetrahedralizerTest : MonoBehaviour
             input.m_explicitVertices = weldedVerticesUnpack;
             input.m_implicitVertices = BSPOutput.m_insertedVertices;
             //input.m_polyhedrons = BSPOutput.m_polyhedrons;
-            input.m_polyhedrons = TetrahedralizerLibraryUtility.NestedListToFlatList(TetrahedralizerLibraryUtility.FlatIListToNestedList(BSPOutput.m_polyhedrons)
+            input.m_polyhedrons = TetrahedralizerUtility.NestedListToFlatList(TetrahedralizerUtility.FlatIListToNestedList(BSPOutput.m_polyhedrons)
             .Where((i,j)=>tessellationLabel.m_interiorLabels[j]!=0).ToList());
             input.m_polyhedronsFacets = BSPOutput.m_polyhedronsFacets;
             polyhedralizationTetrahedralization.CalculatePolyhedralizationTetrahedralization(input, PTOutput);
@@ -151,7 +151,7 @@ public class TetrahedralizerTest : MonoBehaviour
             input.m_implicitVertices = BSPOutput.m_insertedVertices;
             genericPointApproximation.CalculateGenericPointApproximation(input, output);
 
-            approximatedVertices = TetrahedralizerLibraryUtility.PackDoubles(output.m_approximatePositions);
+            approximatedVertices = TetrahedralizerUtility.PackDoubles(output.m_approximatePositions);
         }
 
         int originalSubmeshesCount = mesh.subMeshCount;

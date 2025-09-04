@@ -24,23 +24,23 @@ public class FacetAssociation
 
     public void CalculateFacetAssociation(FacetAssociationInput input, FacetAssociationOutput output)
     {
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern IntPtr CreateFacetAssociationHandle();
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void DisposeFacetAssociationHandle(IntPtr handle);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void AddFacetAssociationInput(IntPtr handle, int explicit_count, double[] explicit_values, int implicit_count, int[] implicit_values, int tetrahedron_count, int[] tetrahedrons, int constraints_count, int[] constraints);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern int CalculateFacetAssociation(IntPtr handle);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern IntPtr GetOutputFacetAssociation(IntPtr handle);
 
         double[] explicitVertices = input.m_explicitVertices.ToArray();
-        TetrahedralizerLibraryUtility.SwapElementsByInterval(explicitVertices, 3);
-        int implicit_count = TetrahedralizerLibraryUtility.CountFlatIListElements(input.m_implicitVertices);
+        TetrahedralizerUtility.SwapElementsByInterval(explicitVertices, 3);
+        int implicit_count = TetrahedralizerUtility.CountFlatIListElements(input.m_implicitVertices);
         int[] implicitVertices = null == input.m_implicitVertices ? null : input.m_implicitVertices.ToArray();
         int[] tetrahedrons = input.m_tetrahedrons.ToArray();
-        TetrahedralizerLibraryUtility.SwapElementsByInterval(tetrahedrons, 4);
+        TetrahedralizerUtility.SwapElementsByInterval(tetrahedrons, 4);
 
         IntPtr handle = CreateFacetAssociationHandle();
         AddFacetAssociationInput(handle, input.m_explicitVertices.Count/3, explicitVertices, implicit_count, implicitVertices, input.m_tetrahedrons.Count/4, tetrahedrons, input.m_constraints.Count/3, input.m_constraints.ToArray());

@@ -18,7 +18,7 @@ public class DelaunayTetrahedralizationTest : MonoBehaviour
         }
 
         DelaunayTetrahedralization.DelaunayTetrahedralizationInput input = new DelaunayTetrahedralization.DelaunayTetrahedralizationInput();
-        input.m_explicitVertices = TetrahedralizerLibraryUtility.UnpackVector3s(vertices);
+        input.m_explicitVertices = TetrahedralizerUtility.UnpackVector3s(vertices);
         DelaunayTetrahedralization.DelaunayTetrahedralizationOutput output = new DelaunayTetrahedralization.DelaunayTetrahedralizationOutput();
         DelaunayTetrahedralization delaunayTetrahedralization = new DelaunayTetrahedralization();
 

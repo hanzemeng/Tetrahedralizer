@@ -1,10 +1,11 @@
+using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
 
-[CreateAssetMenu(fileName = SHORT_NAME, menuName = TetrahedralizerLibraryConstant.SCRIPTABLE_OBJECT_PATH + SHORT_NAME)]
+[CreateAssetMenu(fileName = SHORT_NAME, menuName = TetrahedralizerConstant.SCRIPTABLE_OBJECT_PATH + SHORT_NAME)]
 [PreferBinarySerialization]
 public class Tetrahedralization : ScriptableObject
 {
@@ -13,6 +14,90 @@ public class Tetrahedralization : ScriptableObject
     public List<double> m_explicitVertices; // Every 3 doubles are x,y,z of a point. Assuming left hand coordinate.
     public List<int> m_implicitVertices; // 5/9 followed by indexes of m_explicitVertices
     public List<int> m_tetrahedrons; // Every 4 ints is a tetrahedron. Curl around the first 3 points and your thumb points toward the 4th point. Assuming left hand coordinate.
+
+
+    // each element is a tetrahedron, and the center of the tetrahedron in world space
+    public List<(Mesh mesh, Vector3 center)> ToMeshes()
+    {
+        if(null == m_explicitVertices || 0 == m_explicitVertices.Count)
+        {
+            return null;
+        }
+
+        List<(Mesh, Vector3)> res = new List<(Mesh, Vector3)>();
+        int[] zeroToEleven = Enumerable.Range(0,12).ToArray();
+        List<Vector3> vertices = TetrahedralizerUtility.PackDoubles(GenericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
+        for(int i=0; i<m_tetrahedrons.Count; i+=4)
+        {
+            Vector3 v0 = vertices[m_tetrahedrons[i+0]];
+            Vector3 v1 = vertices[m_tetrahedrons[i+1]];
+            Vector3 v2 = vertices[m_tetrahedrons[i+2]];
+            Vector3 v3 = vertices[m_tetrahedrons[i+3]];
+            Vector3 average = (v0+v1+v2+v3) / 4f;
+            v0 -= average;
+            v1 -= average;
+            v2 -= average;
+            v3 -= average;
+
+            Mesh mesh = new Mesh();
+            mesh.vertices = new Vector3[]{v0,v2,v1, v0,v1,v3, v0,v3,v2, v1,v2,v3};
+            mesh.triangles = zeroToEleven;
+            mesh.RecalculateBounds();
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
+
+            res.Add((mesh, average));
+        }
+
+        return res;
+    }
+    public (Mesh mesh, Vector3 center) ToMesh()
+    {
+        if(null == m_explicitVertices || 0 == m_explicitVertices.Count)
+        {
+            return (null, Vector3.zero);
+        }
+
+        List<Vector3> vertices = TetrahedralizerUtility.PackDoubles(GenericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
+        List<Vector3> meshVertices = new List<Vector3>(3*m_tetrahedrons.Count);
+
+        for(int i=0; i<m_tetrahedrons.Count; i+=4)
+        {
+            Vector3 v0 = vertices[m_tetrahedrons[i+0]];
+            Vector3 v1 = vertices[m_tetrahedrons[i+1]];
+            Vector3 v2 = vertices[m_tetrahedrons[i+2]];
+            Vector3 v3 = vertices[m_tetrahedrons[i+3]];
+
+            meshVertices.Add(v0,v2,v1, v0,v1,v3, v0,v3,v2, v1,v2,v3);
+        }
+        Vector3 center = TetrahedralizerUtility.CenterVertices(meshVertices);
+
+        Mesh mesh = new Mesh();
+        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+        mesh.vertices = meshVertices.ToArray();
+        mesh.triangles = Enumerable.Range(0,3*m_tetrahedrons.Count).ToArray();
+        mesh.RecalculateBounds();
+        mesh.RecalculateNormals();
+        mesh.RecalculateTangents();
+
+        return (mesh, center);
+    }
+
+    public void Assign(Tetrahedralization tetrahedralization)
+    {
+        m_explicitVertices = tetrahedralization.m_explicitVertices;
+        m_implicitVertices = tetrahedralization.m_implicitVertices;
+        m_tetrahedrons = tetrahedralization.m_tetrahedrons;
+    }
+
+    public int GetVerticesCount()
+    {
+        return m_explicitVertices.Count/3 + TetrahedralizerUtility.CountFlatIListElements(m_implicitVertices);
+    }
+    public int GetTetrahedronsCount()
+    {
+        return m_tetrahedrons.Count / 4;
+    }
 }
 
 
@@ -40,8 +125,8 @@ public class TetrahedralizationEditor : Editor
             return;
         }
 
-        EditorGUILayout.LabelField($"Vertices Count: {m_so.m_explicitVertices.Count/3 + TetrahedralizerLibraryUtility.CountFlatIListElements(m_so.m_implicitVertices)}");
-        EditorGUILayout.LabelField($"Tetrahedrons Count: {m_so.m_tetrahedrons.Count / 4}");
+        EditorGUILayout.LabelField($"Vertices Count: {m_so.GetVerticesCount()}");
+        EditorGUILayout.LabelField($"Tetrahedrons Count: {m_so.GetTetrahedronsCount()}");
     }
 }
 

@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -20,44 +21,78 @@ public class TetrahedralMeshCreation
     {
         List<Vector3> weldedVertices = input.m_mesh.vertices.ToList();
         int[] weldedTriangles = input.m_mesh.triangles;
-        TetrahedralizerLibraryUtility.RemoveDuplicateVertices(weldedVertices, weldedTriangles);
+        TetrahedralizerUtility.RemoveDuplicateVertices(weldedVertices, weldedTriangles);
         Vector3[] vertices = input.m_mesh.vertices;
         int[] triangles = input.m_mesh.triangles;
 
+        List<SubMeshDescriptor> subMeshDescriptors = Enumerable.Range(0,input.m_mesh.subMeshCount).Select(i=>input.m_mesh.GetSubMesh(i)).ToList();
 
+        MeshTriangleFinder meshTriangleFinder = new MeshTriangleFinder();
+        meshTriangleFinder.AssignSourceMesh(input.m_mesh);
+        MeshVertexDataMapper meshVertexDataMapper = new MeshVertexDataMapper();
+        meshVertexDataMapper.AssignSourceMesh(input.m_mesh);
+
+        TetrahedralMesh tetrahedralMesh = ScriptableObject.CreateInstance<TetrahedralMesh>();
+        output.m_tetrahedralMesh = tetrahedralMesh;
+
+        CreateInternal(vertices, triangles, subMeshDescriptors, input.m_tetrahedralization.m_tetrahedrons, input.m_tetrahedralization.m_explicitVertices, input.m_tetrahedralization.m_implicitVertices, weldedTriangles, meshTriangleFinder, meshVertexDataMapper, tetrahedralMesh);
+    }
+
+    public Task CreateAsync(TetrahedralMeshCreationInput input, TetrahedralMeshCreationOutput output)
+    {
+        List<Vector3> weldedVertices = input.m_mesh.vertices.ToList();
+        int[] weldedTriangles = input.m_mesh.triangles;
+        TetrahedralizerUtility.RemoveDuplicateVertices(weldedVertices, weldedTriangles);
+        Vector3[] vertices = input.m_mesh.vertices;
+        int[] triangles = input.m_mesh.triangles;
+
+        List<SubMeshDescriptor> subMeshDescriptors = Enumerable.Range(0,input.m_mesh.subMeshCount).Select(i=>input.m_mesh.GetSubMesh(i)).ToList();
+
+        MeshTriangleFinder meshTriangleFinder = new MeshTriangleFinder();
+        meshTriangleFinder.AssignSourceMesh(input.m_mesh);
+        MeshVertexDataMapper meshVertexDataMapper = new MeshVertexDataMapper();
+        meshVertexDataMapper.AssignSourceMesh(input.m_mesh);
+
+        TetrahedralMesh tetrahedralMesh = ScriptableObject.CreateInstance<TetrahedralMesh>();
+        output.m_tetrahedralMesh = tetrahedralMesh;
+
+        return Task.Run(() =>
+        {
+            CreateInternal(vertices, triangles, subMeshDescriptors, input.m_tetrahedralization.m_tetrahedrons, input.m_tetrahedralization.m_explicitVertices, input.m_tetrahedralization.m_implicitVertices, weldedTriangles, meshTriangleFinder, meshVertexDataMapper, tetrahedralMesh);
+        });
+    }
+
+    private void CreateInternal(Vector3[] vertices, int[] triangles, List<SubMeshDescriptor> subMeshDescriptors, List<int> tetrahedrons, List<double> explicitVertices, List<int> implicitVertices, int[] weldedTriangles, MeshTriangleFinder meshTriangleFinder, MeshVertexDataMapper meshVertexDataMapper, TetrahedralMesh tetrahedralMesh)
+    {
         TetrahedralizationPolyhedralization.TetrahedralizationPolyhedralizationInput TPInput = new TetrahedralizationPolyhedralization.TetrahedralizationPolyhedralizationInput();
         TetrahedralizationPolyhedralization.TetrahedralizationPolyhedralizationOutput TPOutput = new TetrahedralizationPolyhedralization.TetrahedralizationPolyhedralizationOutput();
         {
             TetrahedralizationPolyhedralization tetrahedralizationPolyhedralization = new TetrahedralizationPolyhedralization();
-            TPInput.m_tetrahedrons = input.m_tetrahedralization.m_tetrahedrons;
+            TPInput.m_tetrahedrons = tetrahedrons;
             tetrahedralizationPolyhedralization.CalculateTetrahedralizationPolyhedralization(TPInput, TPOutput);
         }
 
-        TessellationLabel tessellationLabel = ScriptableObject.CreateInstance<TessellationLabel>();
         InteriorCharacterization.InteriorCharacterizationInput ICInput = new InteriorCharacterization.InteriorCharacterizationInput();
         InteriorCharacterization.InteriorCharacterizationOutput ICOutput = new InteriorCharacterization.InteriorCharacterizationOutput();
         {
             InteriorCharacterization interiorCharacterization = new InteriorCharacterization();
-            ICInput.m_explicitVertices = input.m_tetrahedralization.m_explicitVertices;
-            ICInput.m_implicitVertices = input.m_tetrahedralization.m_implicitVertices;
+            ICInput.m_explicitVertices = explicitVertices;
+            ICInput.m_implicitVertices = implicitVertices;
             ICInput.m_polyhedrons = TPOutput.m_polyhedrons;
             ICInput.m_polyhedronsFacets = TPOutput.m_polyhedronsFacets;
             ICInput.m_constraints = weldedTriangles;
             ICInput.m_polyhedronsWindingNumbers = null;
             ICInput.m_minCutNeighborMultiplier = 1d;
             interiorCharacterization.CalculateInteriorCharacterization(ICInput, ICOutput);
-
-            tessellationLabel.m_windingNumbers = ICOutput.m_polyhedronsWindingNumbers;
-            tessellationLabel.m_interiorLabels = ICOutput.m_polyhedronsInteriorLabels;
         }
 
         FacetAssociation.FacetAssociationOutput FAOutput = new FacetAssociation.FacetAssociationOutput();
         FacetAssociation.FacetAssociationInput FAInput = new FacetAssociation.FacetAssociationInput();
         {
             FacetAssociation facetAssociation = new FacetAssociation();
-            FAInput.m_explicitVertices = input.m_tetrahedralization.m_explicitVertices;
-            FAInput.m_implicitVertices = input.m_tetrahedralization.m_implicitVertices;
-            FAInput.m_tetrahedrons = input.m_tetrahedralization.m_tetrahedrons;
+            FAInput.m_explicitVertices = explicitVertices;
+            FAInput.m_implicitVertices = implicitVertices;
+            FAInput.m_tetrahedrons = tetrahedrons;
             FAInput.m_constraints = weldedTriangles;
 
             facetAssociation.CalculateFacetAssociation(FAInput, FAOutput);
@@ -68,29 +103,25 @@ public class TetrahedralMeshCreation
             GenericPointApproximation.GenericPointApproximationOutput GPAOutput = new GenericPointApproximation.GenericPointApproximationOutput();
             GenericPointApproximation.GenericPointApproximationInput GPAInput = new GenericPointApproximation.GenericPointApproximationInput();
             GenericPointApproximation genericPointApproximation = new GenericPointApproximation();
-            GPAInput.m_explicitVertices = input.m_tetrahedralization.m_explicitVertices;
-            GPAInput.m_implicitVertices = input.m_tetrahedralization.m_implicitVertices;
+            GPAInput.m_explicitVertices = explicitVertices;
+            GPAInput.m_implicitVertices = implicitVertices;
             genericPointApproximation.CalculateGenericPointApproximation(GPAInput, GPAOutput);
 
-            approximatedVertices = TetrahedralizerLibraryUtility.PackDoubles(GPAOutput.m_approximatePositions);
+            approximatedVertices = TetrahedralizerUtility.PackDoubles(GPAOutput.m_approximatePositions);
         }
 
 
-        int originalSubmeshesCount = input.m_mesh.subMeshCount;
+        int originalSubmeshesCount = subMeshDescriptors.Count;
         List<int> originalTrianglesSubmeshes = Enumerable.Range(0,triangles.Count()/3).Select(i=>originalSubmeshesCount).ToList();
         for(int i=0; i<originalSubmeshesCount; i++)
         {
-            SubMeshDescriptor subMeshDescriptor = input.m_mesh.GetSubMesh(i);
+            SubMeshDescriptor subMeshDescriptor = subMeshDescriptors[i];
             for(int j=subMeshDescriptor.indexStart; j<subMeshDescriptor.indexStart+subMeshDescriptor.indexCount; j+=3)
             {
                 originalTrianglesSubmeshes[j/3] = i;
             }
         }
 
-        MeshTriangleFinder meshTriangleFinder = new MeshTriangleFinder();
-        meshTriangleFinder.AssignSourceMesh(input.m_mesh);
-        MeshVertexDataMapper meshVertexDataMapper = new MeshVertexDataMapper();
-        meshVertexDataMapper.AssignSourceMesh(input.m_mesh);
         int UNDEFINED_VALUE = -1;
         List<int> resultTrianglesSubmeshes = new List<int>();
 
@@ -131,16 +162,11 @@ public class TetrahedralMeshCreation
 
             void BarycentricWeight(int t0,int t1,int t2,int p)
             {
-                double triArea = Vector3.Cross(vertices[t1] - vertices[t0], vertices[t2] - vertices[t0]).magnitude;
-                Vector3 ep0 = vertices[t0] - approximatedVertices[p];
-                Vector3 ep1 = vertices[t1] - approximatedVertices[p];
-                Vector3 ep2 = vertices[t2] - approximatedVertices[p];
+                TetrahedralizerUtility.BarycentricWeight(vertices[t0],vertices[t1],vertices[t2],approximatedVertices[p],
+                out ts[0], out ts[1], out ts[2]);
                 ps[0] = t0;
                 ps[1] = t1;
                 ps[2] = t2;
-                ts[0] = Vector3.Cross(ep1,ep2).magnitude / triArea;
-                ts[1] = Vector3.Cross(ep2,ep0).magnitude / triArea;
-                ts[2] = Vector3.Cross(ep0,ep1).magnitude / triArea;
                 meshVertexDataMapper.InterpolateVertexData(3, approximatedVertices[p],ps,ts);
             }
 
@@ -150,17 +176,17 @@ public class TetrahedralMeshCreation
             resultTrianglesSubmeshes.Add(originalTrianglesSubmeshes[c0]);
         }
 
-        for(int i=0; i<input.m_tetrahedralization.m_tetrahedrons.Count; i+=4)
+        for(int i=0; i<tetrahedrons.Count; i+=4)
         {
             if(0 == ICOutput.m_polyhedronsInteriorLabels[i/4])
             {
                 FAOutputIndex += 12; // skip this tetrahedron because it is outside of the mesh constraints.
                 continue;
             }
-            int p0 = input.m_tetrahedralization.m_tetrahedrons[i+0];
-            int p1 = input.m_tetrahedralization.m_tetrahedrons[i+1];
-            int p2 = input.m_tetrahedralization.m_tetrahedrons[i+2];
-            int p3 = input.m_tetrahedralization.m_tetrahedrons[i+3];
+            int p0 = tetrahedrons[i+0];
+            int p1 = tetrahedrons[i+1];
+            int p2 = tetrahedrons[i+2];
+            int p3 = tetrahedrons[i+3];
 
             ProcessFacet(p0,p1,p3);
             ProcessFacet(p1,p0,p2);
@@ -168,10 +194,7 @@ public class TetrahedralMeshCreation
             ProcessFacet(p3,p1,p2);
         }
 
-        TetrahedralMesh tetrahedralMesh = ScriptableObject.CreateInstance<TetrahedralMesh>();
         meshVertexDataMapper.MakeTetrahedralMesh(tetrahedralMesh);
         tetrahedralMesh.SetFacetsSubmeshes(resultTrianglesSubmeshes);
-
-        output.m_tetrahedralMesh = tetrahedralMesh;
     }
 }

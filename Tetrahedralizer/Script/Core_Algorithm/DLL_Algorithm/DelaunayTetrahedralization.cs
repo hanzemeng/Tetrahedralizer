@@ -19,29 +19,24 @@ public class DelaunayTetrahedralization
 
     public void CalculateDelaunayTetrahedralization(DelaunayTetrahedralizationInput delaunayTetrahedralizationInput, DelaunayTetrahedralizationOutput delaunayTetrahedralizationOutput)
     {
-        if(!InputIsValid(delaunayTetrahedralizationInput))
-        {
-            throw new Exception(TetrahedralizerLibraryConstant.EXCEPTION_INVALID_INPUT);
-        }
-
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern IntPtr CreateDelaunayTetrahedralizationHandle();
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void DisposeDelaunayTetrahedralizationHandle(IntPtr handle);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void AddDelaunayTetrahedralizationVertices(IntPtr handle, int explicit_count, double[] explicit_values, int implicit_count, int[] implicit_values);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void CalculateDelaunayTetrahedralization(IntPtr handle);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern int GetOutputTetrahedronsCount(IntPtr handle); // technically returns UInt32, but C# hates it.
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern IntPtr GetOutputTetrahedrons(IntPtr handle); // technically returns UIntPtr, but C# hates it.
 
 
         double[] explicitVertices = delaunayTetrahedralizationInput.m_explicitVertices.ToArray();
-        TetrahedralizerLibraryUtility.SwapElementsByInterval(explicitVertices, 3); // Change from left to right hand coordinate.
+        TetrahedralizerUtility.SwapElementsByInterval(explicitVertices, 3); // Change from left to right hand coordinate.
         int[] implicitVertices = null == delaunayTetrahedralizationInput.m_implicitVertices ? null : delaunayTetrahedralizationInput.m_implicitVertices.ToArray();
-        int implicitVerticesCount = null == delaunayTetrahedralizationInput.m_implicitVertices ? 0 : TetrahedralizerLibraryUtility.CountFlatIListElements(implicitVertices);
+        int implicitVerticesCount = null == delaunayTetrahedralizationInput.m_implicitVertices ? 0 : TetrahedralizerUtility.CountFlatIListElements(implicitVertices);
 
         IntPtr handle = CreateDelaunayTetrahedralizationHandle();
 
@@ -58,32 +53,6 @@ public class DelaunayTetrahedralization
 
         DisposeDelaunayTetrahedralizationHandle(handle);
 
-        TetrahedralizerLibraryUtility.SwapElementsByInterval(delaunayTetrahedralizationOutput.m_tetrahedrons, 4); // Change from right to left hand coordinate.
-    }
-
-    public bool InputIsValid(DelaunayTetrahedralizationInput delaunayTetrahedralizationInput)
-    {
-        if(null == delaunayTetrahedralizationInput.m_explicitVertices ||
-           0 == delaunayTetrahedralizationInput.m_explicitVertices.Count ||
-           0 != delaunayTetrahedralizationInput.m_explicitVertices.Count%3 ||
-           delaunayTetrahedralizationInput.m_explicitVertices.Where(i=>TetrahedralizerLibraryUtility.DoubleIsSpecial(i)).Any())
-        {
-            return false;
-        }
-        if(null != delaunayTetrahedralizationInput.m_implicitVertices)
-        {
-            for(int i=0; i<delaunayTetrahedralizationInput.m_implicitVertices.Count; i+=delaunayTetrahedralizationInput.m_implicitVertices[i])
-            {
-                if(5 != delaunayTetrahedralizationInput.m_implicitVertices[i] || 9 != delaunayTetrahedralizationInput.m_implicitVertices[i])
-                {
-                    return false;
-                }
-            }
-            if(delaunayTetrahedralizationInput.m_implicitVertices.Where(i=>i<0 || i>=delaunayTetrahedralizationInput.m_explicitVertices.Count/3).Any())
-            {
-                return false;
-            }
-        }
-        return true;
+        TetrahedralizerUtility.SwapElementsByInterval(delaunayTetrahedralizationOutput.m_tetrahedrons, 4); // Change from right to left hand coordinate.
     }
 }

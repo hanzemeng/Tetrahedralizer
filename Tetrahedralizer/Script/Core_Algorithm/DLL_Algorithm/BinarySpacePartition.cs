@@ -21,31 +21,31 @@ public class BinarySpacePartition
 
     public void CalculateBinarySpacePartition(BinarySpacePartitionInput input, BinarySpacePartitionOutput output)
     {
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern IntPtr CreateBinarySpacePartitionHandle();
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void DisposeBinarySpacePartitionHandle(IntPtr handle);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void AddBinarySpacePartitionInput(IntPtr handle, int explicit_count, double[] explicit_values, int tetrahedron_count, int[] tetrahedrons, int constraints_count, int[] constraints);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern int CalculateBinarySpacePartition(IntPtr handle);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern int GetOutputInsertedVerticesCount(IntPtr handle);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern IntPtr GetOutputInsertedVertices(IntPtr handle);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern int GetOutputPolyhedronsCount(IntPtr handle);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern IntPtr GetOutputPolyhedrons(IntPtr handle);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern int GetOutputPolyhedronsFacetsCount(IntPtr handle);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern IntPtr GetOutputPolyhedronsFacets(IntPtr handle);
 
         double[] explicitVertices = input.m_explicitVertices.ToArray();
-        TetrahedralizerLibraryUtility.SwapElementsByInterval(explicitVertices, 3);
+        TetrahedralizerUtility.SwapElementsByInterval(explicitVertices, 3);
         int[] tetrahedrons = input.m_tetrahedrons.ToArray();
-        TetrahedralizerLibraryUtility.SwapElementsByInterval(tetrahedrons, 4);
+        TetrahedralizerUtility.SwapElementsByInterval(tetrahedrons, 4);
 
         IntPtr handle = CreateBinarySpacePartitionHandle();
         AddBinarySpacePartitionInput(handle, input.m_explicitVertices.Count/3, explicitVertices, input.m_tetrahedrons.Count/4, tetrahedrons, input.m_constraints.Count/3, input.m_constraints.ToArray());

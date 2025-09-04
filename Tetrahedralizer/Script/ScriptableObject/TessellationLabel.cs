@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
-[CreateAssetMenu(fileName = SHORT_NAME, menuName = TetrahedralizerLibraryConstant.SCRIPTABLE_OBJECT_PATH + SHORT_NAME)]
+[CreateAssetMenu(fileName = SHORT_NAME, menuName = TetrahedralizerConstant.SCRIPTABLE_OBJECT_PATH + SHORT_NAME)]
 [PreferBinarySerialization]
 public class TessellationLabel : ScriptableObject
 {

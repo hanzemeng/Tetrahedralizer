@@ -15,25 +15,37 @@ public class GenericPointApproximation
         public List<double> m_approximatePositions; // postions of explicit and implicit vertices in left hand coordinate
     }
 
+    public static List<double> CalculateGenericPointApproximation(IList<double> explicitVertices, IList<int> implicitVertices)
+    {
+        GenericPointApproximation genericPointApproximation = new GenericPointApproximation();
+        GenericPointApproximationInput input = new GenericPointApproximationInput();
+        GenericPointApproximationOutput output = new GenericPointApproximationOutput();
+        input.m_explicitVertices = explicitVertices;
+        input.m_implicitVertices = implicitVertices;
+
+        genericPointApproximation.CalculateGenericPointApproximation(input, output);
+        return output.m_approximatePositions;
+    }
+
 
     public void CalculateGenericPointApproximation(GenericPointApproximationInput input, GenericPointApproximationOutput output)
     {
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern IntPtr CreateGenericPointApproximationHandle();
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void DisposeGenericPointApproximationHandle(IntPtr handle);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void AddGenericPointApproximationVertices(IntPtr handle, int explicit_count, double[] explicit_values, int implicit_count, int[] implicit_values);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern int ApproximateGenericPoint(IntPtr handle);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern IntPtr GetOutputApproximation(IntPtr handle);
 
 
         double[] explicitVertices = input.m_explicitVertices.ToArray();
-        TetrahedralizerLibraryUtility.SwapElementsByInterval(explicitVertices, 3);
+        TetrahedralizerUtility.SwapElementsByInterval(explicitVertices, 3);
         int[] implicitVertices = input.m_implicitVertices.ToArray();
-        int implicit_count = TetrahedralizerLibraryUtility.CountFlatIListElements(input.m_implicitVertices);
+        int implicit_count = TetrahedralizerUtility.CountFlatIListElements(input.m_implicitVertices);
 
         IntPtr handle = CreateGenericPointApproximationHandle();
         AddGenericPointApproximationVertices(handle, input.m_explicitVertices.Count/3, explicitVertices, implicit_count, implicitVertices);
@@ -51,6 +63,6 @@ public class GenericPointApproximation
 
         DisposeGenericPointApproximationHandle(handle);
 
-        TetrahedralizerLibraryUtility.SwapElementsByInterval(output.m_approximatePositions, 3);
+        TetrahedralizerUtility.SwapElementsByInterval(output.m_approximatePositions, 3);
     }
 }

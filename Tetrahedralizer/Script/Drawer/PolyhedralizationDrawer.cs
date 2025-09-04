@@ -31,7 +31,7 @@ public class PolyhedralizationDrawer : MonoBehaviour
         List<Vector3> vertices;
         if(null == polyhedralization.m_implicitVertices || 0 == polyhedralization.m_implicitVertices.Count)
         {
-            vertices = TetrahedralizerLibraryUtility.PackDoubles(polyhedralization.m_explicitVertices);
+            vertices = TetrahedralizerUtility.PackDoubles(polyhedralization.m_explicitVertices);
         }
         else
         {
@@ -41,11 +41,11 @@ public class PolyhedralizationDrawer : MonoBehaviour
             GenericPointApproximation.GenericPointApproximationOutput output = new GenericPointApproximation.GenericPointApproximationOutput();
             GenericPointApproximation genericPointApproximation = new GenericPointApproximation();
             genericPointApproximation.CalculateGenericPointApproximation(input, output);
-            vertices = TetrahedralizerLibraryUtility.PackDoubles(output.m_approximatePositions);
+            vertices = TetrahedralizerUtility.PackDoubles(output.m_approximatePositions);
         }
 
-        List<List<int>> polyhedrons = TetrahedralizerLibraryUtility.FlatIListToNestedList(polyhedralization.m_polyhedrons);
-        List<List<int>> polyhedronsFacets = TetrahedralizerLibraryUtility.FlatIListToNestedList(polyhedralization.m_polyhedronsFacets);
+        List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(polyhedralization.m_polyhedrons);
+        List<List<int>> polyhedronsFacets = TetrahedralizerUtility.FlatIListToNestedList(polyhedralization.m_polyhedronsFacets);
 
         StringBuilder stringBuilder = new StringBuilder();
         HashSet<int> uniqueVertices = new HashSet<int>();

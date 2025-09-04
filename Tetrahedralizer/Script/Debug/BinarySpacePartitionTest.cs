@@ -16,8 +16,8 @@ public class BinarySpacePartitionTest : MonoBehaviour
 
         List<Vector3> vertices = mesh.vertices.ToList();
         int[] triangles = mesh.triangles;
-        TetrahedralizerLibraryUtility.RemoveDuplicateVertices(vertices, triangles);
-        List<double> verticesUnpack = TetrahedralizerLibraryUtility.UnpackVector3s(vertices);
+        TetrahedralizerUtility.RemoveDuplicateVertices(vertices, triangles);
+        List<double> verticesUnpack = TetrahedralizerUtility.UnpackVector3s(vertices);
 
         DelaunayTetrahedralization.DelaunayTetrahedralizationOutput DTOutput = new DelaunayTetrahedralization.DelaunayTetrahedralizationOutput();
         {
@@ -78,7 +78,7 @@ public class BinarySpacePartitionTest : MonoBehaviour
             input.m_explicitVertices = verticesUnpack;
             input.m_implicitVertices = BSPOutput.m_insertedVertices;
             //input.m_polyhedrons = BSPOutput.m_polyhedrons;
-            input.m_polyhedrons = TetrahedralizerLibraryUtility.NestedListToFlatList(TetrahedralizerLibraryUtility.FlatIListToNestedList(BSPOutput.m_polyhedrons)
+            input.m_polyhedrons = TetrahedralizerUtility.NestedListToFlatList(TetrahedralizerUtility.FlatIListToNestedList(BSPOutput.m_polyhedrons)
             .Where((i,j)=>tessellationLabel.m_interiorLabels[j]!=0).ToList());
             input.m_polyhedronsFacets = BSPOutput.m_polyhedronsFacets;
 

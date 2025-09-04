@@ -21,31 +21,31 @@ public class PolyhedralizationTetrahedralization
 
     public void CalculatePolyhedralizationTetrahedralization(PolyhedralizationTetrahedralizationInput input, PolyhedralizationTetrahedralizationOutput output)
     {
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern IntPtr CreatePolyhedralizationTetrahedralizationHandle();
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void DisposePolyhedralizationTetrahedralizationHandle(IntPtr handle);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void AddPolyhedralizationTetrahedralizationInput(IntPtr handle, 
         int explicit_count, double[] explicit_values, int implicit_count, int[] implicit_values, 
         int polyhedrons_count, int[] polyhedrons, int polyhedrons_facets_count, int[] polyhedrons_facets);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void CalculatePolyhedralizationTetrahedralization(IntPtr handle);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern int GetPolyhedralizationTetrahedralizationTetrahedronsCount(IntPtr handle);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern IntPtr GetPolyhedralizationTetrahedralizationTetrahedrons(IntPtr handle);
 
 
         double[] explicitVertices = input.m_explicitVertices.ToArray();
-        TetrahedralizerLibraryUtility.SwapElementsByInterval(explicitVertices, 3); // Change from left to right hand coordinate.
+        TetrahedralizerUtility.SwapElementsByInterval(explicitVertices, 3); // Change from left to right hand coordinate.
         int[] implicitVertices = null == input.m_implicitVertices ? null : input.m_implicitVertices.ToArray();
-        int implicitVerticesCount = null == input.m_implicitVertices ? 0 : TetrahedralizerLibraryUtility.CountFlatIListElements(implicitVertices);
+        int implicitVerticesCount = null == input.m_implicitVertices ? 0 : TetrahedralizerUtility.CountFlatIListElements(implicitVertices);
 
         IntPtr handle = CreatePolyhedralizationTetrahedralizationHandle();
 
         AddPolyhedralizationTetrahedralizationInput(handle, explicitVertices.Length/3, explicitVertices, implicitVerticesCount, implicitVertices,
-        TetrahedralizerLibraryUtility.CountFlatIListElements(input.m_polyhedrons), input.m_polyhedrons.ToArray(), TetrahedralizerLibraryUtility.CountFlatIListElements(input.m_polyhedronsFacets), input.m_polyhedronsFacets.ToArray());
+        TetrahedralizerUtility.CountFlatIListElements(input.m_polyhedrons), input.m_polyhedrons.ToArray(), TetrahedralizerUtility.CountFlatIListElements(input.m_polyhedronsFacets), input.m_polyhedronsFacets.ToArray());
         CalculatePolyhedralizationTetrahedralization(handle);
 
         int n = 4*GetPolyhedralizationTetrahedralizationTetrahedronsCount(handle);
@@ -58,6 +58,6 @@ public class PolyhedralizationTetrahedralization
 
         DisposePolyhedralizationTetrahedralizationHandle(handle);
 
-        TetrahedralizerLibraryUtility.SwapElementsByInterval(output.m_tetrahedrons, 4); // Change from right to left hand coordinate.
+        TetrahedralizerUtility.SwapElementsByInterval(output.m_tetrahedrons, 4); // Change from right to left hand coordinate.
     }
 }

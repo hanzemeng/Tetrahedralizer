@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 
 public class TetrahedralizedMeshCreation
@@ -18,9 +19,28 @@ public class TetrahedralizedMeshCreation
     {
         List<Vector3> weldedVertices = input.m_mesh.vertices.ToList();
         int[] weldedTriangles = input.m_mesh.triangles;
-        TetrahedralizerLibraryUtility.RemoveDuplicateVertices(weldedVertices, weldedTriangles);
-        List<double> weldedVerticesUnpack = TetrahedralizerLibraryUtility.UnpackVector3s(weldedVertices);
+        TetrahedralizerUtility.RemoveDuplicateVertices(weldedVertices, weldedTriangles);
+        Tetrahedralization tetrahedralization = ScriptableObject.CreateInstance<Tetrahedralization>();
+        output.m_tetrahedralization = tetrahedralization;
 
+        CreateInternal(tetrahedralization, weldedTriangles, TetrahedralizerUtility.UnpackVector3s(weldedVertices));
+    }
+    public Task CreateAsync(TetrahedralizedMeshCreationInput input, TetrahedralizedMeshCreationOutput output)
+    {
+        List<Vector3> weldedVertices = input.m_mesh.vertices.ToList();
+        int[] weldedTriangles = input.m_mesh.triangles;
+        TetrahedralizerUtility.RemoveDuplicateVertices(weldedVertices, weldedTriangles);
+        Tetrahedralization tetrahedralization = ScriptableObject.CreateInstance<Tetrahedralization>();
+        output.m_tetrahedralization = tetrahedralization;
+
+        return Task.Run(() =>
+        {
+            CreateInternal(tetrahedralization, weldedTriangles, TetrahedralizerUtility.UnpackVector3s(weldedVertices));
+        });
+    }
+
+    private void CreateInternal(Tetrahedralization tetrahedralization, int[] weldedTriangles, List<double> weldedVerticesUnpack)
+    {
         // tetrahedralize mesh vertices
         DelaunayTetrahedralization.DelaunayTetrahedralizationInput DTInput = new DelaunayTetrahedralization.DelaunayTetrahedralizationInput();
         DelaunayTetrahedralization.DelaunayTetrahedralizationOutput DTOutput = new DelaunayTetrahedralization.DelaunayTetrahedralizationOutput();
@@ -46,7 +66,6 @@ public class TetrahedralizedMeshCreation
         PolyhedralizationTetrahedralization.PolyhedralizationTetrahedralizationInput PTInput = new PolyhedralizationTetrahedralization.PolyhedralizationTetrahedralizationInput();
         PolyhedralizationTetrahedralization.PolyhedralizationTetrahedralizationOutput PTOutput = new PolyhedralizationTetrahedralization.PolyhedralizationTetrahedralizationOutput();
         {
-            
             PolyhedralizationTetrahedralization polyhedralizationTetrahedralization = new PolyhedralizationTetrahedralization();
             PTInput.m_explicitVertices = weldedVerticesUnpack;
             PTInput.m_implicitVertices = BSPOutput.m_insertedVertices;
@@ -56,10 +75,9 @@ public class TetrahedralizedMeshCreation
         }
 
         // produce output
-        Tetrahedralization tetrahedralization = ScriptableObject.CreateInstance<Tetrahedralization>();
+        tetrahedralization.m_explicitVertices = weldedVerticesUnpack;
         tetrahedralization.m_explicitVertices = weldedVerticesUnpack;
         tetrahedralization.m_implicitVertices = BSPOutput.m_insertedVertices;
         tetrahedralization.m_tetrahedrons = PTOutput.m_tetrahedrons;
-        output.m_tetrahedralization = tetrahedralization;
     }
 }

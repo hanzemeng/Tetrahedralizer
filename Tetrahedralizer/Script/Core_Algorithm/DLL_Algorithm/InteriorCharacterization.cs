@@ -26,35 +26,35 @@ public class InteriorCharacterization
     {
         //AddInteriorCharacterizationVertices(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t polyhedrons_facets_count, uint32_t* polyhedrons_facets, uint32_t constraints_count, uint32_t* constraints, double* polyhedrons_winding_numbers, double min_cut_neighbor_multiplier);
 
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern IntPtr CreateInteriorCharacterizationHandle();
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void DisposeInteriorCharacterizationHandle(IntPtr handle);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void AddInteriorCharacterizationInput(IntPtr handle, 
         int explicit_count, double[] explicit_values, int implicit_count, int[] implicit_values, 
         int polyhedrons_count, int[] polyhedrons, int polyhedrons_facets_count, int[] polyhedrons_facets, int constraints_count, int[] constraints, 
         double[] polyhedrons_winding_numbers, double min_cut_neighbor_multiplier);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern int CalculateInteriorCharacterization(IntPtr handle);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern IntPtr GetOutputPolyhedronsWindingNumbers(IntPtr handle);
-        [DllImport(TetrahedralizerLibraryConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern IntPtr GetOutputPolyhedronsLabels(IntPtr handle);
 
 
         double[] explicitVertices = input.m_explicitVertices.ToArray();
-        TetrahedralizerLibraryUtility.SwapElementsByInterval(explicitVertices, 3);
-        int implicit_count = TetrahedralizerLibraryUtility.CountFlatIListElements(input.m_implicitVertices);
+        TetrahedralizerUtility.SwapElementsByInterval(explicitVertices, 3);
+        int implicit_count = TetrahedralizerUtility.CountFlatIListElements(input.m_implicitVertices);
         int[] implicitVertices = null == input.m_implicitVertices ? null : input.m_implicitVertices.ToArray();
         int[] constraints = input.m_constraints.ToArray();
-        TetrahedralizerLibraryUtility.SwapElementsByInterval(constraints, 3);
+        TetrahedralizerUtility.SwapElementsByInterval(constraints, 3);
         double[] polyhedronsWindingNumbers = null == input.m_polyhedronsWindingNumbers ? null : input.m_polyhedronsWindingNumbers.ToArray();
 
         IntPtr handle = CreateInteriorCharacterizationHandle();
         AddInteriorCharacterizationInput(handle, 
         input.m_explicitVertices.Count/3, explicitVertices, implicit_count, implicitVertices, 
-        TetrahedralizerLibraryUtility.CountFlatIListElements(input.m_polyhedrons), input.m_polyhedrons.ToArray(), TetrahedralizerLibraryUtility.CountFlatIListElements(input.m_polyhedronsFacets), input.m_polyhedronsFacets.ToArray(), input.m_constraints.Count/3, constraints, 
+        TetrahedralizerUtility.CountFlatIListElements(input.m_polyhedrons), input.m_polyhedrons.ToArray(), TetrahedralizerUtility.CountFlatIListElements(input.m_polyhedronsFacets), input.m_polyhedronsFacets.ToArray(), input.m_constraints.Count/3, constraints, 
         polyhedronsWindingNumbers, input.m_minCutNeighborMultiplier);
 
         CalculateInteriorCharacterization(handle);

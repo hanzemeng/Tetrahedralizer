@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
-[CreateAssetMenu(fileName = SHORT_NAME, menuName = TetrahedralizerLibraryConstant.SCRIPTABLE_OBJECT_PATH + SHORT_NAME)]
+[CreateAssetMenu(fileName = SHORT_NAME, menuName = TetrahedralizerConstant.SCRIPTABLE_OBJECT_PATH + SHORT_NAME)]
 [PreferBinarySerialization]
 public class Polyhedralization : ScriptableObject
 {
@@ -42,7 +42,7 @@ public class PolyhedralizationEditor : Editor
             return;
         }
 
-        EditorGUILayout.LabelField($"Vertices Count: {m_so.m_explicitVertices.Count/3 + TetrahedralizerLibraryUtility.CountFlatIListElements(m_so.m_implicitVertices)}");
+        EditorGUILayout.LabelField($"Vertices Count: {m_so.m_explicitVertices.Count/3 + TetrahedralizerUtility.CountFlatIListElements(m_so.m_implicitVertices)}");
         EditorGUILayout.LabelField($"Polyhedrons Count: {m_so.m_polyhedrons.Count}");
         EditorGUILayout.LabelField($"Polyhedrons' Facets Count: {m_so.m_polyhedronsFacets.Count}");
     }

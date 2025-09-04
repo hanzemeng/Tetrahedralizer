@@ -7,13 +7,12 @@ using UnityEngine.Rendering;
 using UnityEditor;
 #endif
 
-[CreateAssetMenu(fileName = SHORT_NAME, menuName = TetrahedralizerLibraryConstant.SCRIPTABLE_OBJECT_PATH + SHORT_NAME)]
+[CreateAssetMenu(fileName = SHORT_NAME, menuName = TetrahedralizerConstant.SCRIPTABLE_OBJECT_PATH + SHORT_NAME)]
 [PreferBinarySerialization]
 public class TetrahedralMesh : ScriptableObject
 {
     public const string SHORT_NAME = "TetrahedralMesh_SO";
 
-    public List<Int32> tetrahedrons;
     public List<Vector3> vertices;
 
     public List<Int32> vertexAttributeDescriptors;
@@ -31,9 +30,105 @@ public class TetrahedralMesh : ScriptableObject
     public List<Int32> facetsSubmeshes;
 
 
+    // each element is a tetrahedron, and the center of the tetrahedron in world space
+    public List<(Mesh mesh, Vector3 center)> ToMeshes()
+    {
+        if(null == vertices || 0 == vertices.Count)
+        {
+            return null;
+        }
+
+        List<(Mesh, Vector3)> res = new List<(Mesh, Vector3)>();
+        List<Int32> tempInt = new List<Int32>();
+        List<Vector3> tempVector3s = new List<Vector3>();
+        MeshVertexDataMapper mvdm = new MeshVertexDataMapper();
+        mvdm.AssignSourceTetrahedralMesh(this);
+        Int32 submeshCount = GetSubmeshesCount();
+
+        for(Int32 i=0; i<facetsSubmeshes.Count; i+=4)
+        {
+            for(Int32 j=0; j<12; j++)
+            {
+                mvdm.CopyVertexData(3*i+j);
+            }
+            Mesh mesh = mvdm.MakeMesh();
+            mesh.subMeshCount = submeshCount;
+            mvdm.ClearTarget();
+
+            for(Int32 j=0; j<submeshCount; j++)
+            {
+                tempInt.Clear();
+                for(Int32 k=0; k<4; k++)
+                {
+                    if(j == facetsSubmeshes[i+k])
+                    {
+                        tempInt.Add(3*k+0);
+                        tempInt.Add(3*k+1);
+                        tempInt.Add(3*k+2);
+                    }
+                }
+                mesh.SetTriangles(tempInt,j);
+            }
+
+            mesh.GetVertices(tempVector3s);
+            Vector3 center = TetrahedralizerUtility.CenterVertices(tempVector3s);
+            mesh.SetVertices(tempVector3s);
+            mesh.RecalculateBounds();
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
+
+            res.Add((mesh, center));
+        }
+
+        return res;
+    }
+    public (Mesh mesh, Vector3 center) ToMesh()
+    {
+        if(null == vertices || 0 == vertices.Count)
+        {
+            return (null, Vector3.zero);
+        }
+
+        List<Int32> tempInt = new List<Int32>();
+        List<Vector3> tempVector3s = new List<Vector3>();
+        MeshVertexDataMapper mvdm = new MeshVertexDataMapper();
+        mvdm.AssignSourceTetrahedralMesh(this);
+        Int32 submeshCount = GetSubmeshesCount();
+        for(Int32 i=0; i<3*facetsSubmeshes.Count; i++)
+        {
+            mvdm.CopyVertexData(i);
+        }
+
+        Mesh mesh = mvdm.MakeMesh();
+        mesh.subMeshCount = submeshCount;
+        for(Int32 i=0; i<submeshCount; i++)
+        {
+            tempInt.Clear();
+            for(Int32 j=0; j<facetsSubmeshes.Count; j++)
+            {
+                if(i == facetsSubmeshes[j])
+                {
+                    tempInt.Add(3*j+0);
+                    tempInt.Add(3*j+1);
+                    tempInt.Add(3*j+2);
+                }
+                    
+            }
+            mesh.SetTriangles(tempInt,i);
+        }
+
+        mesh.GetVertices(tempVector3s);
+        Vector3 center = TetrahedralizerUtility.CenterVertices(tempVector3s);
+        mesh.SetVertices(tempVector3s);
+        mesh.RecalculateBounds();
+        mesh.RecalculateNormals();
+        mesh.RecalculateTangents();
+
+        return (mesh, center);
+    }
+
     public TetrahedralMesh()
     {
-        tetrahedrons = new List<Int32>();
         vertices = new List<Vector3>();
 
         vertexAttributeDescriptors = new List<Int32>();
@@ -50,10 +145,27 @@ public class TetrahedralMesh : ScriptableObject
 
         facetsSubmeshes = new List<Int32>();
     }
+    public void Assign(TetrahedralMesh tetrahedralMesh)
+    {
+        vertices = tetrahedralMesh.vertices;
+
+        vertexAttributeDescriptors = tetrahedralMesh.vertexAttributeDescriptors;
+
+        colors = tetrahedralMesh.colors;
+        uvs0 = tetrahedralMesh.uvs0;
+        uvs1 = tetrahedralMesh.uvs1;
+        uvs2 = tetrahedralMesh.uvs2;
+        uvs3 = tetrahedralMesh.uvs3;
+        uvs4 = tetrahedralMesh.uvs4;
+        uvs5 = tetrahedralMesh.uvs5;
+        uvs6 = tetrahedralMesh.uvs6;
+        uvs7 = tetrahedralMesh.uvs7;
+
+        facetsSubmeshes = tetrahedralMesh.facetsSubmeshes;
+    }
 
     public void Clear()
     {
-        tetrahedrons.Clear();
         vertices.Clear();
         vertexAttributeDescriptors.Clear();
         colors.Clear();
@@ -66,6 +178,11 @@ public class TetrahedralMesh : ScriptableObject
         uvs6.Clear();
         uvs7.Clear();
         facetsSubmeshes.Clear();
+    }
+
+    public int GetTetrahedronsCount()
+    {
+        return vertices.Count / 12;
     }
 
     public void SetVertexAttributeDescriptors(VertexAttributeDescriptor[] source)
@@ -205,22 +322,13 @@ public class TetrahedralMeshEditor : Editor
     {
         //base.OnInspectorGUI();
 
-        if(0 != tetrahedralMesh.tetrahedrons.Count)
+        EditorGUILayout.LabelField($"Tetrahedrons Count: {tetrahedralMesh.GetTetrahedronsCount()}");
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("Vertex Data:");
+        foreach(Int32 i in tetrahedralMesh.vertexAttributeDescriptors)
         {
-            EditorGUILayout.LabelField($"Tetrahedrons Count: {tetrahedralMesh.tetrahedrons.Count / 4}");
-            EditorGUILayout.LabelField($"Vertices Count: {tetrahedralMesh.vertices.Count}");
-        }
-        else
-        {
-            EditorGUILayout.LabelField($"Tetrahedrons Count: {tetrahedralMesh.facetsSubmeshes.Count / 4}");
-            EditorGUILayout.LabelField($"Vertices Count: {tetrahedralMesh.vertices.Count}");
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Vertex Data:");
-            foreach(Int32 i in tetrahedralMesh.vertexAttributeDescriptors)
-            {
-                VertexAttributeDescriptor v = VertexAttributeDescriptorSerializer.ToVertexAttributeDescriptor(i);
-                EditorGUILayout.LabelField(v.ToString());
-            }
+            VertexAttributeDescriptor v = VertexAttributeDescriptorSerializer.ToVertexAttributeDescriptor(i);
+            EditorGUILayout.LabelField(v.ToString());
         }
     }
 }

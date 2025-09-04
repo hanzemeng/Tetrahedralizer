@@ -131,5 +131,4 @@ public class MeshTriangleFinder
         float wFinal = vc * invDenom;
         return a + ab * vFinal + ac * wFinal;
     }
-
 }
