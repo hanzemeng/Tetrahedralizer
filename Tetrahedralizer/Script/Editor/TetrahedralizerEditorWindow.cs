@@ -191,11 +191,11 @@ public class TetrahedralizerEditorWindow : EditorWindow
         m_tetrahedralization = (Tetrahedralization)EditorGUILayout.ObjectField("Output Tetrahedralization", m_tetrahedralization, typeof(Tetrahedralization), false);
         if(EditorGUI.EndChangeCheck())
         {
-            m_tetrahedralizationMesh = null == m_tetrahedralization ? null : m_tetrahedralization.ToMesh().mesh;
+            UpdateMesh(ref m_tetrahedralizationMesh, null == m_tetrahedralization ? null : m_tetrahedralization.ToMesh().mesh);
         }
 
         EditorGUILayout.Space();
-        if(!m_asyncTaskIsRunning && GUILayout.Button($"Create Tetrahedralized Mesh{(null==m_tetrahedralization ? " (Dry Run)":"")}"))
+        if(!m_asyncTaskIsRunning && null!=m_tetrahedralization && GUILayout.Button($"Create Tetrahedralized Mesh"))
         {
             TetrahedralizedMeshCreation tetrahedralizedMeshCreation = new TetrahedralizedMeshCreation();
             TetrahedralizedMeshCreation.TetrahedralizedMeshCreationInput input = new TetrahedralizedMeshCreation.TetrahedralizedMeshCreationInput();
@@ -215,7 +215,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
             m_tetrahedralization.Assign(output.m_tetrahedralization);
             EditorUtility.SetDirty(m_tetrahedralization);
 
-            m_tetrahedralizationMesh = m_tetrahedralization.ToMesh().mesh;
+            UpdateMesh(ref m_tetrahedralizationMesh, null == m_tetrahedralization ? null : m_tetrahedralization.ToMesh().mesh);
         }
 
         GUILayout.Space(GAP_SMALL_RECT_SIZE);
@@ -244,17 +244,17 @@ public class TetrahedralizerEditorWindow : EditorWindow
         m_tetrahedralization = (Tetrahedralization)EditorGUILayout.ObjectField("Input Tetrahedralization", m_tetrahedralization, typeof(Tetrahedralization), false);
         if(EditorGUI.EndChangeCheck())
         {
-            m_tetrahedralizationMesh = null == m_tetrahedralization ? null : m_tetrahedralization.ToMesh().mesh;
+            UpdateMesh(ref m_tetrahedralizationMesh, null == m_tetrahedralization ? null : m_tetrahedralization.ToMesh().mesh);
         }
         EditorGUI.BeginChangeCheck();
         m_tetrahedralMesh = (TetrahedralMesh)EditorGUILayout.ObjectField("Output Tetrahedral Mesh", m_tetrahedralMesh, typeof(TetrahedralMesh), false);
         if(EditorGUI.EndChangeCheck())
         {
-            m_tetrahedralMeshMesh = null == m_tetrahedralMesh ? null : m_tetrahedralMesh.ToMesh().mesh;
+            UpdateMesh(ref m_tetrahedralMeshMesh, null == m_tetrahedralMesh ? null : m_tetrahedralMesh.ToMesh().mesh);
         }
 
         EditorGUILayout.Space();
-        if(!m_asyncTaskIsRunning && GUILayout.Button($"Create Tetrahedral Mesh{(null==m_tetrahedralMesh ? " (Dry Run)":"")}"))
+        if(!m_asyncTaskIsRunning && null!=m_tetrahedralization && null!=m_tetrahedralMesh && GUILayout.Button($"Create Tetrahedral Mesh"))
         {
             TetrahedralMeshCreation tetrahedralMeshCreation = new TetrahedralMeshCreation();
             TetrahedralMeshCreation.TetrahedralMeshCreationInput input = new TetrahedralMeshCreation.TetrahedralMeshCreationInput();
@@ -275,7 +275,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
             m_tetrahedralMesh.Assign(output.m_tetrahedralMesh);
             EditorUtility.SetDirty(m_tetrahedralMesh);
 
-            m_tetrahedralMeshMesh = m_tetrahedralMesh.ToMesh().mesh;
+            UpdateMesh(ref m_tetrahedralMeshMesh, null == m_tetrahedralMesh ? null : m_tetrahedralMesh.ToMesh().mesh);
         }
 
 
@@ -302,6 +302,15 @@ public class TetrahedralizerEditorWindow : EditorWindow
         EditorGUI.LabelField(GUILayoutUtility.GetRect(MESH_PREVIEW_RECT_SIZE, MESH_DESCRIPTION_RECT_SIZE, GUILayout.ExpandWidth(false)), 
         $"Output Tetrahedral Mesh\nVertices Count: {(null==m_tetrahedralMesh ? 0:m_tetrahedralMesh.GetTetrahedronsCount()*12)}\nTetrahedrons Count: {(null==m_tetrahedralMesh ? 0:m_tetrahedralMesh.GetTetrahedronsCount())}");
         EditorGUILayout.EndHorizontal();
+    }
+
+    private void UpdateMesh(ref Mesh target, Mesh source)
+    {
+        target = source;
+        if(null != target)
+        {
+            target.hideFlags = HideFlags.HideAndDontSave;
+        }
     }
 
     private void DrawMeshPreview(Mesh mesh, int previewIndex, Rect rect)

@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEditor;
 
-public class MeshPreviewField : IDisposable
+public class MeshPreviewField
 {
     private Transform m_previewParent;
 
@@ -25,7 +25,7 @@ public class MeshPreviewField : IDisposable
     public MeshPreviewField()
     {
         m_renderTexture = new RenderTexture(512,512,32);
-        m_renderTexture.Create();
+        m_renderTexture.hideFlags = HideFlags.HideAndDontSave;
 
         m_camera = new GameObject().AddComponent<Camera>();
         m_camera.targetTexture = m_renderTexture;
@@ -50,6 +50,7 @@ public class MeshPreviewField : IDisposable
 
         m_previewParent = new GameObject().transform;
         m_previewParent.gameObject.hideFlags = HideFlags.HideAndDontSave;
+
         m_camera.transform.SetParent(m_previewParent);
         m_directionalLight0.transform.SetParent(m_previewParent);
         m_directionalLight1.transform.SetParent(m_previewParent);
@@ -57,11 +58,13 @@ public class MeshPreviewField : IDisposable
 
         m_previewParent.gameObject.SetActive(false);
     }
+
     public void Dispose()
     {
         if(null != m_renderTexture)
         {
             m_renderTexture.Release();
+            m_renderTexture = null;
         }
         if(null != m_previewParent)
         {
@@ -103,6 +106,10 @@ public class MeshPreviewField : IDisposable
         if(current.type == EventType.Repaint)
         {
             ChangeTransforms();
+            if(!m_renderTexture.IsCreated())
+            {
+                m_renderTexture.Create();
+            }
             RenderCamera();
             GUI.DrawTexture(rect, m_renderTexture, ScaleMode.ScaleToFit);
         }

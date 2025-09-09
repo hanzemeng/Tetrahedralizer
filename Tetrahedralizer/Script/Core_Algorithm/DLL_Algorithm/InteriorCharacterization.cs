@@ -45,39 +45,38 @@ public class InteriorCharacterization
 
         double[] explicitVertices = input.m_explicitVertices.ToArray();
         TetrahedralizerUtility.SwapElementsByInterval(explicitVertices, 3);
-        int implicit_count = TetrahedralizerUtility.CountFlatIListElements(input.m_implicitVertices);
+        int implicitCount = TetrahedralizerUtility.CountFlatIListElements(input.m_implicitVertices);
         int[] implicitVertices = null == input.m_implicitVertices ? null : input.m_implicitVertices.ToArray();
+        int polyhedronsCount = TetrahedralizerUtility.CountFlatIListElements(input.m_polyhedrons);
         int[] constraints = input.m_constraints.ToArray();
         TetrahedralizerUtility.SwapElementsByInterval(constraints, 3);
         double[] polyhedronsWindingNumbers = null == input.m_polyhedronsWindingNumbers ? null : input.m_polyhedronsWindingNumbers.ToArray();
 
         IntPtr handle = CreateInteriorCharacterizationHandle();
         AddInteriorCharacterizationInput(handle, 
-        input.m_explicitVertices.Count/3, explicitVertices, implicit_count, implicitVertices, 
-        TetrahedralizerUtility.CountFlatIListElements(input.m_polyhedrons), input.m_polyhedrons.ToArray(), TetrahedralizerUtility.CountFlatIListElements(input.m_polyhedronsFacets), input.m_polyhedronsFacets.ToArray(), input.m_constraints.Count/3, constraints, 
+        input.m_explicitVertices.Count/3, explicitVertices, implicitCount, implicitVertices, 
+        polyhedronsCount, input.m_polyhedrons.ToArray(), TetrahedralizerUtility.CountFlatIListElements(input.m_polyhedronsFacets), input.m_polyhedronsFacets.ToArray(), input.m_constraints.Count/3, constraints, 
         polyhedronsWindingNumbers, input.m_minCutNeighborMultiplier);
 
         CalculateInteriorCharacterization(handle);
 
-        
+
         IntPtr ptr;
         if(null == input.m_polyhedronsWindingNumbers)
         {
             output.m_polyhedronsWindingNumbers = new List<double>();
             ptr = GetOutputPolyhedronsWindingNumbers(handle);
-            for(int i=0; i<input.m_polyhedrons.Count; i++)
+            for(int i=0; i<polyhedronsCount; i++)
             {
-                output.m_polyhedronsWindingNumbers.Add(BitConverter.Int64BitsToDouble(Marshal.ReadInt64(ptr)));
-                ptr = IntPtr.Add(ptr, 8);
+                output.m_polyhedronsWindingNumbers.Add(ptr.ReadDouble());
             }
         }
 
         output.m_polyhedronsInteriorLabels = new List<int>();
         ptr = GetOutputPolyhedronsLabels(handle);
-        for(int i=0; i<input.m_polyhedrons.Count; i++)
+        for(int i=0; i<polyhedronsCount; i++)
         {
-            output.m_polyhedronsInteriorLabels.Add(Marshal.ReadInt32(ptr));
-            ptr = IntPtr.Add(ptr, 4);
+            output.m_polyhedronsInteriorLabels.Add(ptr.ReadInt32());
         }
 
         DisposeInteriorCharacterizationHandle(handle);

@@ -45,14 +45,14 @@ public class GenericPointApproximation
         double[] explicitVertices = input.m_explicitVertices.ToArray();
         TetrahedralizerUtility.SwapElementsByInterval(explicitVertices, 3);
         int[] implicitVertices = input.m_implicitVertices.ToArray();
-        int implicit_count = TetrahedralizerUtility.CountFlatIListElements(input.m_implicitVertices);
+        int implicitCount = TetrahedralizerUtility.CountFlatIListElements(input.m_implicitVertices);
 
         IntPtr handle = CreateGenericPointApproximationHandle();
-        AddGenericPointApproximationVertices(handle, input.m_explicitVertices.Count/3, explicitVertices, implicit_count, implicitVertices);
+        AddGenericPointApproximationVertices(handle, input.m_explicitVertices.Count/3, explicitVertices, implicitCount, implicitVertices);
 
         ApproximateGenericPoint(handle);
 
-        int n = input.m_explicitVertices.Count+3*implicit_count;
+        int n = input.m_explicitVertices.Count+3*implicitCount;
         output.m_approximatePositions = new List<double>(n);
         IntPtr ptr = GetOutputApproximation(handle);
         for(int i=0; i<n; i++)

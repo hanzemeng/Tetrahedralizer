@@ -37,13 +37,13 @@ public class FacetAssociation
 
         double[] explicitVertices = input.m_explicitVertices.ToArray();
         TetrahedralizerUtility.SwapElementsByInterval(explicitVertices, 3);
-        int implicit_count = TetrahedralizerUtility.CountFlatIListElements(input.m_implicitVertices);
+        int implicitCount = TetrahedralizerUtility.CountFlatIListElements(input.m_implicitVertices);
         int[] implicitVertices = null == input.m_implicitVertices ? null : input.m_implicitVertices.ToArray();
         int[] tetrahedrons = input.m_tetrahedrons.ToArray();
         TetrahedralizerUtility.SwapElementsByInterval(tetrahedrons, 4);
 
         IntPtr handle = CreateFacetAssociationHandle();
-        AddFacetAssociationInput(handle, input.m_explicitVertices.Count/3, explicitVertices, implicit_count, implicitVertices, input.m_tetrahedrons.Count/4, tetrahedrons, input.m_constraints.Count/3, input.m_constraints.ToArray());
+        AddFacetAssociationInput(handle, input.m_explicitVertices.Count/3, explicitVertices, implicitCount, implicitVertices, input.m_tetrahedrons.Count/4, tetrahedrons, input.m_constraints.Count/3, input.m_constraints.ToArray());
 
         CalculateFacetAssociation(handle);
 
