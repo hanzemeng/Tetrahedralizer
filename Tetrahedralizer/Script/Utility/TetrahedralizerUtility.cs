@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -172,13 +173,7 @@ public class TetrahedralizerUtility
 
     public static Vector3 CenterVertices(IList<Vector3> vertices)
     {
-        Vector3 center = Vector3.zero;
-
-        foreach(Vector3 v in vertices)
-        {
-            center += v;
-        }
-        center /= vertices.Count;
+        Vector3 center = vertices.Skip(1).Aggregate(new Bounds(vertices[0], Vector3.zero), (i,j)=>{i.Encapsulate(j);return i;}).center;
         for(Int32 i=0; i<vertices.Count; i++)
         {
             vertices[i] = vertices[i] - center;

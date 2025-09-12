@@ -13,7 +13,7 @@ public class InteriorCharacterization
         public IList<int> m_polyhedronsFacets; // # of facets vertices, followed by vertices indexes ordered in cw or ccw.
         public IList<int> m_constraints; // Every 3 ints is a constraint (triangle). Curl around the points and your thumb points outward. Assuming left hand coordinate.
         public IList<double> m_polyhedronsWindingNumbers; // The winding number of a polyhedron determines if it is inside or outside the constraints.
-        public double m_minCutNeighborMultiplier; // TODO
+        public double m_minCutNeighborMultiplier; // Discussed in paper but don't know how to choose a value.
     }
     public class InteriorCharacterizationOutput
     {
@@ -24,8 +24,6 @@ public class InteriorCharacterization
 
     public void CalculateInteriorCharacterization(InteriorCharacterizationInput input, InteriorCharacterizationOutput output)
     {
-        //AddInteriorCharacterizationVertices(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t polyhedrons_facets_count, uint32_t* polyhedrons_facets, uint32_t constraints_count, uint32_t* constraints, double* polyhedrons_winding_numbers, double min_cut_neighbor_multiplier);
-
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern IntPtr CreateInteriorCharacterizationHandle();
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]

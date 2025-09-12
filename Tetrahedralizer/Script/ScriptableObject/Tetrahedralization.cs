@@ -33,20 +33,17 @@ public class Tetrahedralization : ScriptableObject
             Vector3 v1 = vertices[m_tetrahedrons[i+1]];
             Vector3 v2 = vertices[m_tetrahedrons[i+2]];
             Vector3 v3 = vertices[m_tetrahedrons[i+3]];
-            Vector3 average = (v0+v1+v2+v3) / 4f;
-            v0 -= average;
-            v1 -= average;
-            v2 -= average;
-            v3 -= average;
+            Vector3[] meshVertices = new Vector3[]{v0,v2,v1, v0,v1,v3, v0,v3,v2, v1,v2,v3};
+            Vector3 center = TetrahedralizerUtility.CenterVertices(meshVertices);
 
             Mesh mesh = new Mesh();
-            mesh.vertices = new Vector3[]{v0,v2,v1, v0,v1,v3, v0,v3,v2, v1,v2,v3};
+            mesh.vertices = meshVertices;
             mesh.triangles = zeroToEleven;
             mesh.RecalculateBounds();
             mesh.RecalculateNormals();
             mesh.RecalculateTangents();
 
-            res.Add((mesh, average));
+            res.Add((mesh, center));
         }
 
         return res;

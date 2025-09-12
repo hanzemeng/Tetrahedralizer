@@ -122,7 +122,6 @@ public class TetrahedralMeshCreation
             }
         }
 
-        int UNDEFINED_VALUE = -1;
         List<int> resultTrianglesSubmeshes = new List<int>();
 
         int FAOutputIndex = 0;
@@ -135,7 +134,7 @@ public class TetrahedralMeshCreation
             int c2 = FAOutput.m_tetrahedronsFacetsMapping[FAOutputIndex++];
 
             // vertices not on constraints, find the closest triangle with a good normal alignment
-            if(UNDEFINED_VALUE == c0 || UNDEFINED_VALUE == c1 || UNDEFINED_VALUE == c2 ||
+            if(TetrahedralizerConstant.UNDEFINED_VALUE == c0 || TetrahedralizerConstant.UNDEFINED_VALUE == c1 || TetrahedralizerConstant.UNDEFINED_VALUE == c2 ||
                originalTrianglesSubmeshes[c0] != originalTrianglesSubmeshes[c1] ||
                originalTrianglesSubmeshes[c1] != originalTrianglesSubmeshes[c2])
             {

@@ -28,9 +28,9 @@ public class DelaunayTetrahedralization
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void CalculateDelaunayTetrahedralization(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-        static extern int GetOutputTetrahedronsCount(IntPtr handle); // technically returns UInt32, but C# hates it.
+        static extern int GetOutputTetrahedronsCount(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-        static extern IntPtr GetOutputTetrahedrons(IntPtr handle); // technically returns UIntPtr, but C# hates it.
+        static extern IntPtr GetOutputTetrahedrons(IntPtr handle);
 
 
         double[] explicitVertices = delaunayTetrahedralizationInput.m_explicitVertices.ToArray();
