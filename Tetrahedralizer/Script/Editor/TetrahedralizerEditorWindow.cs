@@ -17,7 +17,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
         TETRAHEDRALIZED_MESH,
         TETRAHEDRAL_MESH,
     }
-    private class TetrahedralizerEditorWindowSettings : ScriptableObject
+    private class TetrahedralizerEditorWindowSettings
     {
         private static TetrahedralizerEditorWindowSettings m_instance;
         public static TetrahedralizerEditorWindowSettings instance
@@ -26,7 +26,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
             {
                 if(null == m_instance)
                 {
-                    m_instance = CreateInstance<TetrahedralizerEditorWindowSettings>();
+                    m_instance = new TetrahedralizerEditorWindowSettings();
                     if(EditorPrefs.HasKey(EDITOR_PREFS_KEY))
                     {
                         m_instance.Load(EditorPrefs.GetString(EDITOR_PREFS_KEY));
@@ -128,6 +128,8 @@ public class TetrahedralizerEditorWindow : EditorWindow
 
 
     private bool m_asyncTaskIsRunning;
+    private IProgress<string> m_asyncTaskProgress;
+    private string m_asyncTaskProgressField;
     private List<MeshPreviewField> m_meshesPreviews;
 
     private TetrahedralizerEditorWindowSettings m_settings;
@@ -156,6 +158,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
         }
 
         m_asyncTaskIsRunning = false;
+        m_asyncTaskProgress = new Progress<string>(i=>m_asyncTaskProgressField=i);
         m_meshesPreviews = Enumerable.Range(0, TetrahedralizerEditorWindowSettings.MESH_PREVIEWS_COUNT).Select(i=>new MeshPreviewField()).ToList();
         m_meshMaterials = new List<Material>();
     }
@@ -163,13 +166,15 @@ public class TetrahedralizerEditorWindow : EditorWindow
     {
         m_meshesPreviews.ForEach(i=>i.Dispose());
         m_settings.Save();
+        UpdateMesh(ref m_tetrahedralizationMesh, null);
+        UpdateMesh(ref m_tetrahedralMeshMesh, null);
     }
 
     private void OnGUI()
     {
         if(m_asyncTaskIsRunning)
         {
-            EditorGUILayout.HelpBox("An async task is running.", MessageType.Warning);
+            EditorGUILayout.HelpBox($"An async task is running. {m_asyncTaskProgressField}", MessageType.Warning);
         }
         m_settings = TetrahedralizerEditorWindowSettings.instance;
         m_settings.m_currentPage = (Page)GUILayout.Toolbar((int)m_settings.m_currentPage, Enum.GetNames(typeof(Page)).Select(i=>TetrahedralizerUtility.UpperSnakeCaseToCapitalizedWords(i)).ToArray());
@@ -286,7 +291,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
     private async Task DrawTetrahedralizedMeshPage()
     {
         EditorGUI.BeginChangeCheck();
-        m_settings.m_tetrahedralization = (Tetrahedralization)EditorGUILayout.ObjectField(new GUIContent("Output Tetrahedralization:", "The resulting Tetrahedralization. It represents the convex hull of the target GameObject using tetrahedrons. It only knows the vertices’ positions."), m_settings.m_tetrahedralization, typeof(Tetrahedralization), false);
+        m_settings.m_tetrahedralization = (Tetrahedralization)EditorGUILayout.ObjectField(new GUIContent("Output Tetrahedralization:", "The resulting Tetrahedralization. It represents the input Mesh using tetrahedrons. It only knows the vertices’ positions."), m_settings.m_tetrahedralization, typeof(Tetrahedralization), false);
         if(EditorGUI.EndChangeCheck())
         {
             UpdateMesh(ref m_tetrahedralizationMesh, null == m_settings.m_tetrahedralization ? null : m_settings.m_tetrahedralization.ToMesh().mesh);
@@ -303,7 +308,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
             m_asyncTaskIsRunning = true;
             try
             {
-                await tetrahedralizedMeshCreation.CreateAsync(input, output);
+                await tetrahedralizedMeshCreation.CreateAsync(input, output, m_asyncTaskProgress);
             }
             catch(Exception exception)
             {
@@ -339,7 +344,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
     private async Task DrawTetrahedralMeshPage()
     {
         EditorGUI.BeginChangeCheck();
-        m_settings.m_tetrahedralization = (Tetrahedralization)EditorGUILayout.ObjectField(new GUIContent("Input Tetrahedralization:", "The Tetrahedralization that represents the convex hull of the target GameObject."), m_settings.m_tetrahedralization, typeof(Tetrahedralization), false);
+        m_settings.m_tetrahedralization = (Tetrahedralization)EditorGUILayout.ObjectField(new GUIContent("Input Tetrahedralization:", "The Tetrahedralization that represents the input Mesh using tetrahedrons."), m_settings.m_tetrahedralization, typeof(Tetrahedralization), false);
         if(EditorGUI.EndChangeCheck())
         {
             UpdateMesh(ref m_tetrahedralizationMesh, null == m_settings.m_tetrahedralization ? null : m_settings.m_tetrahedralization.ToMesh().mesh);
@@ -363,7 +368,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
             m_asyncTaskIsRunning = true;
             try
             {
-                await tetrahedralMeshCreation.CreateAsync(input, output);
+                await tetrahedralMeshCreation.CreateAsync(input, output, m_asyncTaskProgress);
             }
             catch(Exception exception)
             {
@@ -404,6 +409,10 @@ public class TetrahedralizerEditorWindow : EditorWindow
 
     private void UpdateMesh(ref Mesh target, Mesh source)
     {
+        if(null != target)
+        {
+            DestroyImmediate(target);
+        }
         target = source;
         if(null != target)
         {
@@ -413,10 +422,6 @@ public class TetrahedralizerEditorWindow : EditorWindow
 
     private void DrawMeshPreview(Mesh mesh, int previewIndex, Rect rect, bool useInteriorMaterial)
     {
-        if(null == mesh)
-        {
-            mesh = new Mesh(); // just draw something
-        }
         m_meshesPreviews[previewIndex].AssignMesh(mesh);
         if(useInteriorMaterial)
         {

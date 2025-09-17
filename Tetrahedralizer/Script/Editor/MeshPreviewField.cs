@@ -61,14 +61,15 @@ public class MeshPreviewField
 
     public void Dispose()
     {
-        if(null != m_renderTexture)
-        {
-            m_renderTexture.Release();
-            m_renderTexture = null;
-        }
         if(null != m_previewParent)
         {
             UnityEngine.Object.DestroyImmediate(m_previewParent.gameObject);
+        }
+        if(null != m_renderTexture)
+        {
+            m_renderTexture.Release();
+            UnityEngine.Object.DestroyImmediate(m_renderTexture);
+            m_renderTexture = null;
         }
     }
 
@@ -93,6 +94,10 @@ public class MeshPreviewField
 
     public void AssignMesh(Mesh mesh)
     {
+        if(null == mesh)
+        {
+            mesh = MeshUtility.GetEmptyMesh();
+        }
         m_meshFilter.mesh = mesh;
     }
     public void AssignMaterials(List<Material> materials)

@@ -147,7 +147,6 @@ PolyhedronEdge::PolyhedronEdge(PolyhedronEdge* other)
     this->p3 = other->p3;
     this->p4 = other->p4;
     this->p5 = other->p5;
-    this->f = other->f;
 }
 
 PolyhedronFacet::PolyhedronFacet(){}
@@ -230,9 +229,6 @@ void BinarySpacePartition::binary_space_partition(BinarySpacePartitionInput* inp
                 e1 = find_or_add_edge(p1,p2);
                 e2 = find_or_add_edge(p2,p0);
                 facet = find_or_add_facet(e0,e1,e2,p0,p1,p2);
-                m_polyhedrons_edges[e0]->f = facet;
-                m_polyhedrons_edges[e1]->f = facet;
-                m_polyhedrons_edges[e2]->f = facet;
                 if(UNDEFINED_VALUE == m_polyhedrons_facets[facet]->ip0)
                 {
                     m_polyhedrons_facets[facet]->ip0 = p;
@@ -354,7 +350,7 @@ void BinarySpacePartition::binary_space_partition(BinarySpacePartitionInput* inp
                 }
                 m_u_set_i_1.insert(t);
 
-                int int_type = tt_intersection(m_tetrahedrons[t+0], m_tetrahedrons[t+1], m_tetrahedrons[t+2], m_tetrahedrons[t+3], c0, c1, c2);
+                int int_type = triangle_tetrahedron_intersection(c0, c1, c2,m_tetrahedrons[t+0], m_tetrahedrons[t+1], m_tetrahedrons[t+2], m_tetrahedrons[t+3], m_vertices.data());
                 if(0 == int_type)
                 {
                     continue;
@@ -649,19 +645,8 @@ void BinarySpacePartition::binary_space_partition(BinarySpacePartitionInput* inp
                 m_polyhedrons[bottom_polyhedron]->facets = m_vector_i_1;
                 m_polyhedrons[bottom_polyhedron]->facets.push_back(common_facet);
                 
-                for(uint32_t f : m_polyhedrons[i]->facets)
-                {
-                    for(uint32_t e : m_polyhedrons_facets[f]->edges)
-                    {
-                        m_polyhedrons_edges[e]->f = f;
-                    }
-                }
                 for(uint32_t f : m_polyhedrons[bottom_polyhedron]->facets)
                 {
-                    for(uint32_t e : m_polyhedrons_facets[f]->edges)
-                    {
-                        m_polyhedrons_edges[e]->f = f;
-                    }
                     if(f == common_facet)
                     {
                         continue;
@@ -876,7 +861,7 @@ uint32_t BinarySpacePartition::find_or_add_edge(uint32_t p0, uint32_t p1)
     e->e1 = p1;
     e->p0 = p0;
     e->p1 = p1;
-    e->p2 = e->p3 = e->p4 = e->p5 = e->f = UNDEFINED_VALUE;
+    e->p2 = e->p3 = e->p4 = e->p5 = UNDEFINED_VALUE;
     m_polyhedrons_edges.push_back(e);
     return m_polyhedrons_edges.size()-1;
 }
@@ -937,223 +922,6 @@ void BinarySpacePartition::get_polyhedron_facet_vertices(uint32_t f, uint32_t& f
     {
         f2 = m_polyhedrons_edges[m_polyhedrons_facets[f]->edges[1]]->e0;
     }
-}
-
-// 0 no intersection, 1 intersection in exterior, 2 int interior
-uint32_t BinarySpacePartition::tt_intersection(uint32_t t0, uint32_t t1, uint32_t t2, uint32_t t3, uint32_t c0, uint32_t c1, uint32_t c2)
-{
-    // neighbors order: 0,1,2  1,0,3  0,2,3,  2,1,3
-    // check a constraint vertex is inside the tetrahedron
-    {
-        int oc0t012 = orient3d(t0, t1, t2, c0, m_vertices.data());
-        int oc1t012 = orient3d(t0, t1, t2, c1, m_vertices.data());
-        int oc2t012 = orient3d(t0, t1, t2, c2, m_vertices.data());
-        int oc0t103 = orient3d(t1, t0, t3, c0, m_vertices.data());
-        int oc1t103 = orient3d(t1, t0, t3, c1, m_vertices.data());
-        int oc2t103 = orient3d(t1, t0, t3, c2, m_vertices.data());
-        int oc0t023 = orient3d(t0, t2, t3, c0, m_vertices.data());
-        int oc1t023 = orient3d(t0, t2, t3, c1, m_vertices.data());
-        int oc2t023 = orient3d(t0, t2, t3, c2, m_vertices.data());
-        int oc0t213 = orient3d(t2, t1, t3, c0, m_vertices.data());
-        int oc1t213 = orient3d(t2, t1, t3, c1, m_vertices.data());
-        int oc2t213 = orient3d(t2, t1, t3, c2, m_vertices.data());
-        
-        bool int_in =
-        (1==oc0t012 && oc0t012==oc0t103 && oc0t012==oc0t023 && oc0t012==oc0t213) ||
-        (1==oc1t012 && oc1t012==oc1t103 && oc1t012==oc1t023 && oc1t012==oc1t213) ||
-        (1==oc2t012 && oc2t012==oc2t103 && oc2t012==oc2t023 && oc2t012==oc2t213) ||
-        inner_segment_cross_inner_triangle(t0,t1,c0,c1,c2,m_vertices.data()) ||
-        inner_segment_cross_inner_triangle(t0,t2,c0,c1,c2,m_vertices.data()) ||
-        inner_segment_cross_inner_triangle(t0,t3,c0,c1,c2,m_vertices.data()) ||
-        inner_segment_cross_inner_triangle(t1,t2,c0,c1,c2,m_vertices.data()) ||
-        inner_segment_cross_inner_triangle(t1,t3,c0,c1,c2,m_vertices.data()) ||
-        inner_segment_cross_inner_triangle(t2,t3,c0,c1,c2,m_vertices.data()) ||
-        inner_segment_cross_inner_triangle(c0,c1,t1,t2,t3,m_vertices.data()) ||
-        inner_segment_cross_inner_triangle(c1,c2,t1,t2,t3,m_vertices.data()) ||
-        inner_segment_cross_inner_triangle(c2,c0,t1,t2,t3,m_vertices.data()) ||
-        inner_segment_cross_inner_triangle(c0,c1,t0,t2,t3,m_vertices.data()) ||
-        inner_segment_cross_inner_triangle(c1,c2,t0,t2,t3,m_vertices.data()) ||
-        inner_segment_cross_inner_triangle(c2,c0,t0,t2,t3,m_vertices.data()) ||
-        inner_segment_cross_inner_triangle(c0,c1,t0,t1,t3,m_vertices.data()) ||
-        inner_segment_cross_inner_triangle(c1,c2,t0,t1,t3,m_vertices.data()) ||
-        inner_segment_cross_inner_triangle(c2,c0,t0,t1,t3,m_vertices.data()) ||
-        inner_segment_cross_inner_triangle(c0,c1,t0,t1,t2,m_vertices.data()) ||
-        inner_segment_cross_inner_triangle(c1,c2,t0,t1,t2,m_vertices.data()) ||
-        inner_segment_cross_inner_triangle(c2,c0,t0,t1,t2,m_vertices.data());
-        if(int_in)
-        {
-            return 2;
-        }
-    }
-    
-    
-    //check if constraint and tetrahedron share vertices
-    uint32_t shared_vertices_count = tt_intersection_helper(t0,t1,t2,t3,c0,c1,c2);
-    
-    if(2 == shared_vertices_count)
-    {
-        int oc2t012 = orient3d(t0, t1, t2, c2, m_vertices.data());
-        int oc2t103 = orient3d(t1, t0, t3, c2, m_vertices.data());
-        if(1 == oc2t012 && 1 == oc2t103)
-        {
-            return 2;
-        }
-    }
-    else if(1 == shared_vertices_count)
-    {
-        int oc1t012 = orient3d(t0, t1, t2, c1, m_vertices.data());
-        int oc2t012 = orient3d(t0, t1, t2, c2, m_vertices.data());
-        int oc1t103 = orient3d(t1, t0, t3, c1, m_vertices.data());
-        int oc2t103 = orient3d(t1, t0, t3, c2, m_vertices.data());
-        int oc1t023 = orient3d(t0, t2, t3, c1, m_vertices.data());
-        int oc2t023 = orient3d(t0, t2, t3, c2, m_vertices.data());
-        
-        uint32_t c1_cover = -1;
-        uint32_t c2_cover = -1;
-        if(1 == oc1t012 && 1 == oc1t023)
-        {
-            c1_cover = 0;
-        }
-        if(1 == oc1t103 && 1 == oc1t023)
-        {
-            c1_cover = 1;
-        }
-        if(1 == oc1t012 && 1 == oc1t103)
-        {
-            c1_cover = 2;
-        }
-        if(1 == oc2t012 && 1 == oc2t023)
-        {
-            c2_cover = 0;
-        }
-        if(1 == oc2t103 && 1 == oc2t023)
-        {
-            c2_cover = 1;
-        }
-        if(1 == oc2t012 && 1 == oc2t103)
-        {
-            c2_cover = 2;
-        }
-        if(c1_cover != c2_cover)
-        {
-            return 2;
-        }
-    }
-    
-    if(0 != shared_vertices_count)
-    {
-        return 1;
-    }
-    
-    // check point just touching
-    bool int_no =
-    segment_cross_triangle(t0,t1,c0,c1,c2,m_vertices.data()) ||
-    segment_cross_triangle(t0,t2,c0,c1,c2,m_vertices.data()) ||
-    segment_cross_triangle(t0,t3,c0,c1,c2,m_vertices.data()) ||
-    segment_cross_triangle(t1,t2,c0,c1,c2,m_vertices.data()) ||
-    segment_cross_triangle(t1,t3,c0,c1,c2,m_vertices.data()) ||
-    segment_cross_triangle(t2,t3,c0,c1,c2,m_vertices.data()) ||
-    segment_cross_triangle(c0,c1,t1,t2,t3,m_vertices.data()) ||
-    segment_cross_triangle(c1,c2,t1,t2,t3,m_vertices.data()) ||
-    segment_cross_triangle(c2,c0,t1,t2,t3,m_vertices.data()) ||
-    segment_cross_triangle(c0,c1,t0,t2,t3,m_vertices.data()) ||
-    segment_cross_triangle(c1,c2,t0,t2,t3,m_vertices.data()) ||
-    segment_cross_triangle(c2,c0,t0,t2,t3,m_vertices.data()) ||
-    segment_cross_triangle(c0,c1,t0,t1,t3,m_vertices.data()) ||
-    segment_cross_triangle(c1,c2,t0,t1,t3,m_vertices.data()) ||
-    segment_cross_triangle(c2,c0,t0,t1,t3,m_vertices.data()) ||
-    segment_cross_triangle(c0,c1,t0,t1,t2,m_vertices.data()) ||
-    segment_cross_triangle(c1,c2,t0,t1,t2,m_vertices.data()) ||
-    segment_cross_triangle(c2,c0,t0,t1,t2,m_vertices.data());
-    
-    if(!int_no)
-    {
-        return 0;
-    }
-
-    return 1;
-}
-
-uint32_t BinarySpacePartition::tt_intersection_helper(uint32_t& t0, uint32_t& t1, uint32_t& t2, uint32_t& t3, uint32_t& c0, uint32_t& c1, uint32_t& c2)
-{
-    uint32_t shared_vertices_count = 0;
-    
-    shared_vertices_count += t0==c0 || t1==c0 || t2==c0 || t3==c0;
-    shared_vertices_count += t0==c1 || t1==c1 || t2==c1 || t3==c1;
-    shared_vertices_count += t0==c2 || t1==c2 || t2==c2 || t3==c2;
-    
-    uint32_t swap_count = 0;
-    if(2 == shared_vertices_count)
-    {
-        if(!(t0==c0 || t1==c0 || t2==c0 || t3==c0))
-        {
-            swap(c0,c2);
-        }
-        else if(!(t0==c1 || t1==c1 || t2==c1 || t3==c1))
-        {
-            swap(c1,c2);
-        }
-        
-        if(t2==c0 || t2==c1)
-        {
-            swap(t2,t0);
-            swap_count++;
-        }
-        else if(t3==c0 || t3==c1)
-        {
-            swap(t3,t0);
-            swap_count++;
-        }
-        if(t2==c0 || t2==c1)
-        {
-            swap(t3,t1);
-            swap_count++;
-        }
-        else if(t3==c0 || t3==c1)
-        {
-            swap(t3,t1);
-            swap_count++;
-        }
-        
-        if(0 != swap_count%2)
-        {
-            swap(t2,t3);
-        }
-    }
-    else if(1 == shared_vertices_count)
-    {
-        if(t0==c1 || t1==c1 || t2==c1 || t3==c1)
-        {
-            swap(c0,c1);
-        }
-        else if(t0==c2 || t1==c2 || t2==c2 || t3==c2)
-        {
-            swap(c0,c2);
-        }
-        
-        if(t1==c0)
-        {
-            swap(t1,t0);
-            swap_count++;
-        }
-        else if(t2==c0)
-        {
-            swap(t2,t0);
-            swap_count++;
-        }
-        else if(t3==c0)
-        {
-            swap(t3,t0);
-            swap_count++;
-        }
-        
-        if(0 != swap_count%2)
-        {
-            swap(t2,t3);
-        }
-    }
-    
-    return shared_vertices_count;
 }
 
 uint32_t BinarySpacePartition::add_LPI(uint32_t e0, uint32_t e1, uint32_t p0,uint32_t p1,uint32_t p2)

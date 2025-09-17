@@ -38,7 +38,7 @@ public class TetrahedralMeshCreation
         CreateInternal(vertices, triangles, subMeshDescriptors, input.m_tetrahedralization.m_tetrahedrons, input.m_tetrahedralization.m_explicitVertices, input.m_tetrahedralization.m_implicitVertices, weldedTriangles, meshTriangleFinder, meshVertexDataMapper, tetrahedralMesh);
     }
 
-    public Task CreateAsync(TetrahedralMeshCreationInput input, TetrahedralMeshCreationOutput output)
+    public Task CreateAsync(TetrahedralMeshCreationInput input, TetrahedralMeshCreationOutput output, IProgress<string> progress=null)
     {
         List<Vector3> weldedVertices = input.m_mesh.vertices.ToList();
         int[] weldedTriangles = input.m_mesh.triangles;
@@ -58,34 +58,16 @@ public class TetrahedralMeshCreation
 
         return Task.Run(() =>
         {
-            CreateInternal(vertices, triangles, subMeshDescriptors, input.m_tetrahedralization.m_tetrahedrons, input.m_tetrahedralization.m_explicitVertices, input.m_tetrahedralization.m_implicitVertices, weldedTriangles, meshTriangleFinder, meshVertexDataMapper, tetrahedralMesh);
+            CreateInternal(vertices, triangles, subMeshDescriptors, input.m_tetrahedralization.m_tetrahedrons, input.m_tetrahedralization.m_explicitVertices, input.m_tetrahedralization.m_implicitVertices, weldedTriangles, meshTriangleFinder, meshVertexDataMapper, tetrahedralMesh, progress);
         });
     }
 
-    private void CreateInternal(Vector3[] vertices, int[] triangles, List<SubMeshDescriptor> subMeshDescriptors, List<int> tetrahedrons, List<double> explicitVertices, List<int> implicitVertices, int[] weldedTriangles, MeshTriangleFinder meshTriangleFinder, MeshVertexDataMapper meshVertexDataMapper, TetrahedralMesh tetrahedralMesh)
+    private void CreateInternal(Vector3[] vertices, int[] triangles, List<SubMeshDescriptor> subMeshDescriptors, List<int> tetrahedrons, List<double> explicitVertices, List<int> implicitVertices, int[] weldedTriangles, MeshTriangleFinder meshTriangleFinder, MeshVertexDataMapper meshVertexDataMapper, TetrahedralMesh tetrahedralMesh, IProgress<string> progress=null)
     {
-        TetrahedralizationPolyhedralization.TetrahedralizationPolyhedralizationInput TPInput = new TetrahedralizationPolyhedralization.TetrahedralizationPolyhedralizationInput();
-        TetrahedralizationPolyhedralization.TetrahedralizationPolyhedralizationOutput TPOutput = new TetrahedralizationPolyhedralization.TetrahedralizationPolyhedralizationOutput();
+        if(null != progress)
         {
-            TetrahedralizationPolyhedralization tetrahedralizationPolyhedralization = new TetrahedralizationPolyhedralization();
-            TPInput.m_tetrahedrons = tetrahedrons;
-            tetrahedralizationPolyhedralization.CalculateTetrahedralizationPolyhedralization(TPInput, TPOutput);
+            progress.Report("Associate facets.");
         }
-
-        InteriorCharacterization.InteriorCharacterizationInput ICInput = new InteriorCharacterization.InteriorCharacterizationInput();
-        InteriorCharacterization.InteriorCharacterizationOutput ICOutput = new InteriorCharacterization.InteriorCharacterizationOutput();
-        {
-            InteriorCharacterization interiorCharacterization = new InteriorCharacterization();
-            ICInput.m_explicitVertices = explicitVertices;
-            ICInput.m_implicitVertices = implicitVertices;
-            ICInput.m_polyhedrons = TPOutput.m_polyhedrons;
-            ICInput.m_polyhedronsFacets = TPOutput.m_polyhedronsFacets;
-            ICInput.m_constraints = weldedTriangles;
-            ICInput.m_polyhedronsWindingNumbers = null;
-            ICInput.m_minCutNeighborMultiplier = 1d;
-            interiorCharacterization.CalculateInteriorCharacterization(ICInput, ICOutput);
-        }
-
         FacetAssociation.FacetAssociationOutput FAOutput = new FacetAssociation.FacetAssociationOutput();
         FacetAssociation.FacetAssociationInput FAInput = new FacetAssociation.FacetAssociationInput();
         {
@@ -98,6 +80,10 @@ public class TetrahedralMeshCreation
             facetAssociation.CalculateFacetAssociation(FAInput, FAOutput);
         }
 
+        if(null != progress)
+        {
+            progress.Report("Approximate implicit vertices.");
+        }
         List<Vector3> approximatedVertices;
         {
             GenericPointApproximation.GenericPointApproximationOutput GPAOutput = new GenericPointApproximation.GenericPointApproximationOutput();
@@ -110,7 +96,10 @@ public class TetrahedralMeshCreation
             approximatedVertices = TetrahedralizerUtility.PackDoubles(GPAOutput.m_approximatePositions);
         }
 
-
+        if(null != progress)
+        {
+            progress.Report("Remap vertex data.");
+        }
         int originalSubmeshesCount = subMeshDescriptors.Count;
         List<int> originalTrianglesSubmeshes = Enumerable.Range(0,triangles.Count()/3).Select(i=>originalSubmeshesCount).ToList();
         for(int i=0; i<originalSubmeshesCount; i++)
@@ -145,7 +134,6 @@ public class TetrahedralMeshCreation
                 c0 = meshTriangleFinder.FindClosestTriangle(v0, pointNormal, 0.95d);
                 c1 = meshTriangleFinder.FindClosestTriangle(v1, pointNormal, 0.95d);
                 c2 = meshTriangleFinder.FindClosestTriangle(v2, pointNormal, 0.95d);
-                
             }
             // if still has no matching triangle, just add default value
             if( c0 < 0 || c1 < 0 || c2 < 0 || 
@@ -177,11 +165,6 @@ public class TetrahedralMeshCreation
 
         for(int i=0; i<tetrahedrons.Count; i+=4)
         {
-            if(0 == ICOutput.m_polyhedronsInteriorLabels[i/4])
-            {
-                FAOutputIndex += 12; // skip this tetrahedron because it is outside of the mesh constraints.
-                continue;
-            }
             int p0 = tetrahedrons[i+0];
             int p1 = tetrahedrons[i+1];
             int p2 = tetrahedrons[i+2];

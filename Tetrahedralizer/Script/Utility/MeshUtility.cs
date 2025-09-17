@@ -11,4 +11,19 @@ public static class MeshExtension
         }
         return res;
     }
+
+    
+}
+
+public static class MeshUtility
+{
+    private static Mesh m_emptyMesh = new Mesh();
+    public static Mesh GetEmptyMesh()
+    {
+        if(null == m_emptyMesh)
+        {
+            m_emptyMesh = new Mesh();
+        }
+        return m_emptyMesh;
+    }
 }
