@@ -5,6 +5,16 @@ using UnityEngine;
 
 public class TetrahedralizerUtility
 {
+    public static void SortInt2(ref int p0, ref int p1)
+    {
+        int temp;
+        if(p0 > p1)
+        {
+            temp = p1;
+            p1 = p0;
+            p0 = temp;
+        }
+    }
     public static void SortInt3(ref int p0, ref int p1, ref int p2)
     {
         int temp;
@@ -19,6 +29,12 @@ public class TetrahedralizerUtility
             temp = p2;
             p2 = p1;
             p1 = temp;
+        }
+        if(p0 > p1)
+        {
+            temp = p1;
+            p1 = p0;
+            p0 = temp;
         }
     }
 

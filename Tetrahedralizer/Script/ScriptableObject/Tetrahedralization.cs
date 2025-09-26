@@ -19,11 +19,6 @@ public class Tetrahedralization : ScriptableObject
     // each element is a tetrahedron, and the center of the tetrahedron in world space
     public List<(Mesh mesh, Vector3 center)> ToMeshes()
     {
-        if(null == m_explicitVertices || 0 == m_explicitVertices.Count)
-        {
-            return null;
-        }
-
         List<(Mesh, Vector3)> res = new List<(Mesh, Vector3)>();
         int[] zeroToEleven = Enumerable.Range(0,12).ToArray();
         List<Vector3> vertices = TetrahedralizerUtility.PackDoubles(GenericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
@@ -50,11 +45,6 @@ public class Tetrahedralization : ScriptableObject
     }
     public (Mesh mesh, Vector3 center) ToMesh()
     {
-        if(null == m_explicitVertices || 0 == m_explicitVertices.Count)
-        {
-            return (null, Vector3.zero);
-        }
-
         List<Vector3> vertices = TetrahedralizerUtility.PackDoubles(GenericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
         List<Vector3> meshVertices = new List<Vector3>(3*m_tetrahedrons.Count);
 
@@ -67,12 +57,12 @@ public class Tetrahedralization : ScriptableObject
 
             meshVertices.Add(v0,v2,v1, v0,v1,v3, v0,v3,v2, v1,v2,v3);
         }
-        Vector3 center = TetrahedralizerUtility.CenterVertices(meshVertices);
 
+        Vector3 center = TetrahedralizerUtility.CenterVertices(meshVertices);
         Mesh mesh = new Mesh();
         mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
         mesh.vertices = meshVertices.ToArray();
-        mesh.triangles = Enumerable.Range(0,3*m_tetrahedrons.Count).ToArray();
+        mesh.triangles = Enumerable.Range(0,meshVertices.Count).ToArray();
         mesh.RecalculateBounds();
         mesh.RecalculateNormals();
         mesh.RecalculateTangents();

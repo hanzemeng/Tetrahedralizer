@@ -112,7 +112,6 @@ public class TetrahedralMesh : ScriptableObject
                     tempInt.Add(3*j+1);
                     tempInt.Add(3*j+2);
                 }
-                    
             }
             mesh.SetTriangles(tempInt,i);
         }

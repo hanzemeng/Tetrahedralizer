@@ -113,15 +113,15 @@ inline void sort_ints(uint32_t& i0, uint32_t& i1)
 }
 inline void sort_ints(uint32_t& i0, uint32_t& i1, uint32_t& i2)
 {
-    if(i0 > i1 && i0 > i2)
+    if(i0 > i1)
     {
-        swap(i0,i2);
+        swap(i0,i1);
     }
-    else if(i1 > i0 && i1 > i2)
+    if(i1 > i2)
     {
         swap(i1,i2);
     }
-    if(i0>i1)
+    if(i0 > i1)
     {
         swap(i0,i1);
     }

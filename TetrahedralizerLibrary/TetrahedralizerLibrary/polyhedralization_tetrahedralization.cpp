@@ -31,43 +31,53 @@ void PolyhedralizationTetrahedralization::polyhedralization_tetrahedralization(P
             }
             p+=n+1;
             
-            m_u_map_i_i_0.clear(); // record new vertices to original vertices mapping
-            for(uint32_t j=0; j<m_vector_i_0.size(); j++)
+            uint32_t v = polyhedrons_facets[m_vector_i_0.back()][0];
+            m_vector_i_0.pop_back();
+            for(uint32_t f : m_vector_i_0)
             {
-                for(uint32_t k=0; k<polyhedrons_facets[m_vector_i_0[j]].size(); k++)
+                if(polyhedrons_facets[f].end() != find(polyhedrons_facets[f].begin(), polyhedrons_facets[f].end(), v)) // if v is on the facet
                 {
-                    uint32_t v = polyhedrons_facets[m_vector_i_0[j]][k];
-                    if(m_u_map_i_i_0.end() != m_u_map_i_i_0.find(v))
+                    continue;
+                }
+                
+                int o = 0;
+                for(uint32_t j=2; j<polyhedrons_facets[f].size(); j++)
+                {
+                    if(is_collinear(polyhedrons_facets[f][0],polyhedrons_facets[f][1],polyhedrons_facets[f][j], input->m_vertices))
                     {
                         continue;
                     }
-                    m_u_map_i_i_0[v] = m_u_map_i_i_0.size();
+                    o = orient3d(polyhedrons_facets[f][0],polyhedrons_facets[f][1],polyhedrons_facets[f][j], v, input->m_vertices);
+                    break;
+                }
+
+                if(0 == o) // v on the same plane as the facet
+                {
+                    continue;
+                }
+                
+                if(1 == o)
+                {
+                    for(uint32_t j=1; j<polyhedrons_facets[f].size()-1; j++)
+                    {
+                        res.push_back(polyhedrons_facets[f][0]);
+                        res.push_back(polyhedrons_facets[f][j]);
+                        res.push_back(polyhedrons_facets[f][j+1]);
+                        res.push_back(v);
+                    }
+                }
+                else
+                {
+                    for(uint32_t j=1; j<polyhedrons_facets[f].size()-1; j++)
+                    {
+                        res.push_back(polyhedrons_facets[f][0]);
+                        res.push_back(polyhedrons_facets[f][j+1]);
+                        res.push_back(polyhedrons_facets[f][j]);
+                        res.push_back(v);
+                    }
                 }
             }
-            
-            // do DT
-            vector<genericPoint*> polygon_vertices = vector<genericPoint*>(m_u_map_i_i_0.size());
-            vector<uint32_t> polygon_vertices_mapping = vector<uint32_t>(m_u_map_i_i_0.size());
-            for(auto [oi,ni] : m_u_map_i_i_0)
-            {
-                polygon_vertices[ni] = input->m_vertices[oi];
-                polygon_vertices_mapping[ni] = oi;
-            }
-            
-            DelaunayTetrahedralizationInput DTinput;
-            DTinput.m_vertices = polygon_vertices.data();
-            DTinput.m_vertices_count = polygon_vertices.size();
-            DelaunayTetrahedralizationOutput DToutput;
-            DelaunayTetrahedralization DT;
-            DT.delaunay_tetrahedralization(&DTinput, &DToutput);
-            
-            for(uint32_t j=0; j<4*DToutput.m_tetrahedrons_count; j++)
-            {
-                res.push_back(polygon_vertices_mapping[DToutput.m_tetrahedrons[j]]);
-            }
-            delete DToutput.m_tetrahedrons;
         }
-        
         
         // copy output
         {

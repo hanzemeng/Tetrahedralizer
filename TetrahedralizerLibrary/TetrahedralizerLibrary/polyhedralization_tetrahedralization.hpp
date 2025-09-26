@@ -3,7 +3,6 @@
 
 #include "common_header.h"
 #include "common_function.h"
-#include "delaunay_tetrahedralization.hpp"
 
 class PolyhedralizationTetrahedralizationInput
 {

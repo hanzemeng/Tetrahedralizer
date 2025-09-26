@@ -7,6 +7,9 @@ using UnityEngine;
 [ExecuteAlways]
 public class PolyhedralizationDrawer : MonoBehaviour
 {
+    [SerializeField] private Polyhedralization m_polyhedralization;
+    [SerializeField] private bool m_drawPolyhedralizationAsIndividualGameObjects;
+    [SerializeField] private bool m_drawPolyhedralizationInteriorFacets;
     [SerializeField] private Transform m_polyhedronsParent;
     [SerializeField] private Material m_polyhedronsMaterial;
     [SerializeField] [Range(0f,1f)] private float m_polyhedronsScale;
@@ -24,97 +27,49 @@ public class PolyhedralizationDrawer : MonoBehaviour
         }
     }
 
+    [ContextMenu("Draw")]
+    public void Draw()
+    {
+        Draw(m_polyhedralization);
+    }
     public void Draw(Polyhedralization polyhedralization)
     {
         Clear();
-
-        List<Vector3> vertices;
-        if(null == polyhedralization.m_implicitVertices || 0 == polyhedralization.m_implicitVertices.Count)
+        if(m_drawPolyhedralizationAsIndividualGameObjects)
         {
-            vertices = TetrahedralizerUtility.PackDoubles(polyhedralization.m_explicitVertices);
+            DrawAsIndividual(polyhedralization);
         }
         else
         {
-            GenericPointApproximation.GenericPointApproximationInput input = new GenericPointApproximation.GenericPointApproximationInput();
-            input.m_explicitVertices = polyhedralization.m_explicitVertices;
-            input.m_implicitVertices = polyhedralization.m_implicitVertices;
-            GenericPointApproximation.GenericPointApproximationOutput output = new GenericPointApproximation.GenericPointApproximationOutput();
-            GenericPointApproximation genericPointApproximation = new GenericPointApproximation();
-            genericPointApproximation.CalculateGenericPointApproximation(input, output);
-            vertices = TetrahedralizerUtility.PackDoubles(output.m_approximatePositions);
+            DrawAsWhole(polyhedralization);
         }
-
-        List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(polyhedralization.m_polyhedrons);
-        List<List<int>> polyhedronsFacets = TetrahedralizerUtility.FlatIListToNestedList(polyhedralization.m_polyhedronsFacets);
-
-        StringBuilder stringBuilder = new StringBuilder();
-        HashSet<int> uniqueVertices = new HashSet<int>();
-        List<Vector3> polyVertices = new List<Vector3>();
-        List<int> polyTriangles = new List<int>();
-        int triangleIndex = 0;
-        for(int i=0; i<polyhedrons.Count; i++)
+    }
+    private void DrawAsIndividual(Polyhedralization polyhedralization)
+    {
+        foreach((Mesh mesh, Vector3 center) in polyhedralization.ToMeshes())
         {
-            stringBuilder.Clear();
-            uniqueVertices.Clear();
-            polyVertices.Clear();
-            polyTriangles.Clear();
-            triangleIndex = 0;
-
-            for(int j=0; j<polyhedrons[i].Count; j++)
-            {
-                int facet = polyhedrons[i][j];
-                stringBuilder.Append($"{facet}_");
-                // draw one side first
-                for(int k=0; k<polyhedronsFacets[facet].Count; k++)
-                {
-                    uniqueVertices.Add(polyhedronsFacets[facet][k]);
-                    polyVertices.Add(vertices[polyhedronsFacets[facet][k]]);
-                }
-                for(int k=1; k<polyhedronsFacets[facet].Count-1; k++)
-                {
-                    polyTriangles.Add(triangleIndex);
-                    polyTriangles.Add(triangleIndex+k);
-                    polyTriangles.Add(triangleIndex+k+1);
-                }
-                triangleIndex += polyhedronsFacets[facet].Count;
-                // draw the other side
-                for(int k=0; k<polyhedronsFacets[facet].Count; k++)
-                {
-                    polyVertices.Add(vertices[polyhedronsFacets[facet][k]]);
-                }
-                for(int k=1; k<polyhedronsFacets[facet].Count-1; k++)
-                {
-                    polyTriangles.Add(triangleIndex);
-                    polyTriangles.Add(triangleIndex+k+1);
-                    polyTriangles.Add(triangleIndex+k);
-                }
-                triangleIndex += polyhedronsFacets[facet].Count;
-            }
-
-            Vector3 avg = uniqueVertices.Aggregate(Vector3.zero, (i,j)=>i+vertices[j]) / uniqueVertices.Count;
-            for(int j=0; j<polyVertices.Count; j++)
-            {
-                polyVertices[j] -= avg;
-            }
-
-            stringBuilder.Remove(stringBuilder.Length-1, 1);
             GameObject newGameObject = new GameObject();
-            newGameObject.name = stringBuilder.ToString();
             newGameObject.transform.SetParent(m_polyhedronsParent);
-            newGameObject.transform.position = avg;
+            newGameObject.transform.position = center;
+
             MeshFilter meshFilter = newGameObject.AddComponent<MeshFilter>();
             MeshRenderer meshRenderer = newGameObject.AddComponent<MeshRenderer>();
-
-            Mesh mesh = new Mesh();
-            mesh.vertices = polyVertices.ToArray();
-            mesh.triangles = polyTriangles.ToArray();
-            mesh.RecalculateBounds();
-            mesh.RecalculateNormals();
-            mesh.RecalculateTangents();
             meshFilter.mesh = mesh;
-
             meshRenderer.material = m_polyhedronsMaterial;
         }
+    }
+    private void DrawAsWhole(Polyhedralization polyhedralization)
+    {
+        (Mesh mesh, Vector3 center) = polyhedralization.ToMesh(m_drawPolyhedralizationInteriorFacets);
+
+        GameObject newGameObject = new GameObject();
+        newGameObject.transform.SetParent(m_polyhedronsParent);
+        newGameObject.transform.position = center;
+
+        MeshFilter meshFilter = newGameObject.AddComponent<MeshFilter>();
+        MeshRenderer meshRenderer = newGameObject.AddComponent<MeshRenderer>();
+        meshFilter.mesh = mesh;
+        meshRenderer.material = m_polyhedronsMaterial;
     }
 
     [ContextMenu("Clear")]

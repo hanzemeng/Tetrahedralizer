@@ -14,7 +14,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
     private enum Page
     {
         OVERVIEW,
-        TETRAHEDRALIZED_MESH,
+        POLYHEDRALIZED_MESH,
         TETRAHEDRAL_MESH,
     }
     private class TetrahedralizerEditorWindowSettings
@@ -69,7 +69,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
         public bool m_synchronizeMeshesPreviews;
 
         public GameObject m_gameObject;
-        public Tetrahedralization m_tetrahedralization;
+        public Polyhedralization m_polyhedralization;
         public TetrahedralMesh m_tetrahedralMesh;
         public Material m_material;
 
@@ -91,7 +91,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
             m_currentPage = (Page)binaryReader.ReadInt32();
             m_synchronizeMeshesPreviews = binaryReader.ReadBoolean();
             m_gameObject = LoadFromGUID<GameObject>(binaryReader.ReadString());
-            m_tetrahedralization = LoadFromGUID<Tetrahedralization>(binaryReader.ReadString());
+            m_polyhedralization = LoadFromGUID<Polyhedralization>(binaryReader.ReadString());
             m_tetrahedralMesh = LoadFromGUID<TetrahedralMesh>(binaryReader.ReadString());
             m_material = LoadFromGUID<Material>(binaryReader.ReadString());
 
@@ -115,7 +115,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
             binaryWriter.Write((int)m_currentPage);
             binaryWriter.Write(m_synchronizeMeshesPreviews);
             binaryWriter.Write(GetGUID(m_gameObject));
-            binaryWriter.Write(GetGUID(m_tetrahedralization));
+            binaryWriter.Write(GetGUID(m_polyhedralization));
             binaryWriter.Write(GetGUID(m_tetrahedralMesh));
             binaryWriter.Write(GetGUID(m_material));
 
@@ -124,20 +124,25 @@ public class TetrahedralizerEditorWindow : EditorWindow
             binaryWriter.Dispose();
             memoryStream.Dispose();
         }
+
+        public void Clear()
+        {
+            EditorPrefs.DeleteKey(EDITOR_PREFS_KEY);
+            m_instance = null;
+        }
     }
 
 
     private bool m_asyncTaskIsRunning;
     private IProgress<string> m_asyncTaskProgress;
     private string m_asyncTaskProgressField;
+    private List<Mesh> m_previewMeshes;
     private List<MeshPreviewField> m_meshesPreviews;
 
     private TetrahedralizerEditorWindowSettings m_settings;
 
     private Mesh m_mesh;
     private List<Material> m_meshMaterials;
-    private Mesh m_tetrahedralizationMesh;
-    private Mesh m_tetrahedralMeshMesh; // genius name, I know
 
     [MenuItem(TetrahedralizerConstant.TETRAHEDRALIZER_WINDOW_PATH + TetrahedralizerConstant.TETRAHEDRALIZER_NAME)]
     public static void Open()
@@ -148,26 +153,27 @@ public class TetrahedralizerEditorWindow : EditorWindow
     private void OnEnable()
     {
         m_settings = TetrahedralizerEditorWindowSettings.instance;
-        if(null != m_settings.m_tetrahedralization)
-        {
-            UpdateMesh(ref m_tetrahedralizationMesh, m_settings.m_tetrahedralization.ToMesh().mesh);
-        }
-        if(null != m_settings.m_tetrahedralMesh)
-        {
-            UpdateMesh(ref m_tetrahedralMeshMesh, m_settings.m_tetrahedralMesh.ToMesh().mesh);
-        }
 
         m_asyncTaskIsRunning = false;
         m_asyncTaskProgress = new Progress<string>(i=>m_asyncTaskProgressField=i);
+        m_previewMeshes = Enumerable.Range(0, TetrahedralizerEditorWindowSettings.MESH_PREVIEWS_COUNT).Select(i=>(Mesh)null).ToList();
         m_meshesPreviews = Enumerable.Range(0, TetrahedralizerEditorWindowSettings.MESH_PREVIEWS_COUNT).Select(i=>new MeshPreviewField()).ToList();
         m_meshMaterials = new List<Material>();
+
+        if(null != m_settings.m_polyhedralization)
+        {
+            UpdateMesh(1, m_settings.m_polyhedralization.ToMesh().mesh);
+        }
+        if(null != m_settings.m_tetrahedralMesh)
+        {
+            UpdateMesh(2, m_settings.m_tetrahedralMesh.ToMesh().mesh);
+        }
     }
     private void OnDisable()
     {
         m_meshesPreviews.ForEach(i=>i.Dispose());
         m_settings.Save();
-        UpdateMesh(ref m_tetrahedralizationMesh, null);
-        UpdateMesh(ref m_tetrahedralMeshMesh, null);
+        Enumerable.Range(0, TetrahedralizerEditorWindowSettings.MESH_PREVIEWS_COUNT).ToList().ForEach(i=>UpdateMesh(i,null));
     }
 
     private void OnGUI()
@@ -185,11 +191,11 @@ public class TetrahedralizerEditorWindow : EditorWindow
         {
             DrawOverviewPage();
         }
-        else if(m_settings.m_currentPage == Page.TETRAHEDRALIZED_MESH)
+        else if(m_settings.m_currentPage == Page.POLYHEDRALIZED_MESH)
         {
             if(DrawTargetGameObjectOnGUI())
             {
-                _ = DrawTetrahedralizedMeshPage();
+                _ = DrawPolyhedralizedMeshPage();
                 DrawPreviewSettingsOnGUI();
             }
         }
@@ -222,6 +228,11 @@ public class TetrahedralizerEditorWindow : EditorWindow
         if(GUILayout.Button($"Open {TetrahedralizerConstant.TETRAHEDRALIZER_NAME} on GitHub"))
         {
             Application.OpenURL(TetrahedralizerEditorWindowSettings.TETRAHEDRALIZER_LINK_GITHUB);
+        }
+
+        if(GUILayout.Button($"Reset {TetrahedralizerConstant.TETRAHEDRALIZER_NAME} Settings"))
+        {
+            m_settings.Clear();
         }
     }
 
@@ -288,37 +299,37 @@ public class TetrahedralizerEditorWindow : EditorWindow
         EditorGUILayout.LabelField("Scroll Wheel Scroll: Zoom Camera");
     }
 
-    private async Task DrawTetrahedralizedMeshPage()
+    private async Task DrawPolyhedralizedMeshPage()
     {
         EditorGUI.BeginChangeCheck();
-        m_settings.m_tetrahedralization = (Tetrahedralization)EditorGUILayout.ObjectField(new GUIContent("Output Tetrahedralization:", "The resulting Tetrahedralization. It represents the input Mesh using tetrahedrons. It only knows the vertices’ positions."), m_settings.m_tetrahedralization, typeof(Tetrahedralization), false);
+        m_settings.m_polyhedralization = (Polyhedralization)EditorGUILayout.ObjectField(new GUIContent("Output Polyhedralization:", "The resulting Polyhedralization. It represents the input Mesh using polyhedrons. It only knows the vertices’ positions."), m_settings.m_polyhedralization, typeof(Polyhedralization), false);
         if(EditorGUI.EndChangeCheck())
         {
-            UpdateMesh(ref m_tetrahedralizationMesh, null == m_settings.m_tetrahedralization ? null : m_settings.m_tetrahedralization.ToMesh().mesh);
+            UpdateMesh(1, null == m_settings.m_polyhedralization ? null : m_settings.m_polyhedralization.ToMesh().mesh);
         }
 
         GUILayout.Space(TetrahedralizerEditorWindowSettings.GAP_SMALL_RECT_SIZE);
-        if(!m_asyncTaskIsRunning && null!=m_settings.m_tetrahedralization && GUILayout.Button($"Create Tetrahedralized Mesh"))
+        if(!m_asyncTaskIsRunning && null!=m_settings.m_polyhedralization && GUILayout.Button($"Create Polyhedralized Mesh"))
         {
-            TetrahedralizedMeshCreation tetrahedralizedMeshCreation = new TetrahedralizedMeshCreation();
-            TetrahedralizedMeshCreation.TetrahedralizedMeshCreationInput input = new TetrahedralizedMeshCreation.TetrahedralizedMeshCreationInput();
-            TetrahedralizedMeshCreation.TetrahedralizedMeshCreationOutput output = new TetrahedralizedMeshCreation.TetrahedralizedMeshCreationOutput();
+            PolyhedralizedMeshCreation polyhedralizedMeshCreation = new PolyhedralizedMeshCreation();
+            PolyhedralizedMeshCreation.PolyhedralizedMeshCreationInput input = new PolyhedralizedMeshCreation.PolyhedralizedMeshCreationInput();
+            PolyhedralizedMeshCreation.PolyhedralizedMeshCreationOutput output = new PolyhedralizedMeshCreation.PolyhedralizedMeshCreationOutput();
             input.m_mesh = m_mesh;
 
             m_asyncTaskIsRunning = true;
             try
             {
-                await tetrahedralizedMeshCreation.CreateAsync(input, output, m_asyncTaskProgress);
+                await polyhedralizedMeshCreation.CreateAsync(input, output, m_asyncTaskProgress);
             }
             catch(Exception exception)
             {
-                Debug.LogError($"Tetrahedralized Mesh Creation encountered:\n{exception}");
+                Debug.LogError($"Polyhedralized Mesh Creation encountered:\n{exception}");
             }
             m_asyncTaskIsRunning = false;
-            m_settings.m_tetrahedralization.Assign(output.m_tetrahedralization);
-            EditorUtility.SetDirty(m_settings.m_tetrahedralization);
+            m_settings.m_polyhedralization.Assign(output.m_polyhedralization);
+            EditorUtility.SetDirty(m_settings.m_polyhedralization);
 
-            UpdateMesh(ref m_tetrahedralizationMesh, null == m_settings.m_tetrahedralization ? null : m_settings.m_tetrahedralization.ToMesh().mesh);
+            UpdateMesh(1, null == m_settings.m_polyhedralization ? null : m_settings.m_polyhedralization.ToMesh().mesh);
         }
 
         GUILayout.Space(TetrahedralizerEditorWindowSettings.GAP_SMALL_RECT_SIZE);
@@ -328,7 +339,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
         GUILayout.Space(TetrahedralizerEditorWindowSettings.GAP_SMALL_RECT_SIZE);
         DrawMeshPreview(m_mesh, 0, GUILayoutUtility.GetRect(TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, GUILayout.ExpandWidth(false)), false);
         EditorGUI.DrawRect(GUILayoutUtility.GetRect(TetrahedralizerEditorWindowSettings.GAP_SMALL_RECT_SIZE, TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, GUILayout.ExpandWidth(false)), Color.yellow);
-        DrawMeshPreview(m_tetrahedralizationMesh, 1, GUILayoutUtility.GetRect(TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, GUILayout.ExpandWidth(false)), false);
+        DrawMeshPreview(m_previewMeshes[1], 1, GUILayoutUtility.GetRect(TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, GUILayout.ExpandWidth(false)), false);
         EditorGUILayout.EndHorizontal();
 
         EditorGUILayout.BeginHorizontal();
@@ -337,33 +348,33 @@ public class TetrahedralizerEditorWindow : EditorWindow
         $"Input Mesh:\nVertices Count: {(null==m_mesh ? 0:m_mesh.vertexCount)}\nTriangles Count: {(null==m_mesh ? 0:m_mesh.GetIndexCount()/3)}");
         GUILayout.Space(TetrahedralizerEditorWindowSettings.GAP_SMALL_RECT_SIZE);
         EditorGUI.LabelField(GUILayoutUtility.GetRect(TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, TetrahedralizerEditorWindowSettings.MESH_DESCRIPTION_RECT_SIZE, GUILayout.ExpandWidth(false)), 
-        $"Output Tetrahedralization:\nVertices Count: {(null==m_settings.m_tetrahedralization ? 0:m_settings.m_tetrahedralization.GetVerticesCount())}\nTetrahedrons Count: {(null==m_settings.m_tetrahedralization ? 0:m_settings.m_tetrahedralization.GetTetrahedronsCount())}");
+        $"Output Polyhedralization:\nVertices Count: {(null==m_settings.m_polyhedralization ? 0:m_settings.m_polyhedralization.GetVerticesCount())}\nPolyhedrons Count: {(null==m_settings.m_polyhedralization ? 0:m_settings.m_polyhedralization.GetPolyhedronsCount())}");
         EditorGUILayout.EndHorizontal();
     }
 
     private async Task DrawTetrahedralMeshPage()
     {
         EditorGUI.BeginChangeCheck();
-        m_settings.m_tetrahedralization = (Tetrahedralization)EditorGUILayout.ObjectField(new GUIContent("Input Tetrahedralization:", "The Tetrahedralization that represents the input Mesh using tetrahedrons."), m_settings.m_tetrahedralization, typeof(Tetrahedralization), false);
+        m_settings.m_polyhedralization = (Polyhedralization)EditorGUILayout.ObjectField(new GUIContent("Input Polyhedralization:", "The Polyhedralization that represents the input Mesh using polyhedrons."), m_settings.m_polyhedralization, typeof(Polyhedralization), false);
         if(EditorGUI.EndChangeCheck())
         {
-            UpdateMesh(ref m_tetrahedralizationMesh, null == m_settings.m_tetrahedralization ? null : m_settings.m_tetrahedralization.ToMesh().mesh);
+            UpdateMesh(1, null == m_settings.m_polyhedralization ? null : m_settings.m_polyhedralization.ToMesh().mesh);
         }
         EditorGUI.BeginChangeCheck();
         m_settings.m_tetrahedralMesh = (TetrahedralMesh)EditorGUILayout.ObjectField(new GUIContent("Output Tetrahedral Mesh:", "The resulting TetrahedralMesh. It represents the input Mesh using tetrahedrons. It contains every vertex attribute in the input Mesh. It contains one more submesh that is used to store tetrahedron facets that are not defined in the input Mesh."), m_settings.m_tetrahedralMesh, typeof(TetrahedralMesh), false);
         if(EditorGUI.EndChangeCheck())
         {
-            UpdateMesh(ref m_tetrahedralMeshMesh, null == m_settings.m_tetrahedralMesh ? null : m_settings.m_tetrahedralMesh.ToMesh().mesh);
+            UpdateMesh(2, null == m_settings.m_tetrahedralMesh ? null : m_settings.m_tetrahedralMesh.ToMesh().mesh);
         }
 
         GUILayout.Space(TetrahedralizerEditorWindowSettings.GAP_SMALL_RECT_SIZE);
-        if(!m_asyncTaskIsRunning && null!=m_settings.m_tetrahedralization && null!=m_settings.m_tetrahedralMesh && GUILayout.Button($"Create Tetrahedral Mesh"))
+        if(!m_asyncTaskIsRunning && null!=m_settings.m_polyhedralization && null!=m_settings.m_tetrahedralMesh && GUILayout.Button($"Create Tetrahedral Mesh"))
         {
             TetrahedralMeshCreation tetrahedralMeshCreation = new TetrahedralMeshCreation();
             TetrahedralMeshCreation.TetrahedralMeshCreationInput input = new TetrahedralMeshCreation.TetrahedralMeshCreationInput();
             TetrahedralMeshCreation.TetrahedralMeshCreationOutput output = new TetrahedralMeshCreation.TetrahedralMeshCreationOutput();
             input.m_mesh = m_mesh;
-            input.m_tetrahedralization = m_settings.m_tetrahedralization;
+            input.m_polyhedralization = m_settings.m_polyhedralization;
 
             m_asyncTaskIsRunning = true;
             try
@@ -378,7 +389,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
             m_settings.m_tetrahedralMesh.Assign(output.m_tetrahedralMesh);
             EditorUtility.SetDirty(m_settings.m_tetrahedralMesh);
 
-            UpdateMesh(ref m_tetrahedralMeshMesh, null == m_settings.m_tetrahedralMesh ? null : m_settings.m_tetrahedralMesh.ToMesh().mesh);
+            UpdateMesh(2, null == m_settings.m_tetrahedralMesh ? null : m_settings.m_tetrahedralMesh.ToMesh().mesh);
         }
 
 
@@ -387,17 +398,17 @@ public class TetrahedralizerEditorWindow : EditorWindow
 
         EditorGUILayout.BeginHorizontal();
         GUILayout.Space(TetrahedralizerEditorWindowSettings.GAP_SMALL_RECT_SIZE);
-        DrawMeshPreview(m_tetrahedralizationMesh, 1, GUILayoutUtility.GetRect(TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, GUILayout.ExpandWidth(false)), false);
+        DrawMeshPreview(m_previewMeshes[1], 1, GUILayoutUtility.GetRect(TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, GUILayout.ExpandWidth(false)), false);
         EditorGUI.DrawRect(GUILayoutUtility.GetRect(TetrahedralizerEditorWindowSettings.GAP_SMALL_RECT_SIZE, TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, GUILayout.ExpandWidth(false)), Color.yellow);
         DrawMeshPreview(m_mesh, 0, GUILayoutUtility.GetRect(TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, GUILayout.ExpandWidth(false)), false);
         EditorGUI.DrawRect(GUILayoutUtility.GetRect(TetrahedralizerEditorWindowSettings.GAP_SMALL_RECT_SIZE, TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, GUILayout.ExpandWidth(false)), Color.yellow);
-        DrawMeshPreview(m_tetrahedralMeshMesh, 2, GUILayoutUtility.GetRect(TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, GUILayout.ExpandWidth(false)), true);
+        DrawMeshPreview(m_previewMeshes[2], 2, GUILayoutUtility.GetRect(TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, GUILayout.ExpandWidth(false)), true);
         EditorGUILayout.EndHorizontal();
 
         EditorGUILayout.BeginHorizontal();
         GUILayout.Space(TetrahedralizerEditorWindowSettings.GAP_SMALL_RECT_SIZE);
         EditorGUI.LabelField(GUILayoutUtility.GetRect(TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, TetrahedralizerEditorWindowSettings.MESH_DESCRIPTION_RECT_SIZE, GUILayout.ExpandWidth(false)), 
-        $"Input Tetrahedralization:\nVertices Count: {(null==m_settings.m_tetrahedralization ? 0:m_settings.m_tetrahedralization.GetVerticesCount())}\nTetrahedrons Count: {(null==m_settings.m_tetrahedralization ? 0:m_settings.m_tetrahedralization.GetTetrahedronsCount())}");
+        $"Input Tetrahedralization:\nVertices Count: {(null==m_settings.m_polyhedralization ? 0:m_settings.m_polyhedralization.GetVerticesCount())}\nTetrahedrons Count: {(null==m_settings.m_polyhedralization ? 0:m_settings.m_polyhedralization.GetPolyhedronsCount())}");
         GUILayout.Space(TetrahedralizerEditorWindowSettings.GAP_SMALL_RECT_SIZE);
         EditorGUI.LabelField(GUILayoutUtility.GetRect(TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, TetrahedralizerEditorWindowSettings.MESH_DESCRIPTION_RECT_SIZE, GUILayout.ExpandWidth(false)), 
         $"Input Mesh:\nVertices Count: {(null==m_mesh ? 0:m_mesh.vertexCount)}\nTriangles Count: {(null==m_mesh ? 0:m_mesh.GetIndexCount()/3)}");
@@ -407,16 +418,16 @@ public class TetrahedralizerEditorWindow : EditorWindow
         EditorGUILayout.EndHorizontal();
     }
 
-    private void UpdateMesh(ref Mesh target, Mesh source)
+    private void UpdateMesh(int targetIndex, Mesh source)
     {
-        if(null != target)
+        if(null != m_previewMeshes[targetIndex])
         {
-            DestroyImmediate(target);
+            DestroyImmediate(m_previewMeshes[targetIndex]);
         }
-        target = source;
-        if(null != target)
+        m_previewMeshes[targetIndex] = source;
+        if(null != m_previewMeshes[targetIndex])
         {
-            target.hideFlags = HideFlags.HideAndDontSave;
+            m_previewMeshes[targetIndex].hideFlags = HideFlags.HideAndDontSave;
         }
     }
 

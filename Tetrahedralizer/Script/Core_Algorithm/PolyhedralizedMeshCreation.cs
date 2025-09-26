@@ -4,42 +4,42 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 
-public class TetrahedralizedMeshCreation
+public class PolyhedralizedMeshCreation
 {
-    public class TetrahedralizedMeshCreationInput
+    public class PolyhedralizedMeshCreationInput
     {
         public Mesh m_mesh;
     }
-    public class TetrahedralizedMeshCreationOutput
+    public class PolyhedralizedMeshCreationOutput
     {
-        public Tetrahedralization m_tetrahedralization;
+        public Polyhedralization m_polyhedralization;
     }
 
-    public void Create(TetrahedralizedMeshCreationInput input, TetrahedralizedMeshCreationOutput output)
+    public void Create(PolyhedralizedMeshCreationInput input, PolyhedralizedMeshCreationOutput output)
     {
         List<Vector3> weldedVertices = input.m_mesh.vertices.ToList();
         int[] weldedTriangles = input.m_mesh.triangles;
         TetrahedralizerUtility.RemoveDuplicateVertices(weldedVertices, weldedTriangles);
-        Tetrahedralization tetrahedralization = ScriptableObject.CreateInstance<Tetrahedralization>();
-        output.m_tetrahedralization = tetrahedralization;
+        Polyhedralization polyhedralization = ScriptableObject.CreateInstance<Polyhedralization>();
+        output.m_polyhedralization = polyhedralization;
 
-        CreateInternal(tetrahedralization, weldedTriangles, TetrahedralizerUtility.UnpackVector3s(weldedVertices));
+        CreateInternal(polyhedralization, weldedTriangles, TetrahedralizerUtility.UnpackVector3s(weldedVertices));
     }
-    public Task CreateAsync(TetrahedralizedMeshCreationInput input, TetrahedralizedMeshCreationOutput output, IProgress<string> progress=null)
+    public Task CreateAsync(PolyhedralizedMeshCreationInput input, PolyhedralizedMeshCreationOutput output, IProgress<string> progress=null)
     {
         List<Vector3> weldedVertices = input.m_mesh.vertices.ToList();
         int[] weldedTriangles = input.m_mesh.triangles;
         TetrahedralizerUtility.RemoveDuplicateVertices(weldedVertices, weldedTriangles);
-        Tetrahedralization tetrahedralization = ScriptableObject.CreateInstance<Tetrahedralization>();
-        output.m_tetrahedralization = tetrahedralization;
+        Polyhedralization polyhedralization = ScriptableObject.CreateInstance<Polyhedralization>();
+        output.m_polyhedralization = polyhedralization;
 
         return Task.Run(() =>
         {
-            CreateInternal(tetrahedralization, weldedTriangles, TetrahedralizerUtility.UnpackVector3s(weldedVertices), progress);
+            CreateInternal(polyhedralization, weldedTriangles, TetrahedralizerUtility.UnpackVector3s(weldedVertices), progress);
         });
     }
 
-    private void CreateInternal(Tetrahedralization tetrahedralization, int[] weldedTriangles, List<double> weldedVerticesUnpack, IProgress<string> progress=null)
+    private void CreateInternal(Polyhedralization polyhedralization, int[] weldedTriangles, List<double> weldedVerticesUnpack, IProgress<string> progress=null)
     {
         if(null != progress)
         {
@@ -70,7 +70,7 @@ public class TetrahedralizedMeshCreation
 
         if(null != progress)
         {
-            progress.Report("Calculate winding numbers and labels.");
+            progress.Report("Removing outside polyhedrons.");
         }
         InteriorCharacterization.InteriorCharacterizationInput ICInput = new InteriorCharacterization.InteriorCharacterizationInput();
         InteriorCharacterization.InteriorCharacterizationOutput ICOutput = new InteriorCharacterization.InteriorCharacterizationOutput();
@@ -86,25 +86,40 @@ public class TetrahedralizedMeshCreation
             interiorCharacterization.CalculateInteriorCharacterization(ICInput, ICOutput);
         }
 
-        if(null != progress)
+        polyhedralization.m_explicitVertices = weldedVerticesUnpack;
+        polyhedralization.m_implicitVertices = BSPOutput.m_insertedVertices;
+        polyhedralization.m_polyhedrons = TetrahedralizerUtility.NestedListToFlatList(TetrahedralizerUtility.FlatIListToNestedList(BSPOutput.m_polyhedrons).Where((i,j)=>0!=ICOutput.m_polyhedronsInteriorLabels[j]).ToList());
+        polyhedralization.m_polyhedronsFacets = BSPOutput.m_polyhedronsFacets;
+        
+        // remove unused polyhedrons facets
         {
-            progress.Report("Convert polyhedrons to tetrahedrons.");
-        }
-        List<int> insidePolyhedrons = TetrahedralizerUtility.NestedListToFlatList(TetrahedralizerUtility.FlatIListToNestedList(BSPOutput.m_polyhedrons).Where((i,j)=>0!=ICOutput.m_polyhedronsInteriorLabels[j]).ToList());
-        PolyhedralizationTetrahedralization.PolyhedralizationTetrahedralizationInput PTInput = new PolyhedralizationTetrahedralization.PolyhedralizationTetrahedralizationInput();
-        PolyhedralizationTetrahedralization.PolyhedralizationTetrahedralizationOutput PTOutput = new PolyhedralizationTetrahedralization.PolyhedralizationTetrahedralizationOutput();
-        {
-            PolyhedralizationTetrahedralization polyhedralizationTetrahedralization = new PolyhedralizationTetrahedralization();
-            PTInput.m_explicitVertices = weldedVerticesUnpack;
-            PTInput.m_implicitVertices = BSPOutput.m_insertedVertices;
-            PTInput.m_polyhedrons = insidePolyhedrons;
-            PTInput.m_polyhedronsFacets = BSPOutput.m_polyhedronsFacets;
-            polyhedralizationTetrahedralization.CalculatePolyhedralizationTetrahedralization(PTInput, PTOutput);
-        }
+            List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(polyhedralization.m_polyhedrons);
+            List<List<int>> polyhedronsFacets = TetrahedralizerUtility.FlatIListToNestedList(polyhedralization.m_polyhedronsFacets);
+            bool[] neededFacets = Enumerable.Repeat(false, polyhedronsFacets.Count).ToArray();
+            polyhedrons.ForEach(i=>i.ForEach(j=>neededFacets[j]=true));
 
-        // produce output
-        tetrahedralization.m_explicitVertices = weldedVerticesUnpack;
-        tetrahedralization.m_implicitVertices = BSPOutput.m_insertedVertices;
-        tetrahedralization.m_tetrahedrons = PTOutput.m_tetrahedrons;
+            int[] mappings = new int[polyhedronsFacets.Count];
+            List<List<int>> newPolyhedronsFacets = new List<List<int>>();
+            for(int i=0; i<neededFacets.Length; i++)
+            {
+                if(!neededFacets[i])
+                {
+                    continue;
+                }
+                mappings[i] = newPolyhedronsFacets.Count();
+                newPolyhedronsFacets.Add(polyhedronsFacets[i]);
+            }
+
+            for(int i=0; i<polyhedrons.Count; i++)
+            {
+                for(int j=0; j<polyhedrons[i].Count; j++)
+                {
+                    polyhedrons[i][j] = mappings[polyhedrons[i][j]];
+                }
+            }
+
+            polyhedralization.m_polyhedrons = TetrahedralizerUtility.NestedListToFlatList(polyhedrons);
+            polyhedralization.m_polyhedronsFacets = TetrahedralizerUtility.NestedListToFlatList(newPolyhedronsFacets);
+        }
     }
 }
