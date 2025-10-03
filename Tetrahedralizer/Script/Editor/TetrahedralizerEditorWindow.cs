@@ -17,6 +17,17 @@ public class TetrahedralizerEditorWindow : EditorWindow
         POLYHEDRALIZED_MESH,
         TETRAHEDRAL_MESH,
     }
+    private enum UVChannel
+    {
+        UV0 = 0,
+        UV1 = 1,
+        UV2 = 2,
+        UV3 = 3,
+        UV4 = 4,
+        UV5 = 5,
+        UV6 = 6,
+        UV7 = 7,
+    }
     private class TetrahedralizerEditorWindowSettings
     {
         private static TetrahedralizerEditorWindowSettings m_instance;
@@ -66,11 +77,12 @@ public class TetrahedralizerEditorWindow : EditorWindow
         }
 
         public Page m_currentPage;
-        public bool m_synchronizeMeshesPreviews;
+        public bool m_synchronizeMeshesPreviews = true;
 
         public GameObject m_gameObject;
         public Polyhedralization m_polyhedralization;
         public TetrahedralMesh m_tetrahedralMesh;
+        public List<UVChannel> m_UVChannels = new List<UVChannel>();
         public Material m_material;
 
 
@@ -93,6 +105,11 @@ public class TetrahedralizerEditorWindow : EditorWindow
             m_gameObject = LoadFromGUID<GameObject>(binaryReader.ReadString());
             m_polyhedralization = LoadFromGUID<Polyhedralization>(binaryReader.ReadString());
             m_tetrahedralMesh = LoadFromGUID<TetrahedralMesh>(binaryReader.ReadString());
+            int n = binaryReader.ReadInt32();
+            for(int i=0; i<n; i++)
+            {
+                m_UVChannels.Add((UVChannel)binaryReader.ReadInt32());
+            }
             m_material = LoadFromGUID<Material>(binaryReader.ReadString());
 
             binaryReader.Dispose();
@@ -117,6 +134,8 @@ public class TetrahedralizerEditorWindow : EditorWindow
             binaryWriter.Write(GetGUID(m_gameObject));
             binaryWriter.Write(GetGUID(m_polyhedralization));
             binaryWriter.Write(GetGUID(m_tetrahedralMesh));
+             binaryWriter.Write(m_UVChannels.Count);
+            m_UVChannels.ForEach(i=>binaryWriter.Write((int)i));
             binaryWriter.Write(GetGUID(m_material));
 
             EditorPrefs.SetString(EDITOR_PREFS_KEY, Convert.ToBase64String(memoryStream.ToArray())) ;
@@ -141,6 +160,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
 
     private TetrahedralizerEditorWindowSettings m_settings;
 
+    private bool m_showAdditionalInputData = true;
     private Mesh m_mesh;
     private List<Material> m_meshMaterials;
 
@@ -155,7 +175,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
         m_settings = TetrahedralizerEditorWindowSettings.instance;
 
         m_asyncTaskIsRunning = false;
-        m_asyncTaskProgress = new Progress<string>(i=>m_asyncTaskProgressField=i);
+        m_asyncTaskProgress = new Progress<string>(i=>{m_asyncTaskProgressField=i; Repaint();});
         m_previewMeshes = Enumerable.Range(0, TetrahedralizerEditorWindowSettings.MESH_PREVIEWS_COUNT).Select(i=>(Mesh)null).ToList();
         m_meshesPreviews = Enumerable.Range(0, TetrahedralizerEditorWindowSettings.MESH_PREVIEWS_COUNT).Select(i=>new MeshPreviewField()).ToList();
         m_meshMaterials = new List<Material>();
@@ -266,13 +286,39 @@ public class TetrahedralizerEditorWindow : EditorWindow
 
         m_mesh = meshFilter.sharedMesh;
 
-        EditorGUI.BeginDisabledGroup(true);
-        EditorGUILayout.ObjectField(new GUIContent("Input Mesh:", "The Mesh in the MeshFilter of the target GameObject."), m_mesh, typeof(Mesh), false);
-        for(int i=0; i<m_meshMaterials.Count; i++)
+        m_showAdditionalInputData = EditorGUILayout.Foldout(m_showAdditionalInputData, "Additional Input Data");
+        if(m_showAdditionalInputData)
         {
-            EditorGUILayout.ObjectField(new GUIContent($"Input Material {i}:", $"The {i}th Material in the MeshRenderer of the target GameObject."), m_meshMaterials[i], typeof(Material), false);
+            EditorGUI.BeginDisabledGroup(true);
+            EditorGUILayout.ObjectField(new GUIContent("Input Mesh:", "The Mesh in the MeshFilter of the target GameObject."), m_mesh, typeof(Mesh), false);
+            EditorGUI.EndDisabledGroup();
+            
+            int k = 0;
+            for(int i=0; i<m_meshMaterials.Count; i++)
+            {
+                EditorGUI.BeginDisabledGroup(true);
+                EditorGUILayout.ObjectField(new GUIContent($"Input Material {i}:", $"The {i}th Material in the MeshRenderer of the target GameObject."), m_meshMaterials[i], typeof(Material), false);
+                EditorGUI.EndDisabledGroup();
+                List<Texture2D> texture2Ds = m_meshMaterials[i].GetTexture2Ds().Select(i=>i.Item1).ToList();
+                for(int j=0; j<texture2Ds.Count; j++)
+                {
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUI.BeginDisabledGroup(true);
+                    EditorGUILayout.ObjectField(new GUIContent($"Input Texture {i}, {j}:", $"The {i}th Material's {j}th texture."), texture2Ds[j], typeof(Texture2D), false, GUILayout.Height(EditorGUIUtility.singleLineHeight));
+                    EditorGUI.EndDisabledGroup();
+                    if(k >= m_settings.m_UVChannels.Count)
+                    {
+                        m_settings.m_UVChannels.Add(UVChannel.UV0);
+                    }
+                    float oldLabelWidth = EditorGUIUtility.labelWidth;
+                    EditorGUIUtility.labelWidth = 30;
+                    m_settings.m_UVChannels[k] = (UVChannel)EditorGUILayout.EnumPopup(new GUIContent("UV:", "The UV channel that uses the texture."), m_settings.m_UVChannels[k], GUILayout.Width(80));
+                    EditorGUIUtility.labelWidth = oldLabelWidth;
+                    k++;
+                    EditorGUILayout.EndHorizontal();
+                }
+            }
         }
-        EditorGUI.EndDisabledGroup();
 
         return true;
     }
@@ -374,12 +420,29 @@ public class TetrahedralizerEditorWindow : EditorWindow
             TetrahedralMeshCreation.TetrahedralMeshCreationInput input = new TetrahedralMeshCreation.TetrahedralMeshCreationInput();
             TetrahedralMeshCreation.TetrahedralMeshCreationOutput output = new TetrahedralMeshCreation.TetrahedralMeshCreationOutput();
             input.m_mesh = m_mesh;
+            input.m_materials = m_meshMaterials;
+            input.m_textures = new List<List<(Texture2D, List<string>, int)>>();
+            int k = 0;
+            for(int i=0; i<m_meshMaterials.Count; i++)
+            {
+                List<(Texture2D, List<string>)> tex = m_meshMaterials[i].GetTexture2Ds();
+                input.m_textures.Add(new List<(Texture2D, List<string>, int)>());
+                for(int j=0; j<tex.Count; j++)
+                {
+                    input.m_textures[i].Add((tex[j].Item1,tex[j].Item2,(int)m_settings.m_UVChannels[k+j]));
+                }
+                k += tex.Count;
+            }
             input.m_polyhedralization = m_settings.m_polyhedralization;
 
             m_asyncTaskIsRunning = true;
             try
             {
-                await tetrahedralMeshCreation.CreateAsync(input, output, m_asyncTaskProgress);
+                var t = tetrahedralMeshCreation.CreateAsync(input, output, m_asyncTaskProgress);
+                if(null != t)
+                {
+                    await t;
+                }
             }
             catch(Exception exception)
             {
@@ -388,6 +451,28 @@ public class TetrahedralizerEditorWindow : EditorWindow
             m_asyncTaskIsRunning = false;
             m_settings.m_tetrahedralMesh.Assign(output.m_tetrahedralMesh);
             EditorUtility.SetDirty(m_settings.m_tetrahedralMesh);
+            string parentFolder = Path.GetDirectoryName(AssetDatabase.GetAssetPath(m_settings.m_tetrahedralMesh));
+            string folder =  Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(m_settings.m_tetrahedralMesh));
+            string path = Path.Combine(parentFolder,folder);
+            if(!AssetDatabase.IsValidFolder(path))
+            {
+                AssetDatabase.CreateFolder(parentFolder,folder);
+            }
+
+            for(int i=0; i<output.m_textures.Count; i++)
+            {
+                for(int j=0; j<output.m_textures[i].Count; j++)
+                {
+                    AssetDatabase.CreateAsset(output.m_textures[i][j], Path.Combine(path,Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(input.m_textures[i][j].Item1))+$".asset"));
+                }
+            }
+            for(int i=0; i<output.m_materials.Count; i++)
+            {
+                AssetDatabase.CreateAsset(output.m_materials[i], Path.Combine(path,Path.GetFileName(AssetDatabase.GetAssetPath(input.m_materials[i]))));
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
 
             UpdateMesh(2, null == m_settings.m_tetrahedralMesh ? null : m_settings.m_tetrahedralMesh.ToMesh().mesh);
         }

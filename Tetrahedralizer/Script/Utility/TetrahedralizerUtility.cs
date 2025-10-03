@@ -92,17 +92,7 @@ public class TetrahedralizerUtility
         }
         return res;
     }
-    public static int CountFlatIListLength(IList<int> list)
-    {
-        if(null == list)
-        {
-            return 0;
-        }
 
-        int i;
-        for(i=0; i<list.Count; i+=list[i]+1){}
-        return i;
-    }
     public static List<List<int>> FlatIListToNestedList(IList<int> list)
     {
         if(null == list)
@@ -190,7 +180,7 @@ public class TetrahedralizerUtility
     public static Vector3 CenterVertices(IList<Vector3> vertices)
     {
         Vector3 center = vertices.Skip(1).Aggregate(new Bounds(vertices[0], Vector3.zero), (i,j)=>{i.Encapsulate(j);return i;}).center;
-        for(Int32 i=0; i<vertices.Count; i++)
+        for(int i=0; i<vertices.Count; i++)
         {
             vertices[i] = vertices[i] - center;
         }

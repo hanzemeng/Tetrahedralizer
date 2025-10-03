@@ -9,7 +9,6 @@ public class PolyhedralizationDrawer : MonoBehaviour
 {
     [SerializeField] private Polyhedralization m_polyhedralization;
     [SerializeField] private bool m_drawPolyhedralizationAsIndividualGameObjects;
-    [SerializeField] private bool m_drawPolyhedralizationInteriorFacets;
     [SerializeField] private Transform m_polyhedronsParent;
     [SerializeField] private Material m_polyhedronsMaterial;
     [SerializeField] [Range(0f,1f)] private float m_polyhedronsScale;
@@ -48,28 +47,13 @@ public class PolyhedralizationDrawer : MonoBehaviour
     {
         foreach((Mesh mesh, Vector3 center) in polyhedralization.ToMeshes())
         {
-            GameObject newGameObject = new GameObject();
-            newGameObject.transform.SetParent(m_polyhedronsParent);
-            newGameObject.transform.position = center;
-
-            MeshFilter meshFilter = newGameObject.AddComponent<MeshFilter>();
-            MeshRenderer meshRenderer = newGameObject.AddComponent<MeshRenderer>();
-            meshFilter.mesh = mesh;
-            meshRenderer.material = m_polyhedronsMaterial;
+            TetrahedralizerUtility.CreateGameObject(mesh, new List<Material>{m_polyhedronsMaterial} , m_polyhedronsParent, center);
         }
     }
     private void DrawAsWhole(Polyhedralization polyhedralization)
     {
-        (Mesh mesh, Vector3 center) = polyhedralization.ToMesh(m_drawPolyhedralizationInteriorFacets);
-
-        GameObject newGameObject = new GameObject();
-        newGameObject.transform.SetParent(m_polyhedronsParent);
-        newGameObject.transform.position = center;
-
-        MeshFilter meshFilter = newGameObject.AddComponent<MeshFilter>();
-        MeshRenderer meshRenderer = newGameObject.AddComponent<MeshRenderer>();
-        meshFilter.mesh = mesh;
-        meshRenderer.material = m_polyhedronsMaterial;
+        (Mesh mesh, Vector3 center) = polyhedralization.ToMesh();
+        TetrahedralizerUtility.CreateGameObject(mesh, new List<Material>{m_polyhedronsMaterial} , m_polyhedronsParent, center);
     }
 
     [ContextMenu("Clear")]

@@ -10,10 +10,14 @@ public class TetrahedralMeshCreation
     public class TetrahedralMeshCreationInput
     {
         public Mesh m_mesh;
+        public List<Material> m_materials;
+        public List<List<(Texture2D,List<string>,int)>> m_textures; // texture, shader properties names, uv channel
         public Polyhedralization m_polyhedralization;
     }
     public class TetrahedralMeshCreationOutput
     {
+        public List<Material> m_materials;
+        public List<List<Texture2D>> m_textures;
         public TetrahedralMesh m_tetrahedralMesh;
     }
 
@@ -40,21 +44,62 @@ public class TetrahedralMeshCreation
 
     public Task CreateAsync(TetrahedralMeshCreationInput input, TetrahedralMeshCreationOutput output, IProgress<string> progress=null)
     {
-        List<Vector3> weldedVertices = input.m_mesh.vertices.ToList();
-        int[] weldedTriangles = input.m_mesh.triangles;
-        TetrahedralizerUtility.RemoveDuplicateVertices(weldedVertices, weldedTriangles);
-        Vector3[] vertices = input.m_mesh.vertices;
-        int[] triangles = input.m_mesh.triangles;
-
-        List<SubMeshDescriptor> subMeshDescriptors = Enumerable.Range(0,input.m_mesh.subMeshCount).Select(i=>input.m_mesh.GetSubMesh(i)).ToList();
-
-        MeshTriangleFinder meshTriangleFinder = new MeshTriangleFinder();
-        meshTriangleFinder.AssignSourceMesh(input.m_mesh);
         MeshVertexDataMapper meshVertexDataMapper = new MeshVertexDataMapper();
         meshVertexDataMapper.AssignSourceMesh(input.m_mesh);
 
         TetrahedralMesh tetrahedralMesh = ScriptableObject.CreateInstance<TetrahedralMesh>();
         output.m_tetrahedralMesh = tetrahedralMesh;
+
+        output.m_materials = new List<Material>();
+        output.m_textures = new List<List<Texture2D>>();
+        for(int i=0; i<input.m_materials.Count; i++)
+        {
+            Material material = new Material(input.m_materials[i]);
+            List<(Texture2D, List<string>)> textures = input.m_textures[i].Select(i=>(i.Item1.DuplicateWithUninitializedPixels(),i.Item2)).ToList();
+            textures.ForEach(i=>i.Item2.ForEach(j=>material.SetTexture(j,i.Item1)));
+            output.m_materials.Add(material);
+            output.m_textures.Add(textures.Select(i=>i.Item1).ToList());
+        }
+
+        List<Color[]> srcTexturesColors = input.m_textures.SelectMany(i=>i.Select(j=>j.Item1.GetPixels())).ToList();
+        List<Color[]> desTexturesColors = output.m_textures.SelectMany(i=>i.Select(j=>j.GetPixels())).ToList();
+        List<(int,int)> texturesDimensions = output.m_textures.SelectMany(i=>i.Select(j=>(j.width,j.height))).ToList();
+        List<int> texturesUVChannels = input.m_textures.SelectMany(i=>i.Select(j=>j.Item3)).ToList();
+
+        List<List<Vector2>> srcUVs = Enumerable.Repeat(new List<Vector2>(),8).ToList();
+        for(int i=0; i<8; i++)
+        {
+            int j = (int)VertexAttribute.TexCoord0+i;
+            if(input.m_mesh.HasVertexAttribute((VertexAttribute)j))
+            {
+                input.m_mesh.GetUVs(i, srcUVs[i]);
+            }
+        }
+        List<List<Vector2>> facetsUVs = input.m_polyhedralization.GetFacetsUVs();
+        bool[] isExteriorFacets = input.m_polyhedralization.GetFacetsExteriorFlags();
+        
+        List<List<int>> facets = TetrahedralizerUtility.FlatIListToNestedList(input.m_polyhedralization.m_polyhedronsFacets);
+        List<double> desVertices = GenericPointApproximation.CalculateGenericPointApproximation(input.m_polyhedralization.m_explicitVertices, input.m_polyhedralization.m_implicitVertices);
+
+        for(int i=0; i<facetsUVs.Count; i++)
+        {
+            if(!isExteriorFacets[i])
+            {
+                continue;
+            }
+            for(int j=1; j<facetsUVs[i].Count-1; j++)
+            {
+                Vector2 uv0 = facetsUVs[i][0];
+                Vector2 uv1 = facetsUVs[i][j];
+                Vector2 uv2 = facetsUVs[i][j+1];
+                
+                Vector3 p0 = new Vector3((float)desVertices[3*facets[i][0]+0],(float)desVertices[3*facets[i][0]+1],(float)desVertices[3*facets[i][0]+2]);
+                Vector3 p1 = new Vector3((float)desVertices[3*facets[i][j]+0],(float)desVertices[3*facets[i][j]+1],(float)desVertices[3*facets[i][j]+2]);
+                Vector3 p2 = new Vector3((float)desVertices[3*facets[i][j+1]+0],(float)desVertices[3*facets[i][j+1]+1],(float)desVertices[3*facets[i][j+1]+2]);
+                Vector3 n = input.m_polyhedralization.m_polyhedronsFacetsPointOut[i] ? Vector3.Cross(p1-p0,p2-p1) : -Vector3.Cross(p1-p0,p2-p1);
+
+            }
+        }
 
         //return Task.Run(() =>
         //{

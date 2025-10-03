@@ -10,6 +10,7 @@ public class BinarySpacePartition
         public IList<double> m_explicitVertices; // Every 3 doubles are x,y,z of a point. Assuming left hand coordinate.
         public IList<int> m_tetrahedrons;
         public IList<int> m_constraints;
+        public bool m_removeCollinearSegments;
     }
     public class BinarySpacePartitionOutput
     {
@@ -69,6 +70,31 @@ public class BinarySpacePartition
         PopulateOutput(GetOutputInsertedVerticesCount(handle), GetOutputInsertedVertices(handle), ref output.m_insertedVertices);
         PopulateOutput(GetOutputPolyhedronsCount(handle), GetOutputPolyhedrons(handle), ref output.m_polyhedrons);
         PopulateOutput(GetOutputPolyhedronsFacetsCount(handle), GetOutputPolyhedronsFacets(handle), ref output.m_polyhedronsFacets);
+
+        if(input.m_removeCollinearSegments)
+        {
+            List<List<int>> facets = TetrahedralizerUtility.FlatIListToNestedList(output.m_polyhedronsFacets);
+            List<List<int>> newFacets = new List<List<int>>();
+            using GenericPointPredicate genericPointPredicate = new GenericPointPredicate(input.m_explicitVertices, output.m_insertedVertices);
+
+            foreach(List<int> facet in facets)
+            {
+                List<int> newFacet = new List<int>();
+                for(int i=0; i<facet.Count; i++)
+                {
+                    int p = 0==i ? facet.Count-1:i-1;
+                    int n = facet.Count-1==i ? 0:i+1;
+
+                    if(!genericPointPredicate.IsCollinear(facet[p],facet[i],facet[n]))
+                    {
+                        newFacet.Add(facet[i]);
+                    }
+                }
+                newFacets.Add(newFacet);
+            }
+
+            output.m_polyhedronsFacets = TetrahedralizerUtility.NestedListToFlatList(newFacets);
+        }
 
         DisposeBinarySpacePartitionHandle(handle);
     }

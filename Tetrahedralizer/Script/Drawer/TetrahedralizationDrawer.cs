@@ -46,28 +46,13 @@ public class TetrahedralizationDrawer : MonoBehaviour
     {
         foreach((Mesh mesh, Vector3 center) in tetrahedralization.ToMeshes())
         {
-            GameObject newGameObject = new GameObject();
-            newGameObject.transform.SetParent(m_tetrahedronsParent);
-            newGameObject.transform.position = center;
-
-            MeshFilter meshFilter = newGameObject.AddComponent<MeshFilter>();
-            MeshRenderer meshRenderer = newGameObject.AddComponent<MeshRenderer>();
-            meshFilter.mesh = mesh;
-            meshRenderer.material = m_tetrahedronsMaterial;
+            TetrahedralizerUtility.CreateGameObject(mesh, new List<Material>{m_tetrahedronsMaterial} , m_tetrahedronsParent, center);
         }
     }
     private void DrawAsWhole(Tetrahedralization tetrahedralization)
     {
         (Mesh mesh, Vector3 center) = tetrahedralization.ToMesh();
-
-        GameObject newGameObject = new GameObject();
-        newGameObject.transform.SetParent(m_tetrahedronsParent);
-        newGameObject.transform.position = center;
-
-        MeshFilter meshFilter = newGameObject.AddComponent<MeshFilter>();
-        MeshRenderer meshRenderer = newGameObject.AddComponent<MeshRenderer>();
-        meshFilter.mesh = mesh;
-        meshRenderer.material = m_tetrahedronsMaterial;
+        TetrahedralizerUtility.CreateGameObject(mesh, new List<Material>{m_tetrahedronsMaterial} , m_tetrahedronsParent, center);
     }
 
     [ContextMenu("Clear")]

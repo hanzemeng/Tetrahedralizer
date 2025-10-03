@@ -65,6 +65,7 @@ public class PolyhedralizedMeshCreation
             BSPInput.m_explicitVertices = weldedVerticesUnpack;
             BSPInput.m_tetrahedrons = DTOutput.m_tetrahedrons;
             BSPInput.m_constraints = weldedTriangles;
+            BSPInput.m_removeCollinearSegments = true;
             binarySpacePartition.CalculateBinarySpacePartition(BSPInput, BSPOutput);
         }
 
@@ -91,15 +92,15 @@ public class PolyhedralizedMeshCreation
         polyhedralization.m_polyhedrons = TetrahedralizerUtility.NestedListToFlatList(TetrahedralizerUtility.FlatIListToNestedList(BSPOutput.m_polyhedrons).Where((i,j)=>0!=ICOutput.m_polyhedronsInteriorLabels[j]).ToList());
         polyhedralization.m_polyhedronsFacets = BSPOutput.m_polyhedronsFacets;
         
-        // remove unused polyhedrons facets
+        // remove unused polyhedrons facets, implicit vertices, and explicit vertices
+        List<List<int>> newPolyhedronsFacets = new List<List<int>>();
         {
             List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(polyhedralization.m_polyhedrons);
             List<List<int>> polyhedronsFacets = TetrahedralizerUtility.FlatIListToNestedList(polyhedralization.m_polyhedronsFacets);
             bool[] neededFacets = Enumerable.Repeat(false, polyhedronsFacets.Count).ToArray();
             polyhedrons.ForEach(i=>i.ForEach(j=>neededFacets[j]=true));
-
             int[] mappings = new int[polyhedronsFacets.Count];
-            List<List<int>> newPolyhedronsFacets = new List<List<int>>();
+            
             for(int i=0; i<neededFacets.Length; i++)
             {
                 if(!neededFacets[i])
@@ -109,7 +110,6 @@ public class PolyhedralizedMeshCreation
                 mappings[i] = newPolyhedronsFacets.Count();
                 newPolyhedronsFacets.Add(polyhedronsFacets[i]);
             }
-
             for(int i=0; i<polyhedrons.Count; i++)
             {
                 for(int j=0; j<polyhedrons[i].Count; j++)
@@ -117,9 +117,72 @@ public class PolyhedralizedMeshCreation
                     polyhedrons[i][j] = mappings[polyhedrons[i][j]];
                 }
             }
-
             polyhedralization.m_polyhedrons = TetrahedralizerUtility.NestedListToFlatList(polyhedrons);
+        }
+
+        {
+            int explictPointsCount = polyhedralization.m_explicitVertices.Count/3;
+            List<List<int>> implicitPoints = TetrahedralizerUtility.FlatIListToNestedList(polyhedralization.m_implicitVertices);
+            bool[] neededPoints = Enumerable.Repeat(false, implicitPoints.Count).ToArray();
+            newPolyhedronsFacets.ForEach(i=>i.ForEach(j=>{if(j>=explictPointsCount){neededPoints[j-explictPointsCount]=true;}}));
+
+            int[] implicitMappings = new int[neededPoints.Count()];
+            List<List<int>> newImplicitPoints = new List<List<int>>();
+            for(int i=0; i<implicitPoints.Count; i++)
+            {
+                if(!neededPoints[i])
+                {
+                    continue;
+                }
+                implicitMappings[i] = newImplicitPoints.Count;
+                newImplicitPoints.Add(implicitPoints[i]);
+            }
+
+            neededPoints = Enumerable.Repeat(false, explictPointsCount).ToArray();
+            newPolyhedronsFacets.ForEach(i=>i.ForEach(j=>{if(j<explictPointsCount){neededPoints[j]=true;}}));
+            newImplicitPoints.ForEach(i=>i.ForEach(j=>neededPoints[j]=true));
+
+            int[] explicitMappings = new int[neededPoints.Count()];
+            List<double> newExplictPoints = new List<double>();
+            for(int i=0; i<explictPointsCount; i++)
+            {
+                if(!neededPoints[i])
+                {
+                    continue;
+                }
+                explicitMappings[i] = newExplictPoints.Count/3;
+                newExplictPoints.Add(polyhedralization.m_explicitVertices[3*i+0]);
+                newExplictPoints.Add(polyhedralization.m_explicitVertices[3*i+1]);
+                newExplictPoints.Add(polyhedralization.m_explicitVertices[3*i+2]);
+            }
+
+            explictPointsCount = newExplictPoints.Count/3;
+            for(int i=0; i<newImplicitPoints.Count; i++)
+            {
+                for(int j=0; j<newImplicitPoints[i].Count; j++)
+                {
+                    newImplicitPoints[i][j] = explicitMappings[newImplicitPoints[i][j]];
+                }
+            }
+            for(int i=0; i<newPolyhedronsFacets.Count; i++)
+            {
+                for(int j=0; j<newPolyhedronsFacets[i].Count; j++)
+                {
+                    if(newPolyhedronsFacets[i][j] < explictPointsCount)
+                    {
+                        newPolyhedronsFacets[i][j] = explicitMappings[newPolyhedronsFacets[i][j]];
+                    }
+                    else
+                    {
+                        newPolyhedronsFacets[i][j] = implicitMappings[newPolyhedronsFacets[i][j]-explictPointsCount]+explictPointsCount;
+                    }
+                }
+            }
+
+            polyhedralization.m_explicitVertices = newExplictPoints;
+            polyhedralization.m_implicitVertices = TetrahedralizerUtility.NestedListToFlatList(newImplicitPoints);
             polyhedralization.m_polyhedronsFacets = TetrahedralizerUtility.NestedListToFlatList(newPolyhedronsFacets);
+            polyhedralization.CalculatePolyhedronsFacetsOrients();
         }
     }
 }
