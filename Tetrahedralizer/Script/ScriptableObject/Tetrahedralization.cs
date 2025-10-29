@@ -21,7 +21,7 @@ public class Tetrahedralization : ScriptableObject
     {
         List<(Mesh, Vector3)> res = new List<(Mesh, Vector3)>();
         int[] zeroToEleven = Enumerable.Range(0,12).ToArray();
-        List<Vector3> vertices = TetrahedralizerUtility.PackDoubles(GenericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
+        List<Vector3> vertices = TetrahedralizerUtility.PackVector3s(GenericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
         for(int i=0; i<m_tetrahedrons.Count; i+=4)
         {
             Vector3 v0 = vertices[m_tetrahedrons[i+0]];
@@ -45,7 +45,7 @@ public class Tetrahedralization : ScriptableObject
     }
     public (Mesh mesh, Vector3 center) ToMesh()
     {
-        List<Vector3> vertices = TetrahedralizerUtility.PackDoubles(GenericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
+        List<Vector3> vertices = TetrahedralizerUtility.PackVector3s(GenericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
         List<Vector3> meshVertices = new List<Vector3>(3*m_tetrahedrons.Count);
 
         for(int i=0; i<m_tetrahedrons.Count; i+=4)

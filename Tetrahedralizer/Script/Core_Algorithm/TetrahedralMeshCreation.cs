@@ -1,7 +1,10 @@
+#if UNITY_EDITOR
+
 using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -20,6 +23,9 @@ public class TetrahedralMeshCreation
         public List<List<Texture2D>> m_textures;
         public TetrahedralMesh m_tetrahedralMesh;
     }
+
+    static float[] m_textureColorsFloats = new float[100000000];
+    static Color32[] m_textureColorsColor32s = new Color32[100000000/4];
 
     public void Create(TetrahedralMeshCreationInput input, TetrahedralMeshCreationOutput output)
     {
@@ -44,9 +50,6 @@ public class TetrahedralMeshCreation
 
     public Task CreateAsync(TetrahedralMeshCreationInput input, TetrahedralMeshCreationOutput output, IProgress<string> progress=null)
     {
-        MeshVertexDataMapper meshVertexDataMapper = new MeshVertexDataMapper();
-        meshVertexDataMapper.AssignSourceMesh(input.m_mesh);
-
         TetrahedralMesh tetrahedralMesh = ScriptableObject.CreateInstance<TetrahedralMesh>();
         output.m_tetrahedralMesh = tetrahedralMesh;
 
@@ -60,44 +63,65 @@ public class TetrahedralMeshCreation
             output.m_materials.Add(material);
             output.m_textures.Add(textures.Select(i=>i.Item1).ToList());
         }
-
-        List<Color[]> srcTexturesColors = input.m_textures.SelectMany(i=>i.Select(j=>j.Item1.GetPixels())).ToList();
-        List<Color[]> desTexturesColors = output.m_textures.SelectMany(i=>i.Select(j=>j.GetPixels())).ToList();
-        List<(int,int)> texturesDimensions = output.m_textures.SelectMany(i=>i.Select(j=>(j.width,j.height))).ToList();
-        List<int> texturesUVChannels = input.m_textures.SelectMany(i=>i.Select(j=>j.Item3)).ToList();
-
-        List<List<Vector2>> srcUVs = Enumerable.Repeat(new List<Vector2>(),8).ToList();
-        for(int i=0; i<8; i++)
-        {
-            int j = (int)VertexAttribute.TexCoord0+i;
-            if(input.m_mesh.HasVertexAttribute((VertexAttribute)j))
-            {
-                input.m_mesh.GetUVs(i, srcUVs[i]);
-            }
-        }
-        List<List<Vector2>> facetsUVs = input.m_polyhedralization.GetFacetsUVs();
-        bool[] isExteriorFacets = input.m_polyhedralization.GetFacetsExteriorFlags();
         
-        List<List<int>> facets = TetrahedralizerUtility.FlatIListToNestedList(input.m_polyhedralization.m_polyhedronsFacets);
-        List<double> desVertices = GenericPointApproximation.CalculateGenericPointApproximation(input.m_polyhedralization.m_explicitVertices, input.m_polyhedralization.m_implicitVertices);
-
-        for(int i=0; i<facetsUVs.Count; i++)
+        TextureProjection.TextureProjectionInput TPInput = new TextureProjection.TextureProjectionInput();
         {
-            if(!isExteriorFacets[i])
+            TextureProjection TP = new TextureProjection();
+            TPInput.m_srcExplicitVertices = TetrahedralizerUtility.UnpackVector3s(input.m_mesh.vertices);
+            TPInput.m_srcUVs = Enumerable.Repeat(0f, 16*input.m_mesh.vertexCount).ToList();
+            for(int i=0; i<8; i++)
             {
-                continue;
-            }
-            for(int j=1; j<facetsUVs[i].Count-1; j++)
-            {
-                Vector2 uv0 = facetsUVs[i][0];
-                Vector2 uv1 = facetsUVs[i][j];
-                Vector2 uv2 = facetsUVs[i][j+1];
-                
-                Vector3 p0 = new Vector3((float)desVertices[3*facets[i][0]+0],(float)desVertices[3*facets[i][0]+1],(float)desVertices[3*facets[i][0]+2]);
-                Vector3 p1 = new Vector3((float)desVertices[3*facets[i][j]+0],(float)desVertices[3*facets[i][j]+1],(float)desVertices[3*facets[i][j]+2]);
-                Vector3 p2 = new Vector3((float)desVertices[3*facets[i][j+1]+0],(float)desVertices[3*facets[i][j+1]+1],(float)desVertices[3*facets[i][j+1]+2]);
-                Vector3 n = input.m_polyhedralization.m_polyhedronsFacetsPointOut[i] ? Vector3.Cross(p1-p0,p2-p1) : -Vector3.Cross(p1-p0,p2-p1);
+                if(!input.m_mesh.HasVertexAttribute(VertexAttribute.TexCoord0+i))
+                {
+                    continue;
+                }
+                List<Vector2> temp = new List<Vector2>();
+                input.m_mesh.GetUVs(i, temp);
 
+                for(int j=0; j<input.m_mesh.vertexCount; j++)
+                {
+                    TPInput.m_srcUVs[16*j+2*i+0] = temp[j].x;
+                    TPInput.m_srcUVs[16*j+2*i+1] = temp[j].y;
+                }
+            }
+            TPInput.m_srcTriangles = input.m_mesh.triangles;
+            
+            Mesh desMesh = input.m_polyhedralization.ToMesh(true, false).mesh;
+            Vector2[] desUVs = desMesh.uv;
+            
+            TPInput.m_desExplicitVertices = TetrahedralizerUtility.UnpackVector3s(desMesh.vertices);
+            TPInput.m_desUVs = Enumerable.Repeat(0f, 2*desMesh.vertexCount).ToList();
+            for(int i=0; i<desMesh.vertexCount; i++)
+            {
+                TPInput.m_desUVs[2*i+0] = desUVs[i].x;
+                TPInput.m_desUVs[2*i+1] = desUVs[i].y;
+            }
+            TPInput.m_desTriangles = desMesh.triangles;
+            UnityEngine.Object.DestroyImmediate(desMesh);
+            
+
+            TPInput.m_texturesDimensions = new List<int>();
+            TPInput.m_srcTexturesColors = new List<NativeArray<byte>>();
+            TPInput.m_desTexturesColors = new List<NativeArray<byte>>();
+            for(int i=0; i<output.m_textures.Count; i++)
+            {
+                for(int j=0; j<output.m_textures[i].Count; j++)
+                {
+                    TPInput.m_texturesDimensions.Add(output.m_textures[i][j].width);
+                    TPInput.m_texturesDimensions.Add(output.m_textures[i][j].height);
+                    TPInput.m_srcTexturesColors.Add(input.m_textures[i][j].Item1.GetPixelData<byte>(0));
+                    TPInput.m_desTexturesColors.Add(output.m_textures[i][j].GetPixelData<byte>(0));
+                }
+            }
+            TPInput.m_texturesUVChannels = input.m_textures.SelectMany(i=>i.Select(j=>j.Item3)).ToList();
+
+            TP.CalculateTextureProjection(TPInput);
+            for(int i=0; i<output.m_textures.Count; i++)
+            {
+                for(int j=0; j<output.m_textures[i].Count; j++)
+                {
+                    output.m_textures[i][j].Apply(false,true);
+                }
             }
         }
 
@@ -139,7 +163,7 @@ public class TetrahedralMeshCreation
             GPAInput.m_implicitVertices = implicitVertices;
             genericPointApproximation.CalculateGenericPointApproximation(GPAInput, GPAOutput);
 
-            approximatedVertices = TetrahedralizerUtility.PackDoubles(GPAOutput.m_approximatePositions);
+            approximatedVertices = TetrahedralizerUtility.PackVector3s(GPAOutput.m_approximatePositions);
         }
 
         if(null != progress)
@@ -226,3 +250,5 @@ public class TetrahedralMeshCreation
         tetrahedralMesh.SetFacetsSubmeshes(resultTrianglesSubmeshes);
     }
 }
+
+#endif

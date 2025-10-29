@@ -156,7 +156,7 @@ public class PolyhedralizedMeshCreation
                 newExplictPoints.Add(polyhedralization.m_explicitVertices[3*i+2]);
             }
 
-            explictPointsCount = newExplictPoints.Count/3;
+            int newExplictPointsCount = newExplictPoints.Count/3;
             for(int i=0; i<newImplicitPoints.Count; i++)
             {
                 for(int j=0; j<newImplicitPoints[i].Count; j++)
@@ -174,7 +174,7 @@ public class PolyhedralizedMeshCreation
                     }
                     else
                     {
-                        newPolyhedronsFacets[i][j] = implicitMappings[newPolyhedronsFacets[i][j]-explictPointsCount]+explictPointsCount;
+                        newPolyhedronsFacets[i][j] = implicitMappings[newPolyhedronsFacets[i][j]-explictPointsCount]+newExplictPointsCount;
                     }
                 }
             }

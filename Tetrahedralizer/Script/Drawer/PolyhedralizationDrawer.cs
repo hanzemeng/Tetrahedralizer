@@ -52,7 +52,7 @@ public class PolyhedralizationDrawer : MonoBehaviour
     }
     private void DrawAsWhole(Polyhedralization polyhedralization)
     {
-        (Mesh mesh, Vector3 center) = polyhedralization.ToMesh();
+        (Mesh mesh, Vector3 center) = polyhedralization.ToMesh(true, false);
         TetrahedralizerUtility.CreateGameObject(mesh, new List<Material>{m_polyhedronsMaterial} , m_polyhedronsParent, center);
     }
 

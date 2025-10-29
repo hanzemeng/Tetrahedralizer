@@ -27,7 +27,7 @@ public class Polyhedralization : ScriptableObject
         }
 
         using GenericPointPredicate genericPointPredicate = new GenericPointPredicate(m_explicitVertices,m_implicitVertices);
-        List<Vector3> vertices = TetrahedralizerUtility.PackDoubles(GenericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
+        List<Vector3> vertices = TetrahedralizerUtility.PackVector3s(GenericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
         List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedrons);
         List<List<int>> polyhedronsFacets = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedronsFacets);
 
@@ -84,19 +84,20 @@ public class Polyhedralization : ScriptableObject
 
         return res;
     }
-    public (Mesh mesh, Vector3 center) ToMesh()
+    public (Mesh mesh, Vector3 center) ToMesh(bool generateUV0=false, bool centerVertices=true)
     {
         if(null == m_explicitVertices || 0 == m_explicitVertices.Count)
         {
             return (null, Vector3.zero);
         }
 
-        List<Vector3> vertices = TetrahedralizerUtility.PackDoubles(GenericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
+        List<Vector3> vertices = TetrahedralizerUtility.PackVector3s(GenericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
         List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedrons);
         List<List<int>> polyhedronsFacets = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedronsFacets);
         bool[] shouldDrawFacets = GetFacetsExteriorFlags();
 
         List<Vector3> meshVertices = new List<Vector3>();
+        List<List<int>> facetsVerticesIndexes = new List<List<int>>();
         List<int> polyTriangles = new List<int>();
         int triangleIndex = 0;
         for(int i=0; i<polyhedrons.Count; i++)
@@ -109,8 +110,10 @@ public class Polyhedralization : ScriptableObject
                     continue;
                 }
 
+                facetsVerticesIndexes.Add(new List<int>());
                 for(int k=0; k<polyhedronsFacets[facet].Count; k++)
                 {
+                    facetsVerticesIndexes[^1].Add(meshVertices.Count);
                     meshVertices.Add(vertices[polyhedronsFacets[facet][k]]);
                 }
                 if(m_polyhedronsFacetsPointOut[facet])
@@ -135,7 +138,11 @@ public class Polyhedralization : ScriptableObject
             }
         }
 
-        Vector3 center = TetrahedralizerUtility.CenterVertices(meshVertices);
+        Vector3 center = Vector3.zero;
+        if(centerVertices)
+        {
+            center = TetrahedralizerUtility.CenterVertices(meshVertices);
+        }
         Mesh mesh = new Mesh();
         mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
         mesh.vertices = meshVertices.ToArray();
@@ -143,6 +150,11 @@ public class Polyhedralization : ScriptableObject
         mesh.RecalculateBounds();
         mesh.RecalculateNormals();
         mesh.RecalculateTangents();
+
+        if(generateUV0)
+        {
+            MeshUtility.GenerateFacetsUVs(mesh, facetsVerticesIndexes);
+        }
 
         return (mesh, center);
     }

@@ -191,9 +191,11 @@ public class TetrahedralizerEditorWindow : EditorWindow
     }
     private void OnDisable()
     {
-        m_meshesPreviews.ForEach(i=>i.Dispose());
         m_settings.Save();
+        m_meshesPreviews.ForEach(i=>i.Dispose());
         Enumerable.Range(0, TetrahedralizerEditorWindowSettings.MESH_PREVIEWS_COUNT).ToList().ForEach(i=>UpdateMesh(i,null));
+        Resources.UnloadUnusedAssets();
+        GC.Collect(6666,GCCollectionMode.Forced, true, true);
     }
 
     private void OnGUI()
@@ -253,6 +255,13 @@ public class TetrahedralizerEditorWindow : EditorWindow
         if(GUILayout.Button($"Reset {TetrahedralizerConstant.TETRAHEDRALIZER_NAME} Settings"))
         {
             m_settings.Clear();
+        }
+
+        if(GUILayout.Button($"Clean Up Memory"))
+        {
+            Resources.UnloadUnusedAssets();
+            GC.Collect(6666,GCCollectionMode.Forced, true, true);
+            System.GC.WaitForPendingFinalizers();
         }
     }
 
@@ -435,9 +444,9 @@ public class TetrahedralizerEditorWindow : EditorWindow
             }
             input.m_polyhedralization = m_settings.m_polyhedralization;
 
-            m_asyncTaskIsRunning = true;
             try
             {
+                m_asyncTaskIsRunning = true;
                 var t = tetrahedralMeshCreation.CreateAsync(input, output, m_asyncTaskProgress);
                 if(null != t)
                 {
@@ -459,19 +468,24 @@ public class TetrahedralizerEditorWindow : EditorWindow
                 AssetDatabase.CreateFolder(parentFolder,folder);
             }
 
+            AssetDatabase.StartAssetEditing();
             for(int i=0; i<output.m_textures.Count; i++)
             {
                 for(int j=0; j<output.m_textures[i].Count; j++)
                 {
                     AssetDatabase.CreateAsset(output.m_textures[i][j], Path.Combine(path,Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(input.m_textures[i][j].Item1))+$".asset"));
+                    Resources.UnloadAsset(output.m_textures[i][j]);
                 }
             }
             for(int i=0; i<output.m_materials.Count; i++)
             {
                 AssetDatabase.CreateAsset(output.m_materials[i], Path.Combine(path,Path.GetFileName(AssetDatabase.GetAssetPath(input.m_materials[i]))));
+                Resources.UnloadAsset(output.m_materials[i]);
             }
-
+            AssetDatabase.StopAssetEditing();
             AssetDatabase.SaveAssets();
+            await Resources.UnloadUnusedAssets();
+            GC.Collect();
             AssetDatabase.Refresh();
 
             UpdateMesh(2, null == m_settings.m_tetrahedralMesh ? null : m_settings.m_tetrahedralMesh.ToMesh().mesh);
