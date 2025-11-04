@@ -10,6 +10,7 @@ public class BinarySpacePartition
         public IList<double> m_explicitVertices; // Every 3 doubles are x,y,z of a point. Assuming left hand coordinate.
         public IList<int> m_tetrahedrons;
         public IList<int> m_constraints;
+        public bool m_aggressivelyAddVirtualConstraints; // If true, every constraint can be represented as a union of polyhedrons facets. Otherwise, every polygon formed by coplanar constraints can be represented as a union of polyhedrons facets.
         public bool m_removeCollinearSegments;
     }
     public class BinarySpacePartitionOutput
@@ -27,7 +28,7 @@ public class BinarySpacePartition
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void DisposeBinarySpacePartitionHandle(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-        static extern void AddBinarySpacePartitionInput(IntPtr handle, int explicit_count, double[] explicit_values, int tetrahedron_count, int[] tetrahedrons, int constraints_count, int[] constraints);
+        static extern void AddBinarySpacePartitionInput(IntPtr handle, int explicit_count, double[] explicit_values, int tetrahedron_count, int[] tetrahedrons, int constraints_count, int[] constraints, bool aggressivelyAddVirtualConstraints);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern int CalculateBinarySpacePartition(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
@@ -49,7 +50,7 @@ public class BinarySpacePartition
         TetrahedralizerUtility.SwapElementsByInterval(tetrahedrons, 4);
 
         IntPtr handle = CreateBinarySpacePartitionHandle();
-        AddBinarySpacePartitionInput(handle, input.m_explicitVertices.Count/3, explicitVertices, input.m_tetrahedrons.Count/4, tetrahedrons, input.m_constraints.Count/3, input.m_constraints.ToArray());
+        AddBinarySpacePartitionInput(handle, input.m_explicitVertices.Count/3, explicitVertices, input.m_tetrahedrons.Count/4, tetrahedrons, input.m_constraints.Count/3, input.m_constraints.ToArray(), input.m_aggressivelyAddVirtualConstraints);
 
         CalculateBinarySpacePartition(handle);
 

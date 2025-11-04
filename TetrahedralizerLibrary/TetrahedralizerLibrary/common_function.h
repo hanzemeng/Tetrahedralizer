@@ -49,7 +49,6 @@ inline void create_vertices(uint32_t explicit_count, double* explicit_values, ui
         vertices[explicit_count+i] = new_vertex;
     }
 }
-
 inline void delete_vertex(genericPoint* vertex)
 {
     if(vertex->isLPI())
@@ -78,7 +77,18 @@ inline void delete_vertices(genericPoint** vertices, uint32_t vertices_count)
     delete[] vertices;
 }
 
-inline vector<uint32_t> read_flat_vector(uint32_t count, uint32_t* data)
+template <typename T>
+inline T* duplicate_array(T* src, uint32_t n)
+{
+    T* des = new T[n];
+    for(uint32_t i=0; i<n; i++)
+    {
+        des[i] = src[i];
+    }
+    return des;
+}
+
+inline vector<uint32_t> flat_array_to_vector(uint32_t* data, uint32_t count)
 {
     vector<uint32_t> res;
     uint32_t f=0;
@@ -94,14 +104,51 @@ inline vector<uint32_t> read_flat_vector(uint32_t count, uint32_t* data)
     }
     return res;
 }
-
-inline void vector_to_array(vector<uint32_t>& vec, uint32_t*& arr)
+inline vector<vector<uint32_t>> flat_array_to_nested_vector(uint32_t* data, uint32_t count)
 {
-    arr = new uint32_t[vec.size()];
+    vector<vector<uint32_t>> res;
+    uint32_t f=0;
+    for(uint32_t i=0; i<count; i++)
+    {
+        res.push_back(vector<uint32_t>());
+        uint32_t n = data[f];
+        for(uint32_t j=f+1; j<f+1+n; j++)
+        {
+            res.back().push_back(data[j]);
+        }
+        f += n+1;
+    }
+    return res;
+}
+inline uint32_t* vector_to_array(vector<uint32_t>& vec)
+{
+    uint32_t* arr = new uint32_t[vec.size()];
     for(uint32_t i=0; i<vec.size(); i++)
     {
         arr[i] = vec[i];
     }
+    return arr;
+}
+inline uint32_t* nested_vector_to_flat_array(vector<vector<uint32_t>>& vec)
+{
+    uint32_t n = 0;
+    for(uint32_t i=0; i<vec.size(); i++)
+    {
+        n++;
+        n += vec[i].size();
+    }
+    
+    uint32_t* res = new uint32_t[n];
+    uint32_t k=0;
+    for(uint32_t i=0; i<vec.size(); i++)
+    {
+        res[k++] = vec[i].size();
+        for(uint32_t j=0; j<vec[i].size(); j++)
+        {
+            res[k++] = vec[i][j];
+        }
+    }
+    return res;
 }
 
 inline void sort_ints(uint32_t& i0, uint32_t& i1)
@@ -125,6 +172,86 @@ inline void sort_ints(uint32_t& i0, uint32_t& i1, uint32_t& i2)
     {
         swap(i0,i1);
     }
+}
+
+// return true if p is on or inside the triangle, false otherwise
+// always return false triangle is degenerate
+inline bool barycentric_weight(const double3& t0, const double3& t1, const double3& t2, const double3& p, double3& w)
+{
+    double3 v0 = t1 - t0;
+    double3 v1 = t2 - t0;
+    double3 v2 = p  - t0;
+
+    double d00 = v0.dot(v0);
+    double d01 = v0.dot(v1);
+    double d11 = v1.dot(v1);
+    double d20 = v2.dot(v0);
+    double d21 = v2.dot(v1);
+
+    double denom = d00 * d11 - d01 * d01;
+    double eps = 1e-12 * (d00 + d11);
+    if(std::fabs(denom) < eps)
+    {
+        w.x = 0.333;
+        w.y = 0.333;
+        w.z = 0.333;
+        return false;
+    }
+    w.y = (d11 * d20 - d01 * d21) / denom;
+    w.z = (d00 * d21 - d01 * d20) / denom;
+    w.x = 1.0 - w.y - w.z;
+
+    double margin = -1e-12 * sqrt(d00 + d11);
+    return w.x>=margin && w.y>=margin && w.z>=margin;
+}
+
+// true if ray hits the bounding box
+inline bool raycast_AABB(const double3& origin, const double3& dir, const double3& min, const double3& max, double& tmin, double& tmax)
+{
+    tmin = (min.x - origin.x) / dir.x;
+    tmax = (max.x - origin.x) / dir.x;
+    if (tmin > tmax) std::swap(tmin, tmax);
+
+    double tymin = (min.y - origin.y) / dir.y;
+    double tymax = (max.y - origin.y) / dir.y;
+    if (tymin > tymax) std::swap(tymin, tymax);
+
+    if ((tmin > tymax) || (tymin > tmax))
+        return false;
+
+    if (tymin > tmin) tmin = tymin;
+    if (tymax < tmax) tmax = tymax;
+
+    double tzmin = (min.z - origin.z) / dir.z;
+    double tzmax = (max.z - origin.z) / dir.z;
+    if (tzmin > tzmax) std::swap(tzmin, tzmax);
+
+    if ((tmin > tzmax) || (tzmin > tmax))
+        return false;
+
+    if (tzmin > tmin) tmin = tzmin;
+    if (tzmax < tmax) tmax = tzmax;
+
+    return true;
+}
+
+// behind also counts
+inline bool raycast_triangle(const double3& orig, const double3& dir, const double3& v0, const double3& v1, const double3& v2, double& t, double3& w)
+{
+    double3 n = (v1-v0).cross(v2-v0);
+
+    double denom = dir.dot(n);
+    if(fabs(denom) < 1e-9) // parallel
+    {
+        return false;
+    }
+    t = (v0 - orig).dot(n) / denom;
+//    if(t < 0) // behind
+//    {
+//        return false;
+//    }
+
+    return barycentric_weight(v0,v1,v2,orig + dir * t,w);
 }
 
 inline void clear_queue(queue<uint32_t>& q)
@@ -232,5 +359,12 @@ inline int orient3d_ignore_axis(uint32_t p0,uint32_t p1,uint32_t p2,int axis, ge
         return double_to_int(genericPoint::orient2Dxy(*m_vertices[p0],*m_vertices[p1],*m_vertices[p2]));
     }
     throw "wrong axis value";
+}
+
+inline double3 approximate_point(genericPoint* m_vertices)
+{
+    double3 res;
+    m_vertices->getApproxXYZCoordinates(res.x, res.y, res.z, true);
+    return res;
 }
 #endif

@@ -9,6 +9,7 @@ public class PolyhedralizedMeshCreation
     public class PolyhedralizedMeshCreationInput
     {
         public Mesh m_mesh;
+        public bool m_aggressivelyAddVirtualConstraints; // If true, every constraint can be represented as a union of polyhedrons facets. Otherwise, every polygon formed by coplanar constraints can be represented as a union of polyhedrons facets.
     }
     public class PolyhedralizedMeshCreationOutput
     {
@@ -23,7 +24,7 @@ public class PolyhedralizedMeshCreation
         Polyhedralization polyhedralization = ScriptableObject.CreateInstance<Polyhedralization>();
         output.m_polyhedralization = polyhedralization;
 
-        CreateInternal(polyhedralization, weldedTriangles, TetrahedralizerUtility.UnpackVector3s(weldedVertices));
+        CreateInternal(polyhedralization, weldedTriangles, TetrahedralizerUtility.UnpackVector3s(weldedVertices), input.m_aggressivelyAddVirtualConstraints);
     }
     public Task CreateAsync(PolyhedralizedMeshCreationInput input, PolyhedralizedMeshCreationOutput output, IProgress<string> progress=null)
     {
@@ -35,11 +36,11 @@ public class PolyhedralizedMeshCreation
 
         return Task.Run(() =>
         {
-            CreateInternal(polyhedralization, weldedTriangles, TetrahedralizerUtility.UnpackVector3s(weldedVertices), progress);
+            CreateInternal(polyhedralization, weldedTriangles, TetrahedralizerUtility.UnpackVector3s(weldedVertices), input.m_aggressivelyAddVirtualConstraints, progress);
         });
     }
 
-    private void CreateInternal(Polyhedralization polyhedralization, int[] weldedTriangles, List<double> weldedVerticesUnpack, IProgress<string> progress=null)
+    private void CreateInternal(Polyhedralization polyhedralization, int[] weldedTriangles, List<double> weldedVerticesUnpack, bool aggressivelyAddVirtualConstraints, IProgress<string> progress=null)
     {
         if(null != progress)
         {
@@ -65,6 +66,7 @@ public class PolyhedralizedMeshCreation
             BSPInput.m_explicitVertices = weldedVerticesUnpack;
             BSPInput.m_tetrahedrons = DTOutput.m_tetrahedrons;
             BSPInput.m_constraints = weldedTriangles;
+            BSPInput.m_aggressivelyAddVirtualConstraints = aggressivelyAddVirtualConstraints;
             BSPInput.m_removeCollinearSegments = true;
             binarySpacePartition.CalculateBinarySpacePartition(BSPInput, BSPOutput);
         }

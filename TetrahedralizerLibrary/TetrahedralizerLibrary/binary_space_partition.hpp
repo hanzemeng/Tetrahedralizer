@@ -17,6 +17,11 @@ public:
 
     uint32_t* m_constraints; // Orientation does not matter.
     uint32_t m_constraints_count; // number of constraints, same as m_constraints.size()/3
+    
+    bool m_aggressively_add_virtual_constraints;
+    // If all constraints incidented by an constraint edge are coplanar
+    // if true, a virtual constraint will be added
+    // if false, a virtual constraint will be added if all incidented constraints lie on one side of the edge
 };
 class BinarySpacePartitionOutput
 {
@@ -61,7 +66,7 @@ class Polyhedron
 class BinarySpacePartition
 {
 public:
-    void binary_space_partition(BinarySpacePartitionInput* m_input, BinarySpacePartitionOutput* m_output);
+    void binary_space_partition(BinarySpacePartitionInput* input, BinarySpacePartitionOutput* output);
 
 private:
     vector<genericPoint*> m_vertices;
@@ -103,7 +108,7 @@ public:
     BinarySpacePartitionHandle();
     void Dispose();
 
-    void AddBinarySpacePartitionInput(uint32_t, double*, uint32_t, uint32_t*, uint32_t, uint32_t*);
+    void AddBinarySpacePartitionInput(uint32_t, double*, uint32_t, uint32_t*, uint32_t, uint32_t*, bool);
     void CalculateBinarySpacePartition();
 
     uint32_t GetOutputInsertedVerticesCount();
@@ -119,7 +124,7 @@ public:
 extern "C" LIBRARY_EXPORT void* CreateBinarySpacePartitionHandle();
 extern "C" LIBRARY_EXPORT void DisposeBinarySpacePartitionHandle(void* handle);
 
-extern "C" LIBRARY_EXPORT void AddBinarySpacePartitionInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t tetrahedron_count, uint32_t* tetrahedrons, uint32_t constraints_count, uint32_t* constraints);
+extern "C" LIBRARY_EXPORT void AddBinarySpacePartitionInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t tetrahedron_count, uint32_t* tetrahedrons, uint32_t constraints_count, uint32_t* constraints, bool);
 
 extern "C" LIBRARY_EXPORT void CalculateBinarySpacePartition(void* handle);
 

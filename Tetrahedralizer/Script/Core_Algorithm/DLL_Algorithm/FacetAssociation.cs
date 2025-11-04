@@ -9,16 +9,14 @@ public class FacetAssociation
     {
         public IList<double> m_explicitVertices; // Every 3 doubles are x,y,z of a point. Assuming left hand coordinate.
         public IList<int> m_implicitVertices; // 5/9 followed by indexes of m_explicitVertices.
-        public IList<int> m_tetrahedrons;
+        public IList<int> m_facets; // # of vertices followed by indexes, vertices are ordered in cw or ccw
         public IList<int> m_constraints;
     }
     public class FacetAssociationOutput
     {
-        public List<int> m_tetrahedronsFacetsMapping;
-        // for every tetrahedron (t), for every facet (f) of t, for every vertex (v) of f:
-        // v is contained in the m_tetrahedrons_facets_mapping[v]th constraint. v is UNDEFINED_VALUE if it is not contained in any constraint.
-        // internally, facets are checked in: 0,1,2  1,0,3  0,2,3, 2,1,3
-        // but output order is              : 0,1,3  1,0,2  0,3,2, 3,1,2
+        public List<List<List<int>>> m_facetsVerticeMapping;
+        // for every vertex in every facet, record # of triangles followed by indexes of the triangles
+        // note that vertices are duplicated across facets
     }
 
 
@@ -29,7 +27,7 @@ public class FacetAssociation
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void DisposeFacetAssociationHandle(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-        static extern void AddFacetAssociationInput(IntPtr handle, int explicit_count, double[] explicit_values, int implicit_count, int[] implicit_values, int tetrahedron_count, int[] tetrahedrons, int constraints_count, int[] constraints);
+        static extern void AddFacetAssociationInput(IntPtr handle, int explicit_count, double[] explicit_values, int implicit_count, int[] implicit_values, int facets_count, int[] facets, int constraints_count, int[] constraints);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern int CalculateFacetAssociation(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
@@ -39,22 +37,25 @@ public class FacetAssociation
         TetrahedralizerUtility.SwapElementsByInterval(explicitVertices, 3);
         int implicitCount = TetrahedralizerUtility.CountFlatIListElements(input.m_implicitVertices);
         int[] implicitVertices = null == input.m_implicitVertices ? null : input.m_implicitVertices.ToArray();
-        int[] tetrahedrons = input.m_tetrahedrons.ToArray();
-        TetrahedralizerUtility.SwapElementsByInterval(tetrahedrons, 4);
+        List<List<int>> facets = TetrahedralizerUtility.FlatIListToNestedList(input.m_facets);
 
         IntPtr handle = CreateFacetAssociationHandle();
-        AddFacetAssociationInput(handle, input.m_explicitVertices.Count/3, explicitVertices, implicitCount, implicitVertices, input.m_tetrahedrons.Count/4, tetrahedrons, input.m_constraints.Count/3, input.m_constraints.ToArray());
-
+        AddFacetAssociationInput(handle, input.m_explicitVertices.Count/3, explicitVertices, implicitCount, implicitVertices, facets.Count, input.m_facets.ToArray(), input.m_constraints.Count/3, input.m_constraints.ToArray());
         CalculateFacetAssociation(handle);
-
         IntPtr ptr = GetOutputFacetAssociation(handle);
 
-        output.m_tetrahedronsFacetsMapping = new List<int>(3*input.m_tetrahedrons.Count);
-        for(int i=0; i<3*input.m_tetrahedrons.Count; i++)
+        output.m_facetsVerticeMapping = facets.Select(i=>i.Select(j=>new List<int>()).ToList()).ToList();
+        for(int i=0; i<facets.Count; i++)
         {
-            output.m_tetrahedronsFacetsMapping.Add(ptr.ReadInt32());
+            for(int j=0; j<facets[i].Count; j++)
+            {
+                int n = ptr.ReadInt32();
+                for(int k=0; k<n; k++)
+                {
+                    output.m_facetsVerticeMapping[i][j].Add(ptr.ReadInt32());
+                }
+            }
         }
-
         DisposeFacetAssociationHandle(handle);
     }
 }

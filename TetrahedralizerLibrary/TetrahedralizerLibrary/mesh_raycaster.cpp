@@ -2,8 +2,8 @@
 
 MeshRaycasterNode::MeshRaycasterNode()
 {
-    m_min_x = m_min_y = m_min_z = numeric_limits<double>::max();
-    m_max_x = m_max_y = m_max_z = numeric_limits<double>::min();
+    m_min = double3(numeric_limits<double>::max(),numeric_limits<double>::max(),numeric_limits<double>::max());
+    m_max = double3(numeric_limits<double>::min(),numeric_limits<double>::min(),numeric_limits<double>::min());
     m_left_index = m_right_index = UNDEFINED_VALUE;
     m_constraints_indexes = nullptr;
     m_constraints_count = 0;
@@ -14,7 +14,7 @@ MeshRaycasterNode::~MeshRaycasterNode()
     delete[] m_constraints_indexes;
 }
 
-void MeshRaycasterHandle::Dispose()
+void MeshRaycaster::Dispose()
 {
     delete_vertices(m_vertices, m_vertices_count);
     delete[] m_constraints;
@@ -25,36 +25,26 @@ void MeshRaycasterHandle::Dispose()
     }
 }
 
-void MeshRaycasterHandle::AddMeshRaycasterInput(uint32_t explicit_count, double* explicit_values, uint32_t constraints_count, uint32_t* constraints)
+void MeshRaycaster::AddMeshRaycasterInput(uint32_t explicit_count, double* explicit_values, uint32_t constraints_count, uint32_t* constraints)
 {
     create_vertices(explicit_count, explicit_values, 0, nullptr, m_vertices, m_vertices_count);
+    m_constraints = duplicate_array(constraints, 3*constraints_count);
     
-    m_constraints = new uint32_t[3*constraints_count];
-    for(uint32_t i=0; i<3*constraints_count; i++)
-    {
-        m_constraints[i] = constraints[i];
-    }
-    
-    double* constraints_bounds = new double[6*constraints_count];
-    double* constraints_centers = new double[3*constraints_count];
+    double3* constraints_bounds = new double3[2*constraints_count];
+    double3* constraints_centers = new double3[constraints_count];
     
     for(uint32_t i=0; i<constraints_count; i++)
     {
         uint32_t c0 = m_constraints[3*i+0];
         uint32_t c1 = m_constraints[3*i+1];
         uint32_t c2 = m_constraints[3*i+2];
+        double3 p0 = double3(explicit_values[3*c0+0],explicit_values[3*c0+1],explicit_values[3*c0+2]);
+        double3 p1 = double3(explicit_values[3*c1+0],explicit_values[3*c1+1],explicit_values[3*c1+2]);
+        double3 p2 = double3(explicit_values[3*c2+0],explicit_values[3*c2+1],explicit_values[3*c2+2]);
         
-        constraints_bounds[6*i+0] = min(explicit_values[3*c0+0], min(explicit_values[3*c1+0], explicit_values[3*c2+0]));
-        constraints_bounds[6*i+1] = min(explicit_values[3*c0+1], min(explicit_values[3*c1+1], explicit_values[3*c2+1]));
-        constraints_bounds[6*i+2] = min(explicit_values[3*c0+2], min(explicit_values[3*c1+2], explicit_values[3*c2+2]));
-        
-        constraints_bounds[6*i+3] = max(explicit_values[3*c0+0], max(explicit_values[3*c1+0], explicit_values[3*c2+0]));
-        constraints_bounds[6*i+4] = max(explicit_values[3*c0+1], max(explicit_values[3*c1+1], explicit_values[3*c2+1]));
-        constraints_bounds[6*i+5] = max(explicit_values[3*c0+2], max(explicit_values[3*c1+2], explicit_values[3*c2+2]));
-        
-        constraints_centers[3*i+0] = (explicit_values[3*c0+0]+explicit_values[3*c1+0]+explicit_values[3*c2+0]) / 3.0;
-        constraints_centers[3*i+1] = (explicit_values[3*c0+1]+explicit_values[3*c1+1]+explicit_values[3*c2+1]) / 3.0;
-        constraints_centers[3*i+2] = (explicit_values[3*c0+2]+explicit_values[3*c1+2]+explicit_values[3*c2+2]) / 3.0;
+        constraints_bounds[2*i+0] = p0.min(p1).min(p2);
+        constraints_bounds[2*i+1] = p0.max(p1).max(p2);
+        constraints_centers[i] = (p0+p1+p2) / 3.0;
     }
     
     vector<uint32_t> constraints_indexes;
@@ -68,33 +58,73 @@ void MeshRaycasterHandle::AddMeshRaycasterInput(uint32_t explicit_count, double*
     delete[] constraints_centers;
 }
 
+bool MeshRaycaster::Raycast(const double3& p, const double3& n, uint32_t& t_i, double& t, double3& w)
+{
+    t = numeric_limits<double>::max();
+    return Raycast(p,n,t_i,t,w, m_tree_nodes[0]);
+}
 
-uint32_t MeshRaycasterHandle::AddTreeNode(vector<uint32_t>& constraints_indexes, double* constraints_bounds, double* constraints_centers)
+bool MeshRaycaster::Raycast(const double3& p, const double3& n, uint32_t& t_i, double& t, double3& w, MeshRaycasterNode* node)
+{
+    double tmin, tmax;
+    if(!raycast_AABB(p, n, node->m_min, node->m_max, tmin, tmax))
+    {
+        return false;
+    }
+
+    if(0 != node->m_constraints_count)
+    {
+        bool hit = false;
+        for(uint32_t i=0; i<node->m_constraints_count; i++)
+        {
+            uint32_t c0 = m_constraints[3*node->m_constraints_indexes[i]+0];
+            uint32_t c1 = m_constraints[3*node->m_constraints_indexes[i]+1];
+            uint32_t c2 = m_constraints[3*node->m_constraints_indexes[i]+2];
+            
+            double3 p0 = approximate_point(m_vertices[c0]);
+            double3 p1 = approximate_point(m_vertices[c1]);
+            double3 p2 = approximate_point(m_vertices[c2]);
+            
+            double new_t;
+            double3 new_w;
+            if(raycast_triangle(p, n, p0, p1, p2, new_t, new_w))
+            {
+                hit = true;
+                if(abs(new_t) < t)
+                {
+                    t = abs(new_t);
+                    w = new_w;
+                    t_i = node->m_constraints_indexes[i];
+                }
+            }
+        }
+        return hit;
+    }
+    else
+    {
+        bool hit_left = Raycast(p,n,t_i,t,w, m_tree_nodes[node->m_left_index]);
+        bool hit_right = Raycast(p,n,t_i,t,w, m_tree_nodes[node->m_right_index]);
+        return hit_left || hit_right;
+    }
+}
+
+
+uint32_t MeshRaycaster::AddTreeNode(vector<uint32_t>& constraints_indexes, double3* constraints_bounds, double3* constraints_centers)
 {
     uint32_t res = m_tree_nodes.size();
     MeshRaycasterNode* node = new MeshRaycasterNode();
     m_tree_nodes.push_back(node);
 
-    double m_min_x(constraints_bounds[6*constraints_indexes[0]+0]),m_min_y(constraints_bounds[6*constraints_indexes[0]+1]),m_min_z(constraints_bounds[6*constraints_indexes[0]+2]);
-    double m_max_x(constraints_bounds[6*constraints_indexes[0]+3]),m_max_y(constraints_bounds[6*constraints_indexes[0]+4]),m_max_z(constraints_bounds[6*constraints_indexes[0]+5]);
-    
+    double3 m_min = constraints_bounds[2*constraints_indexes[0]+0];
+    double3 m_max = constraints_bounds[2*constraints_indexes[0]+1];
     for(uint32_t i=1; i<constraints_indexes.size(); i++)
     {
-        m_min_x = min(m_min_x, constraints_bounds[6*constraints_indexes[i]+0]);
-        m_min_y = min(m_min_y, constraints_bounds[6*constraints_indexes[i]+1]);
-        m_min_z = min(m_min_z, constraints_bounds[6*constraints_indexes[i]+2]);
-        
-        m_max_x = max(m_max_x, constraints_bounds[6*constraints_indexes[i]+3]);
-        m_max_y = max(m_max_y, constraints_bounds[6*constraints_indexes[i]+4]);
-        m_max_z = max(m_max_z, constraints_bounds[6*constraints_indexes[i]+5]);
+        m_min = m_min.min(constraints_bounds[2*constraints_indexes[i]+0]);
+        m_max = m_max.max(constraints_bounds[2*constraints_indexes[i]+1]);
     }
     
-    node->m_min_x = m_min_x;
-    node->m_min_y = m_min_y;
-    node->m_min_z = m_min_z;
-    node->m_max_x = m_max_x;
-    node->m_max_y = m_max_y;
-    node->m_max_z = m_max_z;
+    node->m_min = m_min;
+    node->m_max = m_max;
     
     if(constraints_indexes.size()<=4)
     {
@@ -108,23 +138,21 @@ uint32_t MeshRaycasterHandle::AddTreeNode(vector<uint32_t>& constraints_indexes,
     else
     {
         uint32_t o = 0;
-        double dx = m_max_x-m_min_x;
-        double dy = m_max_y-m_min_y;
-        double dz = m_max_z-m_min_z;
-        if(dy>dx && dy>dz)
+        double3 del = node->m_max - node->m_min;
+        if(del.y>del.x && del.y>del.z)
         {
             o=1;
         }
-        else if(dz>dx)
+        else if(del.z>del.x)
         {
             o=2;
         }
         sort(constraints_indexes.begin(), constraints_indexes.end(), [&](uint32_t a, uint32_t b){
-            return constraints_centers[3*a+o] < constraints_centers[3*b+o];
+            return constraints_centers[a][o] < constraints_centers[b][o];
         });
         
         vector<uint32_t> new_constraints_indexes;
-        for(uint32_t i=constraints_indexes.size()/2; i>=0; i--)
+        for(int i=constraints_indexes.size()/2; i>=0; i--)
         {
             new_constraints_indexes.push_back(constraints_indexes.back());
             constraints_indexes.pop_back();

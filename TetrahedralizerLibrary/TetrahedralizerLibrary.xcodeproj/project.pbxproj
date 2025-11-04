@@ -33,6 +33,7 @@
 				common_header.h,
 				delaunay_tetrahedralization.cpp,
 				delaunay_tetrahedralization.hpp,
+				facet_association.cpp,
 				generic_point_approximation.cpp,
 				generic_point_approximation.hpp,
 				generic_point_predicate.cpp,
@@ -56,6 +57,7 @@
 				interior_characterization.hpp,
 				mesh_raycaster.cpp,
 				mesh_raycaster.hpp,
+				numeric_array.h,
 				polyhedralization_tetrahedralization.cpp,
 				polyhedralization_tetrahedralization.hpp,
 				polyhedralization.cpp,
@@ -63,8 +65,9 @@
 				tetrahedralization.cpp,
 				tetrahedralization.hpp,
 				triangle_tetrahedron_intersection.h,
-				unused/facet_association.cpp,
 				unused/main.cpp,
+				unused/texture_projection.cpp,
+				unused/texture_projection.hpp,
 			);
 			target = 887F387B2E0E1F1F00A37971 /* TetrahedralizerLibrary */;
 		};

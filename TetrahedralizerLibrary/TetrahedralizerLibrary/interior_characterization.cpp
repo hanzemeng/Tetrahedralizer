@@ -235,28 +235,20 @@ void InteriorCharacterizationHandle::AddInteriorCharacterizationInput(uint32_t e
 {
     create_vertices(explicit_count, explicit_values, implicit_count, implicit_values, m_input->m_vertices, m_input->m_vertices_count);
 
-    vector<uint32_t> vec = read_flat_vector(polyhedrons_count, polyhedrons);
-    vector_to_array(vec , m_input->m_polyhedrons);
+    vector<uint32_t> vec = flat_array_to_vector(polyhedrons, polyhedrons_count);
+    m_input->m_polyhedrons = vector_to_array(vec);
     m_input->m_polyhedrons_count = polyhedrons_count;
     
-    vec =  read_flat_vector(polyhedrons_facets_count, polyhedrons_facets);
-    vector_to_array(vec , m_input->m_polyhedrons_facets);
+    vec =  flat_array_to_vector(polyhedrons_facets, polyhedrons_facets_count);
+    m_input->m_polyhedrons_facets = vector_to_array(vec);
     m_input->m_polyhedrons_facets_count = polyhedrons_facets_count;
     
-    m_input->m_constraints = new uint32_t[3*constraints_count];
-    for(uint32_t i=0; i<3*constraints_count; i++)
-    {
-        m_input->m_constraints[i] = constraints[i];
-    }
     m_input->m_constraints_count = constraints_count;
+    m_input->m_constraints = duplicate_array(constraints, 3*constraints_count);
     
     if(nullptr != polyhedrons_winding_numbers)
     {
-        m_input->m_polyhedrons_winding_numbers = new double[polyhedrons_count];
-        for(uint32_t i=0; i<polyhedrons_count; i++)
-        {
-            m_input->m_polyhedrons_winding_numbers[i] = polyhedrons_winding_numbers[i];
-        }
+        m_input->m_polyhedrons_winding_numbers = duplicate_array(polyhedrons_winding_numbers, polyhedrons_count);
     }
     
     m_input->m_min_cut_neighbor_multiplier = min_cut_neighbor_multiplier;

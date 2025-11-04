@@ -81,7 +81,7 @@ void PolyhedralizationTetrahedralization::polyhedralization_tetrahedralization(P
         
         // copy output
         {
-            vector_to_array(res, output->m_tetrahedrons);
+            output->m_tetrahedrons = vector_to_array(res);
             output->m_tetrahedrons_count = res.size() / 4;
         }
     }
@@ -118,12 +118,12 @@ void PolyhedralizationTetrahedralizationHandle::AddPolyhedralizationTetrahedrali
 {
     create_vertices(explicit_count, explicit_values, implicit_count, implicit_values, m_input->m_vertices, m_input->m_vertices_count);
 
-    vector<uint32_t> vec = read_flat_vector(polyhedrons_count, polyhedrons);
-    vector_to_array(vec , m_input->m_polyhedrons);
+    vector<uint32_t> vec = flat_array_to_vector(polyhedrons, polyhedrons_count);
+    m_input->m_polyhedrons = vector_to_array(vec);
     m_input->m_polyhedrons_count = polyhedrons_count;
     
-    vec = read_flat_vector(polyhedrons_facets_count, polyhedrons_facets);
-    vector_to_array(vec , m_input->m_polyhedrons_facets);
+    vec = flat_array_to_vector(polyhedrons_facets, polyhedrons_facets_count);
+    m_input->m_polyhedrons_facets = vector_to_array(vec);
     m_input->m_polyhedrons_facets_count = polyhedrons_facets_count;
 }
 

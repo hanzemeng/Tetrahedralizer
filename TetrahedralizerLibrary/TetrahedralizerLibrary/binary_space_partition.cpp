@@ -37,23 +37,17 @@ void BinarySpacePartitionHandle::Dispose()
     delete m_binarySpacePartition;
 }
 
-void BinarySpacePartitionHandle::AddBinarySpacePartitionInput(uint32_t explicit_count, double* explicit_values, uint32_t tetrahedrons_count, uint32_t* tetrahedrons, uint32_t constraints_count, uint32_t* constraints)
+void BinarySpacePartitionHandle::AddBinarySpacePartitionInput(uint32_t explicit_count, double* explicit_values, uint32_t tetrahedrons_count, uint32_t* tetrahedrons, uint32_t constraints_count, uint32_t* constraints, bool aggressively_add_virtual_constraints)
 {
     create_vertices(explicit_count, explicit_values, 0, nullptr, m_input->m_vertices, m_input->m_vertices_count);
     
     m_input->m_tetrahedrons_count = tetrahedrons_count;
-    m_input->m_tetrahedrons = new uint32_t[4*tetrahedrons_count];
-    for(uint32_t i=0; i<4*tetrahedrons_count; i++)
-    {
-        m_input->m_tetrahedrons[i] = tetrahedrons[i];
-    }
+    m_input->m_tetrahedrons = duplicate_array(tetrahedrons, 4*tetrahedrons_count);
     
     m_input->m_constraints_count = constraints_count;
-    m_input->m_constraints = new uint32_t[3*constraints_count];
-    for(uint32_t i=0; i<3*constraints_count; i++)
-    {
-        m_input->m_constraints[i] = constraints[i];
-    }
+    m_input->m_constraints = duplicate_array(constraints, 3*constraints_count);
+    
+    m_input->m_aggressively_add_virtual_constraints = aggressively_add_virtual_constraints;
 }
 void BinarySpacePartitionHandle::CalculateBinarySpacePartition()
 {
@@ -97,9 +91,9 @@ extern "C" LIBRARY_EXPORT void DisposeBinarySpacePartitionHandle(void* handle)
     delete (BinarySpacePartitionHandle*)handle;
 }
 
-extern "C" LIBRARY_EXPORT void AddBinarySpacePartitionInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t tetrahedron_count, uint32_t* tetrahedrons, uint32_t constraints_count, uint32_t* constraints)
+extern "C" LIBRARY_EXPORT void AddBinarySpacePartitionInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t tetrahedron_count, uint32_t* tetrahedrons, uint32_t constraints_count, uint32_t* constraints, bool aggressively_add_virtual_constraints)
 {
-    ((BinarySpacePartitionHandle*)handle)->AddBinarySpacePartitionInput(explicit_count, explicit_values, tetrahedron_count, tetrahedrons, constraints_count, constraints);
+    ((BinarySpacePartitionHandle*)handle)->AddBinarySpacePartitionInput(explicit_count, explicit_values, tetrahedron_count, tetrahedrons, constraints_count, constraints, aggressively_add_virtual_constraints);
 }
 
 extern "C" LIBRARY_EXPORT void CalculateBinarySpacePartition(void* handle)
@@ -289,34 +283,48 @@ void BinarySpacePartition::binary_space_partition(BinarySpacePartitionInput* inp
 
             uint32_t e2 = *m_u_set_i_0.begin();
             m_u_set_i_0.erase(m_u_set_i_0.begin());
-            bool is_on_boundary = true;
+            bool constrains_are_coplanar = true;
             for(uint32_t e3 : m_u_set_i_0)
             {
                 if(0 != orient3d(e3,e0,e1,e2, m_vertices.data()))
                 {
-                    is_on_boundary = false;
+                    constrains_are_coplanar = false;
                     break;
                 }
             }
-            if(!is_on_boundary)
+            if(!constrains_are_coplanar)
             {
                 continue;
             }
             
+            if(input->m_aggressively_add_virtual_constraints)
+            {
+                add_virtual_constraint(e0,e1, it.second[0]);
+                continue;
+            }
             int ignore_axis = max_component_in_triangle_normal(e0,e1,e2, m_vertices.data());
             int oe2 = orient3d_ignore_axis(e0,e1,e2,ignore_axis, m_vertices.data());
+            bool should_add_virtual_constraint = true;
             for(uint32_t e3 : m_u_set_i_0)
             {
                 int oe3 = orient3d_ignore_axis(e0,e1,e3,ignore_axis, m_vertices.data());
+                if(0 == oe3)
+                {
+                    continue;
+                }
                 if(0 == oe2)
                 {
                     oe2 = oe3;
                 }
                 if(oe2 != oe3)
                 {
-                    add_virtual_constraint(e0,e1, it.second[0]);
+                    should_add_virtual_constraint = false;
                     break;
                 }
+            }
+            if(should_add_virtual_constraint)
+            {
+                add_virtual_constraint(e0,e1, it.second[0]);
             }
         }
     }

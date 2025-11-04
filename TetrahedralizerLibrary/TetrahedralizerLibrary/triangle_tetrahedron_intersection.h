@@ -294,10 +294,6 @@ inline int triangle_tetrahedron_intersection(genericPoint* pc0,genericPoint* pc1
 
 inline int triangle_tetrahedron_intersection(uint32_t c0,uint32_t c1,uint32_t c2,uint32_t t0,uint32_t t1,uint32_t t2,uint32_t t3, genericPoint** vertices)
 {
-//    if(c0 == 65 && c1 == 68 && c2 == 89 && t0 == 124 && t1 == 67)
-//    {
-//        t0 = 124;
-//    }
     return triangle_tetrahedron_intersection(vertices[c0],vertices[c1],vertices[c2],vertices[t0],vertices[t1],vertices[t2],vertices[t3]);
 }
 

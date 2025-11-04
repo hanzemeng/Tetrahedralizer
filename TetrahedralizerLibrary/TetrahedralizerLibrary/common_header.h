@@ -12,6 +12,7 @@
 #include <unordered_map>
 #include <cassert>
 #include <numbers>
+#include "numeric_array.h"
 #include "indirect_predicates/implicit_point.h"
 #include "graph_cut/GCoptimization.h"
 

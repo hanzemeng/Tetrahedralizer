@@ -248,7 +248,7 @@ public class Polyhedralization : ScriptableObject
     }
     public int GetPolyhedronsCount()
     {
-        return m_polyhedrons.Count;
+        return TetrahedralizerUtility.CountFlatIListElements(m_polyhedrons);
     }
 
     public void Assign(Polyhedralization polyhedralization)
