@@ -44,7 +44,7 @@ public class PolyhedralizedMeshCreation
     {
         if(null != progress)
         {
-            progress.Report("Tetrahedralize vertices.");
+            progress.Report("Tetrahedralizing vertices.");
         }
         DelaunayTetrahedralization.DelaunayTetrahedralizationInput DTInput = new DelaunayTetrahedralization.DelaunayTetrahedralizationInput();
         DelaunayTetrahedralization.DelaunayTetrahedralizationOutput DTOutput = new DelaunayTetrahedralization.DelaunayTetrahedralizationOutput();
@@ -56,7 +56,7 @@ public class PolyhedralizedMeshCreation
 
         if(null != progress)
         {
-            progress.Report("Cut tetrahedrons with constraints.");
+            progress.Report("Cutting tetrahedrons with constraints.");
         }
         BinarySpacePartition.BinarySpacePartitionInput BSPInput = new BinarySpacePartition.BinarySpacePartitionInput();
         BinarySpacePartition.BinarySpacePartitionOutput BSPOutput = new BinarySpacePartition.BinarySpacePartitionOutput();

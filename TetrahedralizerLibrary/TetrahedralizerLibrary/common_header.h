@@ -54,6 +54,7 @@ const uint32_t UNDEFINED_VALUE = 0xFFFFFFFF;
     unordered_set<uint32_t> m_u_set_i_1; \
     unordered_set<uint32_t> m_u_set_i_2; \
     unordered_set<uint32_t> m_u_set_i_3; \
+    unordered_set<pair<uint32_t,uint32_t>,pair_ii_hash> m_u_set_ii_0; \
     unordered_map<uint32_t,uint32_t> m_u_map_i_i_0; \
     unordered_map<uint32_t,int> m_u_map_i_si_0; \
     unordered_map<pair<uint32_t,uint32_t>,uint32_t,pair_ii_hash> m_u_map_ii_i_0; \
