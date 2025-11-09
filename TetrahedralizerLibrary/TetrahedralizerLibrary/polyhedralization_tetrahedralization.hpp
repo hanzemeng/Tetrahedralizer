@@ -13,16 +13,18 @@ public:
     uint32_t* m_polyhedrons; // # of facets followed by indexes
     uint32_t m_polyhedrons_count;
 
-    uint32_t* m_polyhedrons_facets; // # of vertices followed by indexes, vertices are ordered in cw or ccw, assume no collinear points
+    uint32_t* m_polyhedrons_facets; // # of vertices followed by indexes, vertices are ordered in cw or ccw
     uint32_t m_polyhedrons_facets_count;
 };
 
 class PolyhedralizationTetrahedralizationOutput
 {
 public:
-    double* m_inserted_vertices;
-    uint32_t m_inserted_vertices_count;
-    uint32_t* m_tetrahedrons; // Oriented such that the right hand curls around the first 3 points and the thumb points to the 4th point.
+    uint32_t* m_inserted_facets_centroids; // new points are added to the centroids of the listed facets
+    uint32_t m_inserted_facets_centroids_count;
+    uint32_t* m_inserted_polyhedrons_centroids; // new points are added to the centroids of the listed polyhedrons, indexed after facets centroids
+    uint32_t m_inserted_polyhedrons_centroids_count;
+    uint32_t* m_tetrahedrons; // oriented such that the right hand curls around the first 3 points and the thumb points to the 4th point.
     uint32_t m_tetrahedrons_count; // number of tetrahedrons, same as m_tetrahedrons.size()/4
 };
 
@@ -37,15 +39,14 @@ private:
     vector<vector<uint32_t>> m_polyhedrons;
     vector<vector<uint32_t>> m_facets;
     vector<vector<uint32_t>> m_triangulated_facets;
-    vector<vector<uint32_t>> m_facets_counters;
-    vector<uint32_t> m_result_tetrahedrons;
+    vector<vector<uint32_t>> m_triangulated_facets_counters;
+    vector<uint32_t> m_inserted_facets_centroids;
+    vector<uint32_t> m_inserted_polyhedrons_centroids;
+    vector<uint32_t> m_tetrahedrons;
     COMMON_FIELDS
     
     uint32_t find_connect_vertex(uint32_t polyhedron);
-    void connect_polyhedron_with_vertex(uint32_t polyhedron, uint32_t vertex);
-    void connect_polyhedron_with_centroid(uint32_t polyhedron);
     bool polyhedron_has_triangle(uint32_t p,uint32_t t0,uint32_t t1,uint32_t t2);
-    void add_tetrahedron(unordered_set<uint32_t>& u_set);
     void add_tetrahedron(uint32_t t0,uint32_t t1,uint32_t t2,uint32_t t3);
 };
 
@@ -63,8 +64,10 @@ public:
     void AddPolyhedralizationTetrahedralizationInput(uint32_t, double*, uint32_t, uint32_t*, uint32_t, uint32_t*, uint32_t, uint32_t*);
     void CalculatePolyhedralizationTetrahedralization();
     
-    uint32_t GetOutputInsertedVerticesCount();
-    double* GetOutputInsertedVertices();
+    uint32_t GetOutputInsertedFacetsCentroidsCount();
+    uint32_t* GetOutputInsertedFacetsCentroids();
+    uint32_t GetOutputInsertedPolyhedronsCentroidsCount();
+    uint32_t* GetOutputInsertedPolyhedronsCentroids();
     uint32_t GetOutputTetrahedronsCount();
     uint32_t* GetOutputTetrahedrons();
 };
@@ -76,8 +79,10 @@ extern "C" LIBRARY_EXPORT void AddPolyhedralizationTetrahedralizationInput(void*
 
 extern "C" LIBRARY_EXPORT void CalculatePolyhedralizationTetrahedralization(void* handle);
 
-extern "C" LIBRARY_EXPORT uint32_t GetPolyhedralizationTetrahedralizationInsertedVerticesCount(void* handle);
-extern "C" LIBRARY_EXPORT double* GetPolyhedralizationTetrahedralizationInsertedVertices(void* handle);
+extern "C" LIBRARY_EXPORT uint32_t GetPolyhedralizationTetrahedralizationInsertedFacetsCentroidsCount(void* handle);
+extern "C" LIBRARY_EXPORT uint32_t* GetPolyhedralizationTetrahedralizationInsertedFacetsCentroids(void* handle);
+extern "C" LIBRARY_EXPORT uint32_t GetPolyhedralizationTetrahedralizationInsertedPolyhedronsCentroidsCount(void* handle);
+extern "C" LIBRARY_EXPORT uint32_t* GetPolyhedralizationTetrahedralizationInsertedPolyhedronsCentroids(void* handle);
 extern "C" LIBRARY_EXPORT uint32_t GetPolyhedralizationTetrahedralizationTetrahedronsCount(void* handle);
 extern "C" LIBRARY_EXPORT uint32_t* GetPolyhedralizationTetrahedralizationTetrahedrons(void* handle);
 

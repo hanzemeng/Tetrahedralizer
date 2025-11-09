@@ -15,7 +15,8 @@ public class PolyhedralizationTetrahedralization
     }
     public class PolyhedralizationTetrahedralizationOutput
     {
-        public List<double> m_insertedVertices; // Additional vertices maybe inserted at the centroids of polyhedrons.
+        public List<int> m_insertedFacetsCentroids; // new points are added to the centroids of the listed facets
+        public List<int> m_insertedPolyhedronsCentroids; // new points are added to the centroids of the listed polyhedrons, indexed after facets centroids
         public List<int> m_tetrahedrons; // Every 4 ints is a tetrahedron. Curl around the first 3 points and your thumb points toward the 4th point. Assuming left hand coordinate.
     }
 
@@ -33,9 +34,13 @@ public class PolyhedralizationTetrahedralization
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void CalculatePolyhedralizationTetrahedralization(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-        static extern int GetPolyhedralizationTetrahedralizationInsertedVerticesCount(IntPtr handle);
+        static extern int GetPolyhedralizationTetrahedralizationInsertedFacetsCentroidsCount(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-        static extern IntPtr GetPolyhedralizationTetrahedralizationInsertedVertices(IntPtr handle);
+        static extern IntPtr GetPolyhedralizationTetrahedralizationInsertedFacetsCentroids(IntPtr handle);
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        static extern int GetPolyhedralizationTetrahedralizationInsertedPolyhedronsCentroidsCount(IntPtr handle);
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        static extern IntPtr GetPolyhedralizationTetrahedralizationInsertedPolyhedronsCentroids(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern int GetPolyhedralizationTetrahedralizationTetrahedronsCount(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
@@ -53,28 +58,21 @@ public class PolyhedralizationTetrahedralization
         TetrahedralizerUtility.CountFlatIListElements(input.m_polyhedrons), input.m_polyhedrons.ToArray(), TetrahedralizerUtility.CountFlatIListElements(input.m_polyhedronsFacets), input.m_polyhedronsFacets.ToArray());
         CalculatePolyhedralizationTetrahedralization(handle);
 
+        void PopulateOutput(int n, IntPtr ptr, ref List<int> res)
         {
-            int n = 3*GetPolyhedralizationTetrahedralizationInsertedVerticesCount(handle);
-            output.m_insertedVertices = new List<double>(n);
-            IntPtr ptr = GetPolyhedralizationTetrahedralizationInsertedVertices(handle);
+            res = new List<int>();
             for(int i=0; i<n; i++)
             {
-                output.m_insertedVertices.Add(ptr.ReadDouble());
+                res.Add(ptr.ReadInt32());
             }
         }
-        {
-            int n = 4*GetPolyhedralizationTetrahedralizationTetrahedronsCount(handle);
-            output.m_tetrahedrons = new List<int>(n);
-            IntPtr ptr = GetPolyhedralizationTetrahedralizationTetrahedrons(handle);
-            for(int i=0; i<n; i++)
-            {
-                output.m_tetrahedrons.Add(ptr.ReadInt32());
-            }
-        }
+
+        PopulateOutput(GetPolyhedralizationTetrahedralizationInsertedFacetsCentroidsCount(handle), GetPolyhedralizationTetrahedralizationInsertedFacetsCentroids(handle), ref output.m_insertedFacetsCentroids);
+        PopulateOutput(GetPolyhedralizationTetrahedralizationInsertedPolyhedronsCentroidsCount(handle), GetPolyhedralizationTetrahedralizationInsertedPolyhedronsCentroids(handle), ref output.m_insertedPolyhedronsCentroids);
+        PopulateOutput(4*GetPolyhedralizationTetrahedralizationTetrahedronsCount(handle), GetPolyhedralizationTetrahedralizationTetrahedrons(handle), ref output.m_tetrahedrons);
 
         DisposePolyhedralizationTetrahedralizationHandle(handle);
 
-        TetrahedralizerUtility.SwapElementsByInterval(output.m_insertedVertices, 3); // Change from right to left hand coordinate.
         TetrahedralizerUtility.SwapElementsByInterval(output.m_tetrahedrons, 4); // Change from right to left hand coordinate.
     }
 }

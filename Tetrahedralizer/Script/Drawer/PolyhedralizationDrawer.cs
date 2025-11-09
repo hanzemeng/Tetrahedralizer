@@ -1,6 +1,4 @@
 using System;
-using System.Text;
-using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -52,7 +50,7 @@ public class PolyhedralizationDrawer : MonoBehaviour
     }
     private void DrawAsWhole(Polyhedralization polyhedralization)
     {
-        (Mesh mesh, Vector3 center) = polyhedralization.ToMesh(true, false);
+        (Mesh mesh, Vector3 center) = polyhedralization.ToMesh();
         TetrahedralizerUtility.CreateGameObject(mesh, new List<Material>{m_polyhedronsMaterial} , m_polyhedronsParent, center);
     }
 

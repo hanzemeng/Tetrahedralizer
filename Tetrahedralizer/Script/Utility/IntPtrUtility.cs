@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-public static class IntPtrUtility
+public static class IntPtrExtension
 {
     public static byte ReadByte(this ref IntPtr ptr)
     {

@@ -67,7 +67,7 @@ public class PolyhedralizedMeshCreation
             BSPInput.m_tetrahedrons = DTOutput.m_tetrahedrons;
             BSPInput.m_constraints = weldedTriangles;
             BSPInput.m_aggressivelyAddVirtualConstraints = aggressivelyAddVirtualConstraints;
-            BSPInput.m_removeCollinearSegments = true;
+            BSPInput.m_removeCollinearSegments = false;
             binarySpacePartition.CalculateBinarySpacePartition(BSPInput, BSPOutput);
         }
 

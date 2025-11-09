@@ -7,16 +7,12 @@ using UnityEngine.Rendering;
 using UnityEditor;
 #endif
 
-[CreateAssetMenu(fileName = SHORT_NAME, menuName = TetrahedralizerConstant.SCRIPTABLE_OBJECT_PATH + SHORT_NAME)]
+[CreateAssetMenu(fileName = nameof(TetrahedralMesh), menuName = TetrahedralizerConstant.SCRIPTABLE_OBJECT_PATH + nameof(TetrahedralMesh))]
 [PreferBinarySerialization]
 public class TetrahedralMesh : ScriptableObject
 {
-    public const string SHORT_NAME = "TetrahedralMesh_SO";
-
-    public List<Vector3> vertices;
-
-    public List<Int32> vertexAttributeDescriptors;
-
+    public List<Vector3> vertices; // every 3 elements correspond to a triangle, and every 4 triangles correspond to a tetrahedron
+    public List<Int32> vertexAttributeDescriptors; // note that normals and tangents are calculated, but not stored
     public List<Color32> colors;
     public List<Vector4> uvs0; // uvs are usually vector2, but they can be vector3 or vector4
     public List<Vector4> uvs1;
@@ -27,7 +23,9 @@ public class TetrahedralMesh : ScriptableObject
     public List<Vector4> uvs6;
     public List<Vector4> uvs7;
 
-    public List<Int32> facetsSubmeshes;
+    public List<Int32> facetsSubmeshes; // every 4 elements correspond to the 4 facets of a tetrahedron
+    public List<Int32> neighbors; // the ith element is the ith facet's neighboring facet, UNDEFINED_VALUE if no neighbor
+    // neighbors order: 0,1,2  0,1,3  0,3,2,  1,2,3
 
 
     // each element is a tetrahedron, and the center of the tetrahedron in world space
@@ -89,33 +87,43 @@ public class TetrahedralMesh : ScriptableObject
             return (null, Vector3.zero);
         }
 
-        List<Int32> tempInt = new List<Int32>();
-        List<Vector3> tempVector3s = new List<Vector3>();
+        bool[] exteriorFlags = GetFacetsExteriorFlags();
+        int[] mappings = Enumerable.Repeat(TetrahedralizerConstant.UNDEFINED_VALUE, facetsSubmeshes.Count).ToArray();
+        
         MeshVertexDataMapper mvdm = new MeshVertexDataMapper();
         mvdm.AssignSourceTetrahedralMesh(this);
-        Int32 submeshCount = GetSubmeshesCount();
-        for(Int32 i=0; i<3*facetsSubmeshes.Count; i++)
+        for(Int32 i=0; i<facetsSubmeshes.Count; i++)
         {
-            mvdm.CopyVertexData(i);
+            if(!exteriorFlags[i])
+            {
+                continue;
+            }
+            mappings[i] = mvdm.GetTargetVertexCount()/3;
+            mvdm.CopyVertexData(3*i+0);
+            mvdm.CopyVertexData(3*i+1);
+            mvdm.CopyVertexData(3*i+2);
         }
 
+        Int32 submeshCount = GetSubmeshesCount();
         Mesh mesh = mvdm.MakeMesh();
         mesh.subMeshCount = submeshCount;
+        List<Int32> tempInt = new List<Int32>();
         for(Int32 i=0; i<submeshCount; i++)
         {
             tempInt.Clear();
             for(Int32 j=0; j<facetsSubmeshes.Count; j++)
             {
-                if(i == facetsSubmeshes[j])
+                if(exteriorFlags[j] && i==facetsSubmeshes[j])
                 {
-                    tempInt.Add(3*j+0);
-                    tempInt.Add(3*j+1);
-                    tempInt.Add(3*j+2);
+                    tempInt.Add(3*mappings[j]+0);
+                    tempInt.Add(3*mappings[j]+1);
+                    tempInt.Add(3*mappings[j]+2);
                 }
             }
             mesh.SetTriangles(tempInt,i);
         }
 
+        List<Vector3> tempVector3s = new List<Vector3>();
         mesh.GetVertices(tempVector3s);
         Vector3 center = TetrahedralizerUtility.CenterVertices(tempVector3s);
         mesh.SetVertices(tempVector3s);
@@ -124,6 +132,11 @@ public class TetrahedralMesh : ScriptableObject
         mesh.RecalculateTangents();
 
         return (mesh, center);
+    }
+
+    public bool[] GetFacetsExteriorFlags()
+    {
+        return neighbors.Select(i=>TetrahedralizerConstant.UNDEFINED_VALUE==i).ToArray();
     }
 
     public TetrahedralMesh()
@@ -143,13 +156,12 @@ public class TetrahedralMesh : ScriptableObject
         uvs7 = new List<Vector4>();
 
         facetsSubmeshes = new List<Int32>();
+        neighbors = new List<Int32>();
     }
     public void Assign(TetrahedralMesh tetrahedralMesh)
     {
         vertices = tetrahedralMesh.vertices;
-
         vertexAttributeDescriptors = tetrahedralMesh.vertexAttributeDescriptors;
-
         colors = tetrahedralMesh.colors;
         uvs0 = tetrahedralMesh.uvs0;
         uvs1 = tetrahedralMesh.uvs1;
@@ -161,6 +173,7 @@ public class TetrahedralMesh : ScriptableObject
         uvs7 = tetrahedralMesh.uvs7;
 
         facetsSubmeshes = tetrahedralMesh.facetsSubmeshes;
+        neighbors = tetrahedralMesh.neighbors;
     }
 
     public void Clear()
@@ -177,6 +190,7 @@ public class TetrahedralMesh : ScriptableObject
         uvs6.Clear();
         uvs7.Clear();
         facetsSubmeshes.Clear();
+        neighbors.Clear();
     }
 
     public int GetTetrahedronsCount()
@@ -217,7 +231,6 @@ public class TetrahedralMesh : ScriptableObject
     {
         target.ReplaceWith(vertices);
     }
-
     public void SetColors(IList<Color32> source)
     {
         colors.ReplaceWith(source);
@@ -226,7 +239,6 @@ public class TetrahedralMesh : ScriptableObject
     {
         target.ReplaceWith(colors);
     }
-
     public void SetUVs(Int32 c, IList<Vector4> source)
     {
         switch(c)
@@ -291,7 +303,6 @@ public class TetrahedralMesh : ScriptableObject
                 throw new Exception($"UV channel {c} does not exist.");
         }
     }
-
     public void SetFacetsSubmeshes(IList<Int32> source)
     {
         facetsSubmeshes.ReplaceWith(source);
@@ -300,7 +311,14 @@ public class TetrahedralMesh : ScriptableObject
     {
         target.ReplaceWith(facetsSubmeshes);
     }
-
+    public void SetNeighbors(IList<Int32> source)
+    {
+        neighbors.ReplaceWith(source);
+    }
+    public void GetNeighbors(IList<Int32> target)
+    {
+        target.ReplaceWith(neighbors);
+    }
     public Int32 GetSubmeshesCount()
     {
         return facetsSubmeshes.Max()+1;

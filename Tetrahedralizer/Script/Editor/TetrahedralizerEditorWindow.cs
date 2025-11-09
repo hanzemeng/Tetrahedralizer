@@ -67,6 +67,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
 
         public Page m_currentPage;
         public bool m_synchronizeMeshesPreviews = true;
+        public bool m_showAdditionalInputData = true;
 
         public GameObject m_gameObject;
         public bool m_aggressivelyAddVirtualConstraints;
@@ -91,6 +92,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
 
             m_currentPage = (Page)binaryReader.ReadInt32();
             m_synchronizeMeshesPreviews = binaryReader.ReadBoolean();
+            m_showAdditionalInputData = binaryReader.ReadBoolean();
             m_gameObject = LoadFromGUID<GameObject>(binaryReader.ReadString());
             m_aggressivelyAddVirtualConstraints = binaryReader.ReadBoolean();
             m_polyhedralization = LoadFromGUID<Polyhedralization>(binaryReader.ReadString());
@@ -116,6 +118,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
 
             binaryWriter.Write((int)m_currentPage);
             binaryWriter.Write(m_synchronizeMeshesPreviews);
+            binaryWriter.Write(m_showAdditionalInputData);
             binaryWriter.Write(GetGUID(m_gameObject));
             binaryWriter.Write(m_aggressivelyAddVirtualConstraints);
             binaryWriter.Write(GetGUID(m_polyhedralization));
@@ -143,8 +146,6 @@ public class TetrahedralizerEditorWindow : EditorWindow
     private List<MeshPreviewField> m_meshesPreviews;
 
     private TetrahedralizerEditorWindowSettings m_settings;
-
-    private bool m_showAdditionalInputData = true;
     private Mesh m_mesh;
     private List<Material> m_meshMaterials;
 
@@ -271,8 +272,8 @@ public class TetrahedralizerEditorWindow : EditorWindow
 
         m_mesh = meshFilter.sharedMesh;
 
-        m_showAdditionalInputData = EditorGUILayout.Foldout(m_showAdditionalInputData, "Additional Input Data");
-        if(m_showAdditionalInputData)
+        m_settings.m_showAdditionalInputData = EditorGUILayout.Foldout(m_settings.m_showAdditionalInputData, "Additional Input Data");
+        if(m_settings.m_showAdditionalInputData)
         {
             EditorGUI.BeginDisabledGroup(true);
             EditorGUILayout.ObjectField(new GUIContent("Input Mesh:", "The Mesh in the MeshFilter of the target GameObject."), m_mesh, typeof(Mesh), false);
@@ -430,7 +431,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
         EditorGUILayout.BeginHorizontal();
         GUILayout.Space(TetrahedralizerEditorWindowSettings.GAP_SMALL_RECT_SIZE);
         EditorGUI.LabelField(GUILayoutUtility.GetRect(TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, TetrahedralizerEditorWindowSettings.MESH_DESCRIPTION_RECT_SIZE, GUILayout.ExpandWidth(false)), 
-        $"Input Tetrahedralization:\nVertices Count: {(null==m_settings.m_polyhedralization ? 0:m_settings.m_polyhedralization.GetVerticesCount())}\nTetrahedrons Count: {(null==m_settings.m_polyhedralization ? 0:m_settings.m_polyhedralization.GetPolyhedronsCount())}");
+        $"Input Polyhedralization:\nVertices Count: {(null==m_settings.m_polyhedralization ? 0:m_settings.m_polyhedralization.GetVerticesCount())}\nPolyhedrons Count: {(null==m_settings.m_polyhedralization ? 0:m_settings.m_polyhedralization.GetPolyhedronsCount())}");
         GUILayout.Space(TetrahedralizerEditorWindowSettings.GAP_SMALL_RECT_SIZE);
         EditorGUI.LabelField(GUILayoutUtility.GetRect(TetrahedralizerEditorWindowSettings.MESH_PREVIEW_RECT_SIZE, TetrahedralizerEditorWindowSettings.MESH_DESCRIPTION_RECT_SIZE, GUILayout.ExpandWidth(false)), 
         $"Input Mesh:\nVertices Count: {(null==m_mesh ? 0:m_mesh.vertexCount)}\nTriangles Count: {(null==m_mesh ? 0:m_mesh.GetIndexCount()/3)}");

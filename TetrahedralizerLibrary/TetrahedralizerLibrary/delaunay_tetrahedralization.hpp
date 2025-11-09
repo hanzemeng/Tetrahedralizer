@@ -29,7 +29,7 @@ private:
     genericPoint** m_vertices;
     vector<uint32_t> m_tetrahedrons;
     queue<uint32_t> m_tetrahedrons_gaps;
-    vector<uint32_t> m_neighbors; // neighbors order: 0,1,2  1,0,3  0,2,3,  2,1,3
+    vector<uint32_t> m_neighbors; // neighbors order: 0,2,1  1,0,3  0,2,3,  2,1,3
     COMMON_FIELDS
     
 //    #include "common_function.h"

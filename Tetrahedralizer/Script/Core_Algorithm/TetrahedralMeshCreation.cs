@@ -28,8 +28,6 @@ public class TetrahedralMeshCreation
 
         List<SubMeshDescriptor> subMeshDescriptors = Enumerable.Range(0,input.m_mesh.subMeshCount).Select(i=>input.m_mesh.GetSubMesh(i)).ToList();
 
-        MeshTriangleFinder meshTriangleFinder = new MeshTriangleFinder();
-        meshTriangleFinder.AssignSourceMesh(input.m_mesh);
         MeshVertexDataMapper meshVertexDataMapper = new MeshVertexDataMapper();
         meshVertexDataMapper.AssignSourceMesh(input.m_mesh);
 
@@ -72,6 +70,11 @@ public class TetrahedralMeshCreation
         MeshVertexDataMapper meshVertexDataMapper, TetrahedralMesh tetrahedralMesh, IProgress<string> progress=null)
     {
         List<Vector3> approximatedVertices = TetrahedralizerUtility.PackVector3s(GenericPointApproximation.CalculateGenericPointApproximation(explicitVertices, implicitVertices));
+        List<List<int>> nestedPolyhedrons = TetrahedralizerUtility.FlatIListToNestedList(polyhedrons);
+        List<List<int>> nestedFacets = TetrahedralizerUtility.FlatIListToNestedList(facets);
+        int[] uv0IslandsFrequency = new int[uv0IslandsIndexes.Max()+1];
+        int[] ps = new int[3];
+        double[] ts = new double[3];
 
         if(null != progress)
         {
@@ -105,11 +108,32 @@ public class TetrahedralMeshCreation
             PTInput.m_polyhedrons = polyhedrons;
             PTInput.m_polyhedronsFacets = facets;
             polyhedralizationTetrahedralization.CalculatePolyhedralizationTetrahedralization(PTInput, PTOutput);
-            //Debug.Log(PTOutput.m_insertedVertices.Count/3);
-            approximatedVertices.AddRange(TetrahedralizerUtility.PackVector3s(PTOutput.m_insertedVertices));
+            //Debug.Log(PTOutput.m_insertedFacetsCentroids.Count);
+            //Debug.Log(PTOutput.m_insertedPolyhedronsCentroids.Count);
+            Vector3[] polyhedronsFacetsCentroids = Enumerable.Repeat(Vector3.zero, nestedFacets.Count).ToArray();
+            foreach(int f in PTOutput.m_insertedFacetsCentroids)
+            {
+                Vector3 center = nestedFacets[f].Aggregate(Vector3.zero,(i,j)=>i+=approximatedVertices[j]) / (float)nestedFacets[f].Count;
+                polyhedronsFacetsCentroids[f] = center;
+                approximatedVertices.Add(center);
+            }
+            foreach(int p in PTOutput.m_insertedPolyhedronsCentroids)
+            {
+                Vector3 center = Vector3.zero;
+                foreach(int f in nestedPolyhedrons[p])
+                {
+                    if(Vector3.zero == polyhedronsFacetsCentroids[f])
+                    {
+                        polyhedronsFacetsCentroids[f] = nestedFacets[f].Aggregate(Vector3.zero,(i,j)=>i+=approximatedVertices[j]) / (float)nestedFacets[f].Count;
+                    }
+                    center += polyhedronsFacetsCentroids[f];
+                }
+                center /= (float)nestedPolyhedrons[p].Count;
+                approximatedVertices.Add(center);
+            }
             tetrahedrons = PTOutput.m_tetrahedrons;
         }
-
+        
         if(null != progress)
         {
             progress.Report("Remapping vertex data.");
@@ -125,11 +149,16 @@ public class TetrahedralMeshCreation
                 originalTrianglesSubmeshes[j/3] = i;
             }
         }
+        List<int> neighbors = Enumerable.Repeat(TetrahedralizerConstant.UNDEFINED_VALUE, tetrahedrons.Count).ToList();
+        Dictionary<(int,int,int),int> neighborsRecords = new Dictionary<(int, int, int), int>();
+        List<HashSet<int>> vertexIncidentFacets = Enumerable.Range(0,approximatedVertices.Count)
+        .Select(i=>nestedFacets
+            .Select((facet, index)=>new{facet,index})
+            .Where(j=>j.facet.Contains(i))
+            .Select(j=>j.index)
+            .ToHashSet())
+        .ToList();
 
-        int[] ps = new int[3];
-        double[] ts = new double[3];
-        List<List<int>> polyhedronFacets = TetrahedralizerUtility.FlatIListToNestedList(facets);
-        int[] uv0IslandsFrequency = new int[uv0IslandsIndexes.Max()+1];
         // returns the triangle that contains the facet vertex
         int MapVertexData(int facet, int vertex)
         {
@@ -149,61 +178,72 @@ public class TetrahedralMeshCreation
             }
             if(t < 0)
             {
-                meshVertexDataMapper.AddDefaultValue(approximatedVertices[polyhedronFacets[facet][vertex]]);
+                meshVertexDataMapper.AddDefaultValue(approximatedVertices[nestedFacets[facet][vertex]]);
             }
             else
             {
                 ps[0] = triangles[3*t+0];
                 ps[1] = triangles[3*t+1];
                 ps[2] = triangles[3*t+2];
-                TetrahedralizerUtility.BarycentricWeight(vertices[ps[0]],vertices[ps[1]],vertices[ps[2]],approximatedVertices[polyhedronFacets[facet][vertex]], out ts[0], out ts[1], out ts[2]);
-                meshVertexDataMapper.InterpolateVertexData(3, approximatedVertices[polyhedronFacets[facet][vertex]],ps,ts);
+                TetrahedralizerUtility.BarycentricWeight(vertices[ps[0]],vertices[ps[1]],vertices[ps[2]],approximatedVertices[nestedFacets[facet][vertex]], out ts[0], out ts[1], out ts[2]);
+                meshVertexDataMapper.InterpolateVertexData(3, approximatedVertices[nestedFacets[facet][vertex]],ps,ts);
             }
             
             return t;
         }
-
-        List<HashSet<int>> vertexIncidentFacets = Enumerable.Range(0,approximatedVertices.Count)
-        .Select(i=>polyhedronFacets
-            .Select((facet, index)=>new{facet,index})
-            .Where(j=>j.facet.Contains(i))
-            .Select(j=>j.index)
-            .ToHashSet())
-        .ToList();
-
-        void ProcessFacet(int p0, int p1, int p2)
+        void ProcessFacet(int i, int p0, int p1, int p2)
         {
-            HashSet<int> commonFacet = new HashSet<int>(vertexIncidentFacets[p0]);
-            commonFacet.IntersectWith(vertexIncidentFacets[p1]);
-            commonFacet.IntersectWith(vertexIncidentFacets[p2]);
-            if(0 == commonFacet.Count)
             {
-                meshVertexDataMapper.AddDefaultValue(approximatedVertices[p0]);
-                meshVertexDataMapper.AddDefaultValue(approximatedVertices[p1]);
-                meshVertexDataMapper.AddDefaultValue(approximatedVertices[p2]);
-                resultTrianglesSubmeshes.Add(originalSubmeshesCount);
-                return;
+                int t0 = p0;
+                int t1 = p1;
+                int t2 = p2;
+                int n;
+                Sorter.SortInt3(ref t0, ref t1, ref t2);
+                if(neighborsRecords.TryGetValue((t0,t1,t2), out n))
+                {
+                    neighbors[i] = n;
+                    neighbors[n] = i;
+                    neighborsRecords.Remove((t0,t1,t2));
+                }
+                else
+                {
+                    neighborsRecords[(t0,t1,t2)] = i;
+                }
             }
-            //if(1 != commonFacet.Count)
-            //{
-            //    throw new Exception();
-            //}
-            int facet = commonFacet.First();
-            int t0 = MapVertexData(facet, polyhedronFacets[facet].FindIndex(i=>i==p0));
-            int t1 = MapVertexData(facet, polyhedronFacets[facet].FindIndex(i=>i==p1));
-            int t2 = MapVertexData(facet, polyhedronFacets[facet].FindIndex(i=>i==p2));
 
-            if(t0 < 0 || t1 < 0 || t2 < 0)
             {
-                resultTrianglesSubmeshes.Add(originalSubmeshesCount);
-            }
-            else
-            {
-                //if(originalTrianglesSubmeshes[t0] != originalTrianglesSubmeshes[t1] || originalTrianglesSubmeshes[t0] != originalTrianglesSubmeshes[t2] || originalTrianglesSubmeshes[t1]!=originalTrianglesSubmeshes[t2])
+                HashSet<int> commonFacet = new HashSet<int>(vertexIncidentFacets[p0]);
+                commonFacet.IntersectWith(vertexIncidentFacets[p1]);
+                commonFacet.IntersectWith(vertexIncidentFacets[p2]);
+                if(0 == commonFacet.Count)
+                {
+                    meshVertexDataMapper.AddDefaultValue(approximatedVertices[p0]);
+                    meshVertexDataMapper.AddDefaultValue(approximatedVertices[p1]);
+                    meshVertexDataMapper.AddDefaultValue(approximatedVertices[p2]);
+                    resultTrianglesSubmeshes.Add(originalSubmeshesCount);
+                    return;
+                }
+                //if(1 != commonFacet.Count)
                 //{
                 //    throw new Exception();
                 //}
-                resultTrianglesSubmeshes.Add(originalTrianglesSubmeshes[t0]);
+                int facet = commonFacet.First();
+                int t0 = MapVertexData(facet, nestedFacets[facet].FindIndex(i=>i==p0));
+                int t1 = MapVertexData(facet, nestedFacets[facet].FindIndex(i=>i==p1));
+                int t2 = MapVertexData(facet, nestedFacets[facet].FindIndex(i=>i==p2));
+
+                if(t0 < 0 || t1 < 0 || t2 < 0)
+                {
+                    resultTrianglesSubmeshes.Add(originalSubmeshesCount);
+                }
+                else
+                {
+                    //if(originalTrianglesSubmeshes[t0] != originalTrianglesSubmeshes[t1] || originalTrianglesSubmeshes[t0] != originalTrianglesSubmeshes[t2] || originalTrianglesSubmeshes[t1]!=originalTrianglesSubmeshes[t2])
+                    //{
+                    //    throw new Exception();
+                    //}
+                    resultTrianglesSubmeshes.Add(originalTrianglesSubmeshes[t0]);
+                }
             }
         }
 
@@ -214,13 +254,14 @@ public class TetrahedralMeshCreation
             int t2 = tetrahedrons[i+2];
             int t3 = tetrahedrons[i+3];
 
-            ProcessFacet(t0,t3,t2);
-            ProcessFacet(t0,t1,t3);
-            ProcessFacet(t1,t2,t3);
-            ProcessFacet(t0,t2,t1);
+            ProcessFacet(i+0,t0,t2,t1);
+            ProcessFacet(i+1,t0,t1,t3);
+            ProcessFacet(i+2,t0,t3,t2);
+            ProcessFacet(i+3,t1,t2,t3);
         }
 
         meshVertexDataMapper.MakeTetrahedralMesh(tetrahedralMesh);
         tetrahedralMesh.SetFacetsSubmeshes(resultTrianglesSubmeshes);
+        tetrahedralMesh.SetNeighbors(neighbors);
     }
 }

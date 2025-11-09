@@ -6,16 +6,14 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
-[CreateAssetMenu(fileName = SHORT_NAME, menuName = TetrahedralizerConstant.SCRIPTABLE_OBJECT_PATH + SHORT_NAME)]
+[CreateAssetMenu(fileName = nameof(Polyhedralization), menuName = TetrahedralizerConstant.SCRIPTABLE_OBJECT_PATH + nameof(Polyhedralization))]
 [PreferBinarySerialization]
 public class Polyhedralization : ScriptableObject
 {
-    public const string SHORT_NAME = "Polyhedralization_SO";
-
     public List<double> m_explicitVertices; // Every 3 doubles are x,y,z of a point. Assuming left hand coordinate.
     public List<int> m_implicitVertices; // 5/9 followed by indexes of m_explicitVertices.
     public List<int> m_polyhedrons; // # of polyhedron facets, followed by facets indexes.
-    public List<int> m_polyhedronsFacets;  // # of facets vertices, followed by vertices indexes ordered in cw or ccw. No collinear segments within the same facet.
+    public List<int> m_polyhedronsFacets;  // # of facets vertices, followed by vertices indexes ordered in cw or ccw.
     public List<bool> m_polyhedronsFacetsPointOut;  // only defined for exterior facets, true if the facet points out of its polyhedron
 
 
@@ -50,7 +48,7 @@ public class Polyhedralization : ScriptableObject
                 {
                     polyVertices.Add(vertices[polyhedronsFacets[facet][k]]);
                 }
-                if(FacetPointsOut(facet, i, polyhedronsFacets, polyhedrons, genericPointPredicate))
+                if(m_polyhedronsFacetsPointOut[facet])
                 {
                     for(int k=1; k<polyhedronsFacets[facet].Count-1; k++)
                     {
@@ -84,7 +82,7 @@ public class Polyhedralization : ScriptableObject
 
         return res;
     }
-    public (Mesh mesh, Vector3 center) ToMesh(bool generateUV0=false, bool centerVertices=true)
+    public (Mesh mesh, Vector3 center) ToMesh()
     {
         if(null == m_explicitVertices || 0 == m_explicitVertices.Count)
         {
@@ -139,10 +137,6 @@ public class Polyhedralization : ScriptableObject
         }
 
         Vector3 center = Vector3.zero;
-        if(centerVertices)
-        {
-            center = TetrahedralizerUtility.CenterVertices(meshVertices);
-        }
         Mesh mesh = new Mesh();
         mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
         mesh.vertices = meshVertices.ToArray();
@@ -150,11 +144,6 @@ public class Polyhedralization : ScriptableObject
         mesh.RecalculateBounds();
         mesh.RecalculateNormals();
         mesh.RecalculateTangents();
-
-        if(generateUV0)
-        {
-            MeshUtility.GenerateFacetsUVs(mesh, facetsVerticesIndexes);
-        }
 
         return (mesh, center);
     }
@@ -185,39 +174,6 @@ public class Polyhedralization : ScriptableObject
         bool[] res = Enumerable.Repeat(false, m_polyhedronsFacets.Count).ToArray();
         GetExteriorFacets().ForEach(i=>res[i]=true);
         return res;
-    }
-
-    public List<List<Vector2>> GetFacetsUVs()
-    {
-        #if UNITY_EDITOR
-        List<List<Vector2>> res = new List<List<Vector2>>();
-        bool[] isExteriorFacet = GetFacetsExteriorFlags();
-        List<List<int>> facets = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedronsFacets);
-        Vector2[] meshUVs = Unwrapping.GeneratePerTriangleUV(ToMesh().mesh);
-
-        int k = 0;
-        for(int i=0; i<facets.Count; i++)
-        {
-            if(!isExteriorFacet[i])
-            {
-                res.Add(Enumerable.Repeat(Vector2.zero, facets[i].Count).ToList());
-                continue;
-            }
-
-            List<Vector2> facetUVs = new List<Vector2>();
-            facetUVs.Add(m_polyhedronsFacetsPointOut[i] ? meshUVs[k+0]:meshUVs[k+2]);
-            for(int j=0; j<facets[i].Count-2; j++)
-            {
-                facetUVs.Add(meshUVs[k+3*j+1]);
-            }
-            k += 3*(facets[i].Count-2);
-            facetUVs.Add(m_polyhedronsFacetsPointOut[i] ? meshUVs[k-1]:meshUVs[k-3]);
-            res.Add(facetUVs);
-        }
-        return res;
-        #else
-        return null;
-        #endif
     }
 
     public void CalculatePolyhedronsFacetsOrients()
@@ -263,9 +219,25 @@ public class Polyhedralization : ScriptableObject
     private bool FacetPointsOut(int facet, int polyhedron, List<List<int>> polyhedronsFacets, List<List<int>> polyhedrons, GenericPointPredicate genericPointPredicate)
     {
         List<int> facetVertices = polyhedronsFacets[facet];
-        int p0 = facetVertices[0];
-        int p1 = facetVertices[1];
-        int p2 = facetVertices[2];
+        int p0,p1,p2;
+        p0=p1=p2=-1; // find non collinear points
+        for(int i=0; i<facetVertices.Count; i++)
+        {
+            int p = 0==i ? facetVertices.Count-1:i-1;
+            int n = facetVertices.Count-1==i ? 0:i+1;
+
+            if(!genericPointPredicate.IsCollinear(facetVertices[p],facetVertices[i],facetVertices[n]))
+            {
+                p0=facetVertices[p];
+                p1=facetVertices[i];
+                p2=facetVertices[n];
+                break;
+            }
+        }
+        if(p0<0)
+        {
+            throw new Exception();
+        }
 
         for(int i=0; i<polyhedrons[polyhedron].Count; i++)
         {
@@ -321,8 +293,8 @@ public class PolyhedralizationEditor : Editor
         }
 
         EditorGUILayout.LabelField($"Vertices Count: {m_so.m_explicitVertices.Count/3 + TetrahedralizerUtility.CountFlatIListElements(m_so.m_implicitVertices)}");
-        EditorGUILayout.LabelField($"Polyhedrons Count: {m_so.m_polyhedrons.Count}");
-        EditorGUILayout.LabelField($"Polyhedrons' Facets Count: {m_so.m_polyhedronsFacets.Count}");
+        EditorGUILayout.LabelField($"Polyhedrons Count: {TetrahedralizerUtility.CountFlatIListElements(m_so.m_polyhedrons)}");
+        EditorGUILayout.LabelField($"Polyhedrons' Facets Count: {TetrahedralizerUtility.CountFlatIListElements(m_so.m_polyhedronsFacets)}");
     }
 }
 

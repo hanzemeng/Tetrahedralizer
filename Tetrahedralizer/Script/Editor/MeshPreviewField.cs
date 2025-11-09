@@ -1,4 +1,5 @@
-using System;
+#if UNITY_EDITOR
+
 using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
@@ -220,3 +221,5 @@ public class MeshPreviewField
         m_pivotPositionOffset += vector2;
     }
 }
+
+#endif

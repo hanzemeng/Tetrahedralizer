@@ -98,5 +98,69 @@ public class BinarySpacePartition
         }
 
         DisposeBinarySpacePartitionHandle(handle);
+
+        // sanity checks: every facet should not be a line, and every polyhedron should not be a plane
+        //{
+        //    using GenericPointPredicate genericPointPredicate = new GenericPointPredicate(input.m_explicitVertices, output.m_insertedVertices);
+        //    List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(output.m_polyhedrons);
+        //    List<List<int>> facets = TetrahedralizerUtility.FlatIListToNestedList(output.m_polyhedronsFacets);
+
+        //    foreach(List<int> facet in facets)
+        //    {
+        //        int p0 = facet[0];
+        //        int p1 = facet[1];
+        //        bool facetIsDegenerate = true;
+        //        for(int i=2; i<facet.Count; i++)
+        //        {
+        //            if(!genericPointPredicate.IsCollinear(p0,p1,facet[i]))
+        //            {
+        //                facetIsDegenerate = false;
+        //                break;
+        //            }
+        //        }
+        //        if(facetIsDegenerate)
+        //        {
+        //            throw new Exception();
+        //        }
+        //    }
+
+        //    foreach(List<int> polyhedron in polyhedrons)
+        //    {
+        //        int p0,p1,p2;
+        //        p0=p1=p2=-1; // find non collinear points
+        //        List<int> facetVertices = facets[polyhedron[0]];
+        //        for(int i=0; i<facetVertices.Count; i++)
+        //        {
+        //            int p = 0==i ? facetVertices.Count-1:i-1;
+        //            int n = facetVertices.Count-1==i ? 0:i+1;
+        //            if(!genericPointPredicate.IsCollinear(facetVertices[p],facetVertices[i],facetVertices[n]))
+        //            {
+        //                p0=facetVertices[p];
+        //                p1=facetVertices[i];
+        //                p2=facetVertices[n];
+        //                break;
+        //            }
+        //        }
+
+        //        bool polyhedronIsDegenerate = true;
+        //        for(int i=1; i<polyhedron.Count; i++)
+        //        {
+        //            facetVertices = facets[polyhedron[i]];
+        //            for(int j=0; j<facetVertices.Count; j++)
+        //            {
+        //                if(0 != genericPointPredicate.Orient3d(p0,p1,p2,facetVertices[j]))
+        //                {
+        //                    polyhedronIsDegenerate = false;
+        //                    break;
+        //                }
+        //            }
+        //        }
+
+        //        if(polyhedronIsDegenerate)
+        //        {
+        //            throw new Exception();
+        //        }
+        //    }
+        //}
     }
 }

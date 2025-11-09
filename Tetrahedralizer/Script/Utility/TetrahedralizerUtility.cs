@@ -3,46 +3,8 @@ using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class TetrahedralizerUtility
+public static class TetrahedralizerUtility
 {
-    public static void SortInt2(ref int p0, ref int p1)
-    {
-        int temp;
-        if(p0 > p1)
-        {
-            temp = p1;
-            p1 = p0;
-            p0 = temp;
-        }
-    }
-    public static void SortInt3(ref int p0, ref int p1, ref int p2)
-    {
-        int temp;
-        if(p0 > p1)
-        {
-            temp = p1;
-            p1 = p0;
-            p0 = temp;
-        }
-        if(p1 > p2)
-        {
-            temp = p2;
-            p2 = p1;
-            p1 = temp;
-        }
-        if(p0 > p1)
-        {
-            temp = p1;
-            p1 = p0;
-            p0 = temp;
-        }
-    }
-
-    public static bool DoubleIsSpecial(double value)
-    {
-        return double.IsNaN(value) || double.IsInfinity(value);
-    }
-
     public static List<double> UnpackVector3s(IList<Vector3> input)
     {
         List<double> res = new List<double>();
@@ -58,23 +20,6 @@ public class TetrahedralizerUtility
             output.Add(input[i].z);
         }
     }
-    public static List<double> UnpackColors(IList<Color> input)
-    {
-        List<double> res = new List<double>();
-        UnpackColors(input, res);
-        return res;
-    }
-    public static void UnpackColors(IList<Color> input, IList<double> output)
-    {
-        for(int i=0; i<input.Count; i++)
-        {
-            output.Add(input[i].r);
-            output.Add(input[i].g);
-            output.Add(input[i].b);
-            output.Add(input[i].a);
-        }
-    }
-
     public static List<Vector3> PackVector3s(IList<double> input)
     {
         List<Vector3> res = new List<Vector3>();
@@ -86,19 +31,6 @@ public class TetrahedralizerUtility
         for(int i=0; i<input.Count; i+=3)
         {
             output.Add(new Vector3((float)input[i+0],(float)input[i+1],(float)input[i+2]));
-        }
-    }
-    public static List<Color> PackColors(IList<double> input)
-    {
-        List<Color> res = new List<Color>();
-        PackColors(input, res);
-        return res;
-    }
-    public static void PackColors(IList<double> input, IList<Color> output)
-    {
-        for(int i=0; i<input.Count; i+=4)
-        {
-            output.Add(new Color((float)input[i+0],(float)input[i+1],(float)input[i+2],(float)input[i+3]));
         }
     }
 
