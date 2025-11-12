@@ -17,11 +17,11 @@ public class MeshVertexDataMapper
     private List<Color32> m_targetColors;
     private List<List<Vector4>> m_targetUVs;
     
-    public MeshVertexDataMapper()
+    public MeshVertexDataMapper(int capacity=1000)
     {
-        m_sourcePositions = new List<Vector3>();
-        m_sourceColors = new List<Color32>();
-        m_sourceUVs = new List<Vector4>[8]{new(), new(), new(), new(), new(), new(), new(), new()};
+        m_sourcePositions = new List<Vector3>(capacity);
+        m_sourceColors = new List<Color32>(capacity);
+        m_sourceUVs = Enumerable.Range(0,8).Select(i=>new List<Vector4>(capacity)).ToArray();
         m_hasColor = false;
         m_hasUV = new bool[8];
 

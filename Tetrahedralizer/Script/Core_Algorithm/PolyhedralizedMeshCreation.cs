@@ -186,5 +186,10 @@ public class PolyhedralizedMeshCreation
             polyhedralization.m_polyhedronsFacets = TetrahedralizerUtility.NestedListToFlatList(newPolyhedronsFacets);
             polyhedralization.CalculatePolyhedronsFacetsOrients();
         }
+
+        if(null != progress)
+        {
+            progress.Report("Finishing up.");
+        }
     }
 }

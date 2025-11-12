@@ -7,4 +7,8 @@ public static class TetrahedralizerConstant
     public const string TETRAHEDRALIZER_LIBRARY_NAME = "TetrahedralizerLibrary";
     public const string TETRAHEDRALIZER_WINDOW_PATH = "Window/";
     public const string SCRIPTABLE_OBJECT_PATH = "Scriptable Objects/Tetrahedralizer/";
+
+    public const string TETRAHEDRALIZER_LINK_DOCUMENTATION = "https://docs.google.com/document/d/1TmDsCK4SiXGq7Y7xVC6l-rAW5G5WxgNKjIlzR9Algpc/edit?usp=sharing";
+    public const string TETRAHEDRALIZER_LINK_UNITY_ASSET_STORE = "https://assetstore.unity.com/packages/slug/306196";
+    public const string TETRAHEDRALIZER_LINK_GITHUB = "https://github.com/hanzemeng/Tetrahedralizer";
 }

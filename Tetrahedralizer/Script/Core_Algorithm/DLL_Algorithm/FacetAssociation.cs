@@ -14,9 +14,10 @@ public class FacetAssociation
     }
     public class FacetAssociationOutput
     {
-        public List<List<List<int>>> m_facetsVerticeMapping;
+        public List<List<List<int>>> m_facetsVerticesMapping;
         // for every vertex in every facet, record # of triangles followed by indexes of the triangles
         // note that vertices are duplicated across facets
+        public List<int> m_facetsCentroidsMapping;
     }
 
 
@@ -31,7 +32,9 @@ public class FacetAssociation
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern int CalculateFacetAssociation(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-        static extern IntPtr GetOutputFacetAssociation(IntPtr handle);
+        static extern IntPtr GetFacetAssociationFacetsVerticesMapping(IntPtr handle);
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        static extern IntPtr GetFacetAssociationFacetsCentroidsMapping(IntPtr handle);
 
         double[] explicitVertices = input.m_explicitVertices.ToArray();
         TetrahedralizerUtility.SwapElementsByInterval(explicitVertices, 3);
@@ -42,9 +45,9 @@ public class FacetAssociation
         IntPtr handle = CreateFacetAssociationHandle();
         AddFacetAssociationInput(handle, input.m_explicitVertices.Count/3, explicitVertices, implicitCount, implicitVertices, facets.Count, input.m_facets.ToArray(), input.m_constraints.Count/3, input.m_constraints.ToArray());
         CalculateFacetAssociation(handle);
-        IntPtr ptr = GetOutputFacetAssociation(handle);
-
-        output.m_facetsVerticeMapping = facets.Select(i=>i.Select(j=>new List<int>()).ToList()).ToList();
+        
+        IntPtr ptr = GetFacetAssociationFacetsVerticesMapping(handle);
+        output.m_facetsVerticesMapping = facets.Select(i=>i.Select(j=>new List<int>()).ToList()).ToList();
         for(int i=0; i<facets.Count; i++)
         {
             for(int j=0; j<facets[i].Count; j++)
@@ -52,9 +55,16 @@ public class FacetAssociation
                 int n = ptr.ReadInt32();
                 for(int k=0; k<n; k++)
                 {
-                    output.m_facetsVerticeMapping[i][j].Add(ptr.ReadInt32());
+                    output.m_facetsVerticesMapping[i][j].Add(ptr.ReadInt32());
                 }
             }
+        }
+        
+        ptr = GetFacetAssociationFacetsCentroidsMapping(handle);
+        output.m_facetsCentroidsMapping = new List<int>();
+        for(int i=0; i<facets.Count; i++)
+        {
+            output.m_facetsCentroidsMapping.Add(ptr.ReadInt32());
         }
         DisposeFacetAssociationHandle(handle);
     }

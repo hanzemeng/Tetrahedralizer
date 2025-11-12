@@ -23,6 +23,8 @@ public:
     uint32_t* m_facets_vertices_mapping;
     // for every vertex in every facet, record # of triangles followed by indexes of the triangles
     // note that vertices are duplicated across facets
+    uint32_t* m_facets_centroids_mapping;
+    // for every facet centriod, an incident triangle will be recorded, UNDEFINED_VALUE if no such triangle
 };
 
 class FacetAssociation
@@ -48,7 +50,8 @@ public:
     void AddFacetAssociationInput(uint32_t, double*, uint32_t, uint32_t*, uint32_t, uint32_t*, uint32_t, uint32_t*);
     void CalculateFacetAssociation();
     
-    uint32_t* GetOutputFacetAssociation();
+    uint32_t* GetFacetsVerticesMapping();
+    uint32_t* GetFacetsCentroidsMapping();
 };
 
 extern "C" LIBRARY_EXPORT void* CreateFacetAssociationHandle();
@@ -58,7 +61,8 @@ extern "C" LIBRARY_EXPORT void AddFacetAssociationInput(void* handle, uint32_t e
 
 extern "C" LIBRARY_EXPORT void CalculateFacetAssociation(void* handle);
 
-extern "C" LIBRARY_EXPORT uint32_t* GetOutputFacetAssociation(void* handle);
+extern "C" LIBRARY_EXPORT uint32_t* GetFacetAssociationFacetsVerticesMapping(void* handle);
+extern "C" LIBRARY_EXPORT uint32_t* GetFacetAssociationFacetsCentroidsMapping(void* handle);
 
 
 #endif

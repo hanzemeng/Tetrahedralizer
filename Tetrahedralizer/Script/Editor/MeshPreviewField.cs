@@ -76,7 +76,7 @@ public class MeshPreviewField
 
     public void ResetPreviewParameters()
     {
-        m_zoomFactor = 1f;
+        m_zoomFactor = 0.75f;
         m_previewDirection = new Vector2(130f,0f);
         m_lightDirection = new Vector2(-40f,-40f);
         m_pivotPositionOffset = Vector3.zero;
