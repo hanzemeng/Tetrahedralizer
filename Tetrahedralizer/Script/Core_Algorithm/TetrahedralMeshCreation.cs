@@ -54,12 +54,9 @@ public class TetrahedralMeshCreation
         TetrahedralMesh tetrahedralMesh = ScriptableObject.CreateInstance<TetrahedralMesh>();
         output.m_tetrahedralMesh = tetrahedralMesh;
 
-        
         return Task.Run(() =>
         {
-            CreateInternal(
-            vertices, triangles, weldedTriangles, uv0IslandsIndexes, subMeshDescriptors,
-            input.m_polyhedralization, meshVertexDataMapper, tetrahedralMesh, progress);
+            CreateInternal(vertices, triangles, weldedTriangles, uv0IslandsIndexes, subMeshDescriptors, input.m_polyhedralization, meshVertexDataMapper, tetrahedralMesh, progress);
         });
     }
 

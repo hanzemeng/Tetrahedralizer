@@ -3,7 +3,7 @@
 
 void InteriorCharacterization::interior_characterization(InteriorCharacterizationInput* input, InteriorCharacterizationOutput* output)
 {
-    Polyhedralization polyhedralization(input->m_polyhedrons, input->m_polyhedrons_count, input->m_facets, input->m_facets_count);
+    Polyhedralization polyhedralization(input->m_polyhedrons_count, input->m_polyhedrons, input->m_facets_count, input->m_facets);
     vector<vector<uint32_t>> polyhedrons = flat_array_to_nested_vector(input->m_polyhedrons, input->m_polyhedrons_count);
     vector<vector<uint32_t>> facets = flat_array_to_nested_vector(input->m_facets, input->m_facets_count);
     vector<vector<vector<uint32_t>>> facets_vertices_mapping;
@@ -253,6 +253,7 @@ void InteriorCharacterization::interior_characterization(InteriorCharacterizatio
         
         // neighbor cost
         vector<bool> vertices_on_constrains = vector<bool>(input->m_vertices_count);
+        vector<bool> polyhedrons_connected_to_ghost = vector<bool>(polyhedrons.size(), false);
         for(uint32_t i=0; i<facets.size(); i++)
         {
             if(UNDEFINED_VALUE == facets_centroids_mapping[i])
@@ -280,6 +281,11 @@ void InteriorCharacterization::interior_characterization(InteriorCharacterizatio
             polyhedralization.get_polyhedron_facet_neighbors(i, n0, n1);
             if(UNDEFINED_VALUE == n1)
             {
+                if(polyhedrons_connected_to_ghost[n0])
+                {
+                    continue;
+                }
+                polyhedrons_connected_to_ghost[n0] = true;
                 n1 = polyhedrons.size();
             }
             gc.setNeighbors((GCoptimization::SiteID)n0, (GCoptimization::SiteID)n1, w*facets_approximated_areas[i]);
@@ -360,6 +366,12 @@ void InteriorCharacterizationHandle::AddInput(uint32_t explicit_count, double* e
     m_input->m_facets_centroids = new genericPoint*[facets_count];
     for(uint32_t i=0; i<facets_count; i++)
     {
+//                if(facets_centroids[3*i+0] >= m_input->m_vertices_count || !m_input->m_vertices[facets_centroids[3*i+0]]->isExplicit3D() ||
+//                   facets_centroids[3*i+1] >= m_input->m_vertices_count || !m_input->m_vertices[facets_centroids[3*i+1]]->isExplicit3D() ||
+//                   facets_centroids[3*i+2] >= m_input->m_vertices_count || !m_input->m_vertices[facets_centroids[3*i+2]]->isExplicit3D())
+//                {
+//                    throw "wtf";
+//                }
         implicitPoint3D_BPT* p = new implicitPoint3D_BPT(m_input->m_vertices[facets_centroids[3*i+0]]->toExplicit3D(),
                                                          m_input->m_vertices[facets_centroids[3*i+1]]->toExplicit3D(),
                                                          m_input->m_vertices[facets_centroids[3*i+2]]->toExplicit3D(),

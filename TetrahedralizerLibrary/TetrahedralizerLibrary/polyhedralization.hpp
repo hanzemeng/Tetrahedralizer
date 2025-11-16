@@ -10,16 +10,13 @@ class Polyhedralization
 {
 public:
     Polyhedralization();
-    Polyhedralization(uint32_t* polyhedrons, uint32_t polyhedrons_count, uint32_t* polyhedrons_facets, uint32_t polyhedrons_facets_count);
-    ~Polyhedralization();
+    Polyhedralization(uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets);
 
-    void assign_polyhedrons(uint32_t* polyhedrons, uint32_t polyhedrons_count, uint32_t* polyhedrons_facets, uint32_t polyhedrons_facets_count);
+    void assign_polyhedrons(uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets);
     void get_polyhedron_facet_neighbors(uint32_t f, uint32_t& n0, uint32_t& n1); // f is facet, n0 and n1 are neightbors
 
 private:
-    uint32_t* m_neighbors;
-    
-    COMMON_FIELDS
+    vector<uint32_t> m_neighbors;
 };
 
 #endif

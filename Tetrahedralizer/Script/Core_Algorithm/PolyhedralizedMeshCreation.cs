@@ -70,7 +70,6 @@ public class PolyhedralizedMeshCreation
             BSPInput.m_removeCollinearSegments = false;
             binarySpacePartition.CalculateBinarySpacePartition(BSPInput, BSPOutput);
         }
-
         if(null != progress)
         {
             progress.Report("Removing outside polyhedrons.");

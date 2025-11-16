@@ -39,7 +39,7 @@ public class InteriorCharacterization
         int polyhedrons_count, int[] polyhedrons, int facets_count, int[] facets, int[] facets_centroids, double[] facets_centroids_weights,
         int constraints_count, int[] constraints);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-        static extern int CalculateInteriorCharacterization(IntPtr handle);
+        static extern void CalculateInteriorCharacterization(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern IntPtr GetInteriorCharacterizationPolyhedronsLabels(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]

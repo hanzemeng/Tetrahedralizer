@@ -226,11 +226,11 @@ PolyhedralizationTetrahedralizationHandle::PolyhedralizationTetrahedralizationHa
     m_input->m_facets = nullptr;
     m_input->m_facets_centroids = nullptr;
     m_output = new PolyhedralizationTetrahedralizationOutput();
-    m_output->m_inserted_facets_centroids = nullptr;
     m_output->m_inserted_facets_centroids_count = 0;
-    m_output->m_inserted_polyhedrons_centroids = nullptr;
     m_output->m_inserted_polyhedrons_centroids_count = 0;
     m_output->m_tetrahedrons_count = 0;
+    m_output->m_inserted_facets_centroids = nullptr;
+    m_output->m_inserted_polyhedrons_centroids = nullptr;
     m_output->m_tetrahedrons = nullptr;
     m_polyhedralizationTetrahedralization = new PolyhedralizationTetrahedralization();
 }
@@ -262,6 +262,12 @@ void PolyhedralizationTetrahedralizationHandle::AddPolyhedralizationTetrahedrali
     m_input->m_facets_centroids = new genericPoint*[facets_count];
     for(uint32_t i=0; i<facets_count; i++)
     {
+//        if(facets_centroids[3*i+0] >= m_input->m_vertices_count || !m_input->m_vertices[facets_centroids[3*i+0]]->isExplicit3D() ||
+//           facets_centroids[3*i+1] >= m_input->m_vertices_count || !m_input->m_vertices[facets_centroids[3*i+1]]->isExplicit3D() ||
+//           facets_centroids[3*i+2] >= m_input->m_vertices_count || !m_input->m_vertices[facets_centroids[3*i+2]]->isExplicit3D())
+//        {
+//            throw "wtf";
+//        }
         implicitPoint3D_BPT* p = new implicitPoint3D_BPT(m_input->m_vertices[facets_centroids[3*i+0]]->toExplicit3D(),
                                                          m_input->m_vertices[facets_centroids[3*i+1]]->toExplicit3D(),
                                                          m_input->m_vertices[facets_centroids[3*i+2]]->toExplicit3D(),
