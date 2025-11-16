@@ -13,8 +13,13 @@ public class Polyhedralization : ScriptableObject
     public List<double> m_explicitVertices; // Every 3 doubles are x,y,z of a point. Assuming left hand coordinate.
     public List<int> m_implicitVertices; // 5/9 followed by indexes of m_explicitVertices.
     public List<int> m_polyhedrons; // # of polyhedron facets, followed by facets indexes.
-    public List<int> m_polyhedronsFacets;  // # of facets vertices, followed by vertices indexes ordered in cw or ccw.
-    public List<bool> m_polyhedronsFacetsPointOut;  // only defined for exterior facets, true if the facet points out of its polyhedron
+    
+    public List<int> m_facets; // # of facets vertices, followed by vertices indexes ordered in cw or ccw.
+    public List<int> m_facetsCentroids; // every facet centroid is defined by 3 coplanar explicit vertices
+    public List<double> m_facetsCentroidsWeights; // and the weight of the explicit vertices, note the 3 weight is ignored
+    public List<int> m_facetsVerticesMapping; // for every vertex in every facet, record # of incident constraints followed by indexes of the constraints
+    public List<int> m_facetsCentroidsMapping; // for every facet centroid, record an incident constraint, UNDEFINED_VALUE if no such constraint
+    public List<bool> m_facetsPointOut; // only defined for exterior facets, true if the facet points out of its polyhedron
 
 
     public List<(Mesh mesh, Vector3 center)> ToMeshes()
@@ -27,7 +32,7 @@ public class Polyhedralization : ScriptableObject
         using GenericPointPredicate genericPointPredicate = new GenericPointPredicate(m_explicitVertices,m_implicitVertices);
         List<Vector3> vertices = TetrahedralizerUtility.PackVector3s(GenericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
         List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedrons);
-        List<List<int>> polyhedronsFacets = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedronsFacets);
+        List<List<int>> polyhedronsFacets = TetrahedralizerUtility.FlatIListToNestedList(m_facets);
 
         List<(Mesh, Vector3)> res = new List<(Mesh, Vector3)>();
 
@@ -48,7 +53,7 @@ public class Polyhedralization : ScriptableObject
                 {
                     polyVertices.Add(vertices[polyhedronsFacets[facet][k]]);
                 }
-                if(m_polyhedronsFacetsPointOut[facet])
+                if(FacetPointsOut(facet, i, polyhedronsFacets, polyhedrons, genericPointPredicate))
                 {
                     for(int k=1; k<polyhedronsFacets[facet].Count-1; k++)
                     {
@@ -91,7 +96,7 @@ public class Polyhedralization : ScriptableObject
 
         List<Vector3> vertices = TetrahedralizerUtility.PackVector3s(GenericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
         List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedrons);
-        List<List<int>> polyhedronsFacets = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedronsFacets);
+        List<List<int>> polyhedronsFacets = TetrahedralizerUtility.FlatIListToNestedList(m_facets);
         bool[] shouldDrawFacets = GetFacetsExteriorFlags();
 
         List<Vector3> meshVertices = new List<Vector3>();
@@ -114,7 +119,7 @@ public class Polyhedralization : ScriptableObject
                     facetsVerticesIndexes[^1].Add(meshVertices.Count);
                     meshVertices.Add(vertices[polyhedronsFacets[facet][k]]);
                 }
-                if(m_polyhedronsFacetsPointOut[facet])
+                if(m_facetsPointOut[facet])
                 {
                     for(int k=1; k<polyhedronsFacets[facet].Count-1; k++)
                     {
@@ -171,17 +176,17 @@ public class Polyhedralization : ScriptableObject
     }
     public bool[] GetFacetsExteriorFlags()
     {
-        bool[] res = Enumerable.Repeat(false, m_polyhedronsFacets.Count).ToArray();
+        bool[] res = Enumerable.Repeat(false, m_facets.Count).ToArray();
         GetExteriorFacets().ForEach(i=>res[i]=true);
         return res;
     }
 
-    public void CalculatePolyhedronsFacetsOrients()
+    public void CalculateFacetsOrients()
     {
         using GenericPointPredicate genericPointPredicate = new GenericPointPredicate(m_explicitVertices, m_implicitVertices);
         List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedrons);
-        List<List<int>> polyhedronsFacets = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedronsFacets);
-        m_polyhedronsFacetsPointOut = Enumerable.Repeat(false,polyhedronsFacets.Count).ToList();
+        List<List<int>> polyhedronsFacets = TetrahedralizerUtility.FlatIListToNestedList(m_facets);
+        m_facetsPointOut = Enumerable.Repeat(false,polyhedronsFacets.Count).ToList();
         bool[] isExteriorFacets = GetFacetsExteriorFlags();
 
         for(int i=0; i<polyhedrons.Count; i++)
@@ -193,7 +198,7 @@ public class Polyhedralization : ScriptableObject
                 {
                     continue;
                 }
-                m_polyhedronsFacetsPointOut[facet] = FacetPointsOut(facet, i, polyhedronsFacets, polyhedrons, genericPointPredicate);
+                m_facetsPointOut[facet] = FacetPointsOut(facet, i, polyhedronsFacets, polyhedrons, genericPointPredicate);
             }
         }
     }
@@ -212,8 +217,12 @@ public class Polyhedralization : ScriptableObject
         m_explicitVertices = polyhedralization.m_explicitVertices;
         m_implicitVertices = polyhedralization.m_implicitVertices;
         m_polyhedrons = polyhedralization.m_polyhedrons;
-        m_polyhedronsFacets = polyhedralization.m_polyhedronsFacets;
-        m_polyhedronsFacetsPointOut = polyhedralization.m_polyhedronsFacetsPointOut;
+        m_facets = polyhedralization.m_facets;
+        m_facetsCentroids = polyhedralization.m_facetsCentroids;
+        m_facetsCentroidsWeights = polyhedralization.m_facetsCentroidsWeights;
+        m_facetsVerticesMapping = polyhedralization.m_facetsVerticesMapping;
+        m_facetsCentroidsMapping = polyhedralization.m_facetsCentroidsMapping;
+        m_facetsPointOut = polyhedralization.m_facetsPointOut;
     }
 
     private bool FacetPointsOut(int facet, int polyhedron, List<List<int>> polyhedronsFacets, List<List<int>> polyhedrons, GenericPointPredicate genericPointPredicate)
@@ -294,7 +303,7 @@ public class PolyhedralizationEditor : Editor
 
         EditorGUILayout.LabelField($"Vertices Count: {m_so.m_explicitVertices.Count/3 + TetrahedralizerUtility.CountFlatIListElements(m_so.m_implicitVertices)}");
         EditorGUILayout.LabelField($"Polyhedrons Count: {TetrahedralizerUtility.CountFlatIListElements(m_so.m_polyhedrons)}");
-        EditorGUILayout.LabelField($"Polyhedrons' Facets Count: {TetrahedralizerUtility.CountFlatIListElements(m_so.m_polyhedronsFacets)}");
+        EditorGUILayout.LabelField($"Facets Count: {TetrahedralizerUtility.CountFlatIListElements(m_so.m_facets)}");
     }
 }
 

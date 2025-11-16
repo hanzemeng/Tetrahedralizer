@@ -4,9 +4,9 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEditor;
-using System.Threading.Tasks;
 
 
 public class TetrahedralizerEditorWindow : EditorWindow
@@ -130,7 +130,6 @@ public class TetrahedralizerEditorWindow : EditorWindow
     {
         GetWindow<TetrahedralizerEditorWindow>().titleContent = new GUIContent(TetrahedralizerConstant.TETRAHEDRALIZER_NAME);
     }
-
     private void OnEnable()
     {
         m_settings = TetrahedralizerEditorWindowSettings.instance;
@@ -149,12 +148,27 @@ public class TetrahedralizerEditorWindow : EditorWindow
         {
             UpdateMesh(2, m_settings.m_tetrahedralMesh.ToMesh().mesh);
         }
+
+        //Selection.selectionChanged += OnSelectionChanged;
     }
     private void OnDisable()
     {
         m_settings.Save();
         m_meshesPreviews.ForEach(i=>i.Dispose());
         Enumerable.Range(0, TetrahedralizerEditorWindowSettings.MESH_PREVIEWS_COUNT).ToList().ForEach(i=>UpdateMesh(i,null));
+
+        //Selection.selectionChanged -= OnSelectionChanged;
+    }
+
+    private void OnSelectionChanged()
+    {
+        GameObject gameObject = Selection.activeObject as GameObject;
+        if(null == gameObject)
+        {
+            return;
+        }
+        m_settings.m_gameObject = gameObject;
+        Repaint();
     }
 
     private void OnGUI()

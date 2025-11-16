@@ -13,8 +13,9 @@ public:
     uint32_t* m_polyhedrons; // # of facets followed by indexes
     uint32_t m_polyhedrons_count;
 
-    uint32_t* m_polyhedrons_facets; // # of vertices followed by indexes, vertices are ordered in cw or ccw
-    uint32_t m_polyhedrons_facets_count;
+    uint32_t* m_facets; // # of vertices followed by indexes, vertices are ordered in cw or ccw
+    genericPoint** m_facets_centroids;
+    uint32_t m_facets_count;
 };
 
 class PolyhedralizationTetrahedralizationOutput
@@ -61,21 +62,21 @@ public:
     void Dispose();
     
 
-    void AddPolyhedralizationTetrahedralizationInput(uint32_t, double*, uint32_t, uint32_t*, uint32_t, uint32_t*, uint32_t, uint32_t*);
+    void AddPolyhedralizationTetrahedralizationInput(uint32_t, double*, uint32_t, uint32_t*, uint32_t, uint32_t*, uint32_t, uint32_t*, uint32_t*, double*);
     void CalculatePolyhedralizationTetrahedralization();
     
-    uint32_t GetOutputInsertedFacetsCentroidsCount();
-    uint32_t* GetOutputInsertedFacetsCentroids();
-    uint32_t GetOutputInsertedPolyhedronsCentroidsCount();
-    uint32_t* GetOutputInsertedPolyhedronsCentroids();
-    uint32_t GetOutputTetrahedronsCount();
-    uint32_t* GetOutputTetrahedrons();
+    uint32_t GetInsertedFacetsCentroidsCount();
+    uint32_t* GetInsertedFacetsCentroids();
+    uint32_t GetInsertedPolyhedronsCentroidsCount();
+    uint32_t* GetInsertedPolyhedronsCentroids();
+    uint32_t GetTetrahedronsCount();
+    uint32_t* GetTetrahedrons();
 };
 
 extern "C" LIBRARY_EXPORT void* CreatePolyhedralizationTetrahedralizationHandle();
 extern "C" LIBRARY_EXPORT void DisposePolyhedralizationTetrahedralizationHandle(void* handle);
 
-extern "C" LIBRARY_EXPORT void AddPolyhedralizationTetrahedralizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t polyhedrons_facets_count, uint32_t* polyhedrons_facets);
+extern "C" LIBRARY_EXPORT void AddPolyhedralizationTetrahedralizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights);
 
 extern "C" LIBRARY_EXPORT void CalculatePolyhedralizationTetrahedralization(void* handle);
 

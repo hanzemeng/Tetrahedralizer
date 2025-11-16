@@ -2,66 +2,91 @@
 
 void FacetAssociation::facet_association(FacetAssociationInput* input, FacetAssociationOutput* output)
 {
-    vector<vector<uint32_t>> facets = flat_array_to_nested_vector(input->m_facets, input->m_facets_count);
-    vector<vector<uint32_t>> constraints; // every vector are the coplanar constrains
-    vector<vector<vector<uint32_t>>> vertices_mapping; // duplicated per facet
-    vector<uint32_t> centroids_mapping = vector<uint32_t>(input->m_facets_count, UNDEFINED_VALUE);
+    m_vertices = input->m_vertices;
+    m_facets = flat_array_to_nested_vector(input->m_facets, input->m_facets_count);
+    m_constraints = input->m_constraints;
+    m_centroids_mapping = vector<uint32_t>(input->m_facets_count, UNDEFINED_VALUE);
     
+    // group coplanar facets
+    for(uint32_t i=0; i<m_facets.size(); i++)
+    {
+        uint32_t t0,t1,t2;
+        get_non_collinear_vertices(m_facets[i], input->m_vertices, t0, t1, t2);
+        if(UNDEFINED_VALUE == t0)
+        {
+            continue;
+        }
+        
+        bool is_new_plane = true;
+        for(uint32_t j=0; j<m_coplanar_facets.size(); j++)
+        {
+            uint32_t p0,p1,p2;
+            get_non_collinear_vertices(m_facets[m_coplanar_facets[j][0]], input->m_vertices, p0, p1, p2);
+            if(0 != orient3d(p0,p1,p2,t0,input->m_vertices) ||
+               0 != orient3d(p0,p1,p2,t1,input->m_vertices) ||
+               0 != orient3d(p0,p1,p2,t2,input->m_vertices))
+            {
+                continue;
+            }
+            m_coplanar_facets[j].push_back(i);
+            is_new_plane = false;
+            break;
+        }
+        if(is_new_plane)
+        {
+            m_coplanar_facets.push_back(vector<uint32_t>{i});
+        }
+    }
+    
+    // group coplanar constraints
     for(uint32_t i=0; i<input->m_constraints_count; i++)
     {
         uint32_t c0 = input->m_constraints[3*i+0];
         uint32_t c1 = input->m_constraints[3*i+1];
         uint32_t c2 = input->m_constraints[3*i+2];
         
-        // skip degenerate triangles
         if(c0 == c1 || c0 == c2 || c1 == c2 || is_collinear(c0, c1, c2, input->m_vertices))
         {
             continue;
         }
         
         bool is_new_plane = true;
-        for(uint32_t j=0; j<constraints.size(); j++)
+        for(uint32_t j=0; j<m_coplanar_constraints.size(); j++)
         {
-            uint32_t t0 = input->m_constraints[3*constraints[j][0]+0];
-            uint32_t t1 = input->m_constraints[3*constraints[j][0]+1];
-            uint32_t t2 = input->m_constraints[3*constraints[j][0]+2];
+            uint32_t t0 = input->m_constraints[3*m_coplanar_constraints[j][0]+0];
+            uint32_t t1 = input->m_constraints[3*m_coplanar_constraints[j][0]+1];
+            uint32_t t2 = input->m_constraints[3*m_coplanar_constraints[j][0]+2];
             if(0 != orient3d(c0,c1,c2,t0,input->m_vertices) ||
                0 != orient3d(c0,c1,c2,t1,input->m_vertices) ||
                0 != orient3d(c0,c1,c2,t2,input->m_vertices))
             {
                 continue;
             }
-            constraints[j].push_back(i);
+            m_coplanar_constraints[j].push_back(i);
             is_new_plane = false;
             break;
         }
         if(is_new_plane)
         {
-            constraints.push_back(vector<uint32_t>{i});
+            m_coplanar_constraints.push_back(vector<uint32_t>{i});
         }
     }
     
-    for(uint32_t i=0; i<facets.size(); i++)
+    for(uint32_t i=0; i<m_facets.size(); i++)
     {
-        vertices_mapping.push_back(vector<vector<uint32_t>>(facets[i].size()));
-        uint32_t f0(UNDEFINED_VALUE),f1(UNDEFINED_VALUE),f2(UNDEFINED_VALUE);
-        for(uint32_t j=0; j<facets[i].size(); j++)
+        m_vertices_mapping.push_back(vector<vector<uint32_t>>(m_facets[i].size()));
+    }
+    
+    for(uint32_t i=0; i<m_coplanar_facets.size(); i++)
+    {
+        uint32_t f0,f1,f2;
+        get_non_collinear_vertices(m_facets[m_coplanar_facets[i][0]], input->m_vertices, f0, f1, f2);
+        
+        for(uint32_t j=0; j<m_coplanar_constraints.size(); j++)
         {
-            uint32_t p = 0==j ? facets[i].size()-1:j-1;
-            uint32_t n = facets[i].size()-1==j ? 0:j+1;
-            f0 = facets[i][p];
-            f1 = facets[i][j];
-            f2 = facets[i][n];
-            if(!is_collinear(f0, f1, f2, input->m_vertices))
-            {
-                break;
-            }
-        }
-        for(uint32_t j=0; j<constraints.size(); j++)
-        {
-            uint32_t c0 = input->m_constraints[3*constraints[j][0]+0];
-            uint32_t c1 = input->m_constraints[3*constraints[j][0]+1];
-            uint32_t c2 = input->m_constraints[3*constraints[j][0]+2];
+            uint32_t c0 = m_constraints[3*m_coplanar_constraints[j][0]+0];
+            uint32_t c1 = m_constraints[3*m_coplanar_constraints[j][0]+1];
+            uint32_t c2 = m_constraints[3*m_coplanar_constraints[j][0]+2];
             if(0 != orient3d(f0,f1,f2,c0,input->m_vertices) ||
                0 != orient3d(f0,f1,f2,c1,input->m_vertices) ||
                0 != orient3d(f0,f1,f2,c2,input->m_vertices))
@@ -69,53 +94,61 @@ void FacetAssociation::facet_association(FacetAssociationInput* input, FacetAsso
                 continue;
             }
             
-            double3 centroid(0.0, 0.0, 0.0);
-            for(uint32_t l=0; l<facets[i].size(); l++)
-            {
-                centroid += approximate_point(input->m_vertices[facets[i][l]]);
-            }
-            centroid /= (double)facets[i].size();
-            explicitPoint3D cen(centroid.x,centroid.y,centroid.z);
-            
-            for(uint32_t k=0; k<constraints[j].size(); k++)
-            {
-                c0 = input->m_constraints[3*constraints[j][k]+0];
-                c1 = input->m_constraints[3*constraints[j][k]+1];
-                c2 = input->m_constraints[3*constraints[j][k]+2];
-                
-                if(UNDEFINED_VALUE==centroids_mapping[i] && genericPoint::pointInTriangle(cen,*input->m_vertices[c0],*input->m_vertices[c1],*input->m_vertices[c2]))
-                {
-                    centroids_mapping[i] = constraints[j][k];
-                }
-                for(uint32_t l=0; l<facets[i].size(); l++)
-                {
-                    uint32_t f = facets[i][l];
-                    if(!vertex_in_triangle(f, c0, c1, c2, input->m_vertices))
-                    {
-                        continue;
-                    }
-                    vertices_mapping[i][l].push_back(constraints[j][k]);
-                }
-            }
+            facet_constraint_association(i, j);
             break;
         }
     }
     
     {
         vector<uint32_t> temp;
-        for(uint32_t i=0; i<vertices_mapping.size(); i++)
+        for(uint32_t i=0; i<m_vertices_mapping.size(); i++)
         {
-            for(uint32_t j=0; j<vertices_mapping[i].size(); j++)
+            for(uint32_t j=0; j<m_vertices_mapping[i].size(); j++)
             {
-                temp.push_back(vertices_mapping[i][j].size());
-                for(uint32_t k=0; k<vertices_mapping[i][j].size(); k++)
+                temp.push_back(m_vertices_mapping[i][j].size());
+                for(uint32_t k=0; k<m_vertices_mapping[i][j].size(); k++)
                 {
-                    temp.push_back(vertices_mapping[i][j][k]);
+                    temp.push_back(m_vertices_mapping[i][j][k]);
                 }
             }
         }
         output->m_facets_vertices_mapping = vector_to_array(temp);
-        output->m_facets_centroids_mapping = vector_to_array(centroids_mapping);
+        output->m_facets_centroids_mapping = vector_to_array(m_centroids_mapping);
+    }
+}
+
+void FacetAssociation::facet_constraint_association(uint32_t facet_index, uint32_t constraint_index)
+{
+    for(uint32_t facet : m_coplanar_facets[facet_index])
+    {
+        double3 centroid(0.0, 0.0, 0.0);
+        for(uint32_t i=0; i<m_facets[facet].size(); i++)
+        {
+            centroid += approximate_point(m_vertices[m_facets[facet][i]]);
+        }
+        centroid /= (double)m_facets[facet].size();
+        explicitPoint3D cen(centroid.x,centroid.y,centroid.z);
+        
+        for(uint32_t constraint : m_coplanar_constraints[constraint_index])
+        {
+            uint32_t c0 = m_constraints[3*constraint+0];
+            uint32_t c1 = m_constraints[3*constraint+1];
+            uint32_t c2 = m_constraints[3*constraint+2];
+            
+            if(UNDEFINED_VALUE==m_centroids_mapping[facet] && genericPoint::pointInTriangle(cen,*m_vertices[c0],*m_vertices[c1],*m_vertices[c2]))
+            {
+                m_centroids_mapping[facet] = constraint;
+            }
+            for(uint32_t i=0; i<m_facets[facet].size(); i++)
+            {
+                uint32_t f = m_facets[facet][i];
+                if(!vertex_in_triangle(f, c0, c1, c2, m_vertices))
+                {
+                    continue;
+                }
+                m_vertices_mapping[facet][i].push_back(constraint);
+            }
+        }
     }
 }
 

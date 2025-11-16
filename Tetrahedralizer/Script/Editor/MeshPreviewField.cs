@@ -5,9 +5,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 
 public class MeshPreviewField
 {
+    private Scene m_previewScene;
     private Transform m_previewParent;
 
     private Camera m_camera;
@@ -25,11 +27,18 @@ public class MeshPreviewField
 
     public MeshPreviewField()
     {
-        m_renderTexture = new RenderTexture(512,512,32);
+        m_previewScene = EditorSceneManager.NewPreviewScene();
+
+        m_previewParent = new GameObject().transform;
+        m_previewParent.gameObject.hideFlags = HideFlags.HideAndDontSave;
+        SceneManager.MoveGameObjectToScene(m_previewParent.gameObject, m_previewScene);
+
+        m_renderTexture = new RenderTexture(1024,1024,32);
         m_renderTexture.hideFlags = HideFlags.HideAndDontSave;
 
         m_camera = new GameObject().AddComponent<Camera>();
         m_camera.targetTexture = m_renderTexture;
+        m_camera.overrideSceneCullingMask = EditorSceneManager.GetSceneCullingMask(m_previewScene);
         m_camera.nearClipPlane = 0.0001f;
         m_camera.farClipPlane = 1000f;
         m_camera.orthographic = false;
@@ -49,29 +58,25 @@ public class MeshPreviewField
 
         ResetPreviewParameters();
 
-        m_previewParent = new GameObject().transform;
-        m_previewParent.gameObject.hideFlags = HideFlags.HideAndDontSave;
-
         m_camera.transform.SetParent(m_previewParent);
         m_directionalLight0.transform.SetParent(m_previewParent);
         m_directionalLight1.transform.SetParent(m_previewParent);
         m_meshFilter.transform.SetParent(m_previewParent);
-
-        m_previewParent.gameObject.SetActive(false);
     }
 
     public void Dispose()
     {
         if(null != m_previewParent)
         {
-            UnityEngine.Object.DestroyImmediate(m_previewParent.gameObject);
+            Object.DestroyImmediate(m_previewParent.gameObject);
         }
         if(null != m_renderTexture)
         {
             m_renderTexture.Release();
-            UnityEngine.Object.DestroyImmediate(m_renderTexture);
+            Object.DestroyImmediate(m_renderTexture);
             m_renderTexture = null;
         }
+        EditorSceneManager.ClosePreviewScene(m_previewScene);
     }
 
     public void ResetPreviewParameters()
@@ -116,7 +121,7 @@ public class MeshPreviewField
             {
                 m_renderTexture.Create();
             }
-            RenderCamera();
+            m_camera.Render();
             GUI.DrawTexture(rect, m_renderTexture, ScaleMode.ScaleToFit);
         }
 
@@ -177,25 +182,6 @@ public class MeshPreviewField
         m_directionalLight1.transform.rotation = Quaternion.Euler(m_lightDirection.y, m_lightDirection.x, 0f);
         //previewUtility.ambientColor = new Color(0.1f, 0.1f, 0.1f, 0f);
     }
-    private void RenderCamera()
-    {
-        GameObject[] gameObjects = SceneManager.GetActiveScene().GetRootGameObjects();
-        bool[] gameObjectsAreActive = gameObjects.Select(i=>i.activeSelf).ToArray();
-        foreach(GameObject gameObject in gameObjects)
-        {
-            gameObject.SetActive(false);
-        }
-
-        m_previewParent.gameObject.SetActive(true);
-        m_camera.Render();
-        m_previewParent.gameObject.SetActive(false);
-
-        for(int i=0; i<gameObjects.Length; i++)
-        {
-            gameObjects[i].SetActive(gameObjectsAreActive[i]);
-        }
-    }
-
     private Vector2 Drag2D(Vector2 scrollPosition, Rect position, Event current)
     {
         return scrollPosition - current.delta * ((!current.shift) ? 1 : 3) / Mathf.Min(position.width, position.height) * 140f;;

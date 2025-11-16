@@ -43,14 +43,8 @@ public class DelaunayTetrahedralization
         AddDelaunayTetrahedralizationVertices(handle, explicitVertices.Length/3, explicitVertices, implicitVerticesCount, implicitVertices);
         CalculateDelaunayTetrahedralization(handle);
 
-        int n = 4*GetOutputTetrahedronsCount(handle);
-        delaunayTetrahedralizationOutput.m_tetrahedrons = new List<int>(n);
         IntPtr ptr = GetOutputTetrahedrons(handle);
-        for(int i=0; i<n; i++)
-        {
-            delaunayTetrahedralizationOutput.m_tetrahedrons.Add(ptr.ReadInt32());
-        }
-
+        delaunayTetrahedralizationOutput.m_tetrahedrons = ptr.ReadInt32Repeat(4*GetOutputTetrahedronsCount(handle));
         DisposeDelaunayTetrahedralizationHandle(handle);
 
         TetrahedralizerUtility.SwapElementsByInterval(delaunayTetrahedralizationOutput.m_tetrahedrons, 4); // Change from right to left hand coordinate.

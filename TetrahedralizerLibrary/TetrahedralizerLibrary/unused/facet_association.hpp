@@ -32,6 +32,15 @@ class FacetAssociation
 public:
     void facet_association(FacetAssociationInput* input, FacetAssociationOutput* output);
 private:
+    void facet_constraint_association(uint32_t facet, uint32_t constraint);
+    
+    genericPoint** m_vertices;
+    vector<vector<uint32_t>> m_facets;
+    vector<vector<uint32_t>> m_coplanar_facets;
+    uint32_t* m_constraints;
+    vector<vector<uint32_t>> m_coplanar_constraints;
+    vector<vector<vector<uint32_t>>> m_vertices_mapping;
+    vector<uint32_t> m_centroids_mapping;
     COMMON_FIELDS
 };
 

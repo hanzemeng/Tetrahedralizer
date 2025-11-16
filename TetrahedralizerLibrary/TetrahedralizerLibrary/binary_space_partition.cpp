@@ -17,8 +17,10 @@ BinarySpacePartitionHandle::BinarySpacePartitionHandle()
     m_output->m_inserted_vertices_count = 0;
     m_output->m_polyhedrons = nullptr;
     m_output->m_polyhedrons_count = 0;
-    m_output->m_polyhedrons_facets = nullptr;
-    m_output->m_polyhedrons_facets_count = 0;
+    m_output->m_facets = nullptr;
+    m_output->m_facets_centroids = nullptr;
+    m_output->m_facets_centroids_weights = nullptr;
+    m_output->m_facets_count = 0;
     
     m_binarySpacePartition = new BinarySpacePartition();
 }
@@ -31,13 +33,15 @@ void BinarySpacePartitionHandle::Dispose()
     
     delete[] m_output->m_inserted_vertices;
     delete[] m_output->m_polyhedrons;
-    delete[] m_output->m_polyhedrons_facets;
+    delete[] m_output->m_facets;
+    delete[] m_output->m_facets_centroids;
+    delete[] m_output->m_facets_centroids_weights;
     delete m_output;
     
     delete m_binarySpacePartition;
 }
 
-void BinarySpacePartitionHandle::AddBinarySpacePartitionInput(uint32_t explicit_count, double* explicit_values, uint32_t tetrahedrons_count, uint32_t* tetrahedrons, uint32_t constraints_count, uint32_t* constraints, bool aggressively_add_virtual_constraints)
+void BinarySpacePartitionHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t tetrahedrons_count, uint32_t* tetrahedrons, uint32_t constraints_count, uint32_t* constraints, bool aggressively_add_virtual_constraints)
 {
     create_vertices(explicit_count, explicit_values, 0, nullptr, m_input->m_vertices, m_input->m_vertices_count);
     
@@ -49,36 +53,44 @@ void BinarySpacePartitionHandle::AddBinarySpacePartitionInput(uint32_t explicit_
     
     m_input->m_aggressively_add_virtual_constraints = aggressively_add_virtual_constraints;
 }
-void BinarySpacePartitionHandle::CalculateBinarySpacePartition()
+void BinarySpacePartitionHandle::Calculate()
 {
     m_binarySpacePartition->binary_space_partition(m_input,m_output);
 }
 
-uint32_t BinarySpacePartitionHandle::GetOutputInsertedVerticesCount()
+uint32_t BinarySpacePartitionHandle::GetInsertedVerticesCount()
 {
     return m_output->m_inserted_vertices_count;
 }
-uint32_t* BinarySpacePartitionHandle::GetOutputInsertedVertices()
+uint32_t* BinarySpacePartitionHandle::GetInsertedVertices()
 {
     return m_output->m_inserted_vertices;
 }
 
-uint32_t BinarySpacePartitionHandle::GetOutputPolyhedronsCount()
+uint32_t BinarySpacePartitionHandle::GetPolyhedronsCount()
 {
     return m_output->m_polyhedrons_count;
 }
-uint32_t* BinarySpacePartitionHandle::GetOutputPolyhedrons()
+uint32_t* BinarySpacePartitionHandle::GetPolyhedrons()
 {
     return m_output->m_polyhedrons;
 }
 
-uint32_t BinarySpacePartitionHandle::GetOutputPolyhedronsFacetsCount()
+uint32_t BinarySpacePartitionHandle::GetFacetsCount()
 {
-    return m_output->m_polyhedrons_facets_count;
+    return m_output->m_facets_count;
 }
-uint32_t* BinarySpacePartitionHandle::GetOutputPolyhedronsFacets()
+uint32_t* BinarySpacePartitionHandle::GetFacets()
 {
-    return m_output->m_polyhedrons_facets;
+    return m_output->m_facets;
+}
+uint32_t* BinarySpacePartitionHandle::GetFacetsCentroids()
+{
+    return m_output->m_facets_centroids;
+}
+double* BinarySpacePartitionHandle::GetFacetsCentroidsWeights()
+{
+    return m_output->m_facets_centroids_weights;
 }
 
 extern "C" LIBRARY_EXPORT void* CreateBinarySpacePartitionHandle()
@@ -93,39 +105,47 @@ extern "C" LIBRARY_EXPORT void DisposeBinarySpacePartitionHandle(void* handle)
 
 extern "C" LIBRARY_EXPORT void AddBinarySpacePartitionInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t tetrahedron_count, uint32_t* tetrahedrons, uint32_t constraints_count, uint32_t* constraints, bool aggressively_add_virtual_constraints)
 {
-    ((BinarySpacePartitionHandle*)handle)->AddBinarySpacePartitionInput(explicit_count, explicit_values, tetrahedron_count, tetrahedrons, constraints_count, constraints, aggressively_add_virtual_constraints);
+    ((BinarySpacePartitionHandle*)handle)->AddInput(explicit_count, explicit_values, tetrahedron_count, tetrahedrons, constraints_count, constraints, aggressively_add_virtual_constraints);
 }
 
 extern "C" LIBRARY_EXPORT void CalculateBinarySpacePartition(void* handle)
 {
-    ((BinarySpacePartitionHandle*)handle)->CalculateBinarySpacePartition();
+    ((BinarySpacePartitionHandle*)handle)->Calculate();
 }
 
-extern "C" LIBRARY_EXPORT uint32_t GetOutputInsertedVerticesCount(void* handle)
+extern "C" LIBRARY_EXPORT uint32_t GetBinarySpacePartitionInsertedVerticesCount(void* handle)
 {
-    return ((BinarySpacePartitionHandle*)handle)->GetOutputInsertedVerticesCount();
+    return ((BinarySpacePartitionHandle*)handle)->GetInsertedVerticesCount();
 }
-extern "C" LIBRARY_EXPORT uint32_t* GetOutputInsertedVertices(void* handle)
+extern "C" LIBRARY_EXPORT uint32_t* GetBinarySpacePartitionInsertedVertices(void* handle)
 {
-    return  ((BinarySpacePartitionHandle*)handle)->GetOutputInsertedVertices();
-}
-
-extern "C" LIBRARY_EXPORT uint32_t GetOutputPolyhedronsCount(void* handle)
-{
-    return ((BinarySpacePartitionHandle*)handle)->GetOutputPolyhedronsCount();
-}
-extern "C" LIBRARY_EXPORT uint32_t* GetOutputPolyhedrons(void* handle)
-{
-    return ((BinarySpacePartitionHandle*)handle)->GetOutputPolyhedrons();
+    return  ((BinarySpacePartitionHandle*)handle)->GetInsertedVertices();
 }
 
-extern "C" LIBRARY_EXPORT uint32_t GetOutputPolyhedronsFacetsCount(void* handle)
+extern "C" LIBRARY_EXPORT uint32_t GetBinarySpacePartitionPolyhedronsCount(void* handle)
 {
-    return ((BinarySpacePartitionHandle*)handle)->GetOutputPolyhedronsFacetsCount();
+    return ((BinarySpacePartitionHandle*)handle)->GetPolyhedronsCount();
 }
-extern "C" LIBRARY_EXPORT uint32_t* GetOutputPolyhedronsFacets(void* handle)
+extern "C" LIBRARY_EXPORT uint32_t* GetBinarySpacePartitionPolyhedrons(void* handle)
 {
-    return ((BinarySpacePartitionHandle*)handle)->GetOutputPolyhedronsFacets();
+    return ((BinarySpacePartitionHandle*)handle)->GetPolyhedrons();
+}
+
+extern "C" LIBRARY_EXPORT uint32_t GetBinarySpacePartitionFacetsCount(void* handle)
+{
+    return ((BinarySpacePartitionHandle*)handle)->GetFacetsCount();
+}
+extern "C" LIBRARY_EXPORT uint32_t* GetBinarySpacePartitionFacets(void* handle)
+{
+    return ((BinarySpacePartitionHandle*)handle)->GetFacets();
+}
+extern "C" LIBRARY_EXPORT uint32_t* GetBinarySpacePartitionFacetsCentroids(void* handle)
+{
+    return ((BinarySpacePartitionHandle*)handle)->GetFacetsCentroids();
+}
+extern "C" LIBRARY_EXPORT double* GetBinarySpacePartitionFacetsCentroidsWeights(void* handle)
+{
+    return ((BinarySpacePartitionHandle*)handle)->GetFacetsCentroidsWeights();
 }
 
 #pragma mark - Internal_Core
@@ -785,11 +805,7 @@ void BinarySpacePartition::binary_space_partition(BinarySpacePartitionInput* inp
             }
         }
         output->m_inserted_vertices_count = m_new_vertices_mappings.size() / 9;
-        output->m_inserted_vertices = new uint32_t[m_vector_i_0.size()];
-        for(uint32_t i=0; i<m_vector_i_0.size(); i++)
-        {
-            output->m_inserted_vertices[i] = m_vector_i_0[i];
-        }
+        output->m_inserted_vertices = vector_to_array(m_vector_i_0);
 
         m_vector_i_0.clear();
         for(uint32_t i=0; i<m_polyhedrons.size(); i++)
@@ -800,13 +816,11 @@ void BinarySpacePartition::binary_space_partition(BinarySpacePartitionInput* inp
                 m_vector_i_0.push_back(m_polyhedrons[i]->facets[j]);
             }
         }
-        output->m_polyhedrons = new uint32_t[m_vector_i_0.size()];
         output->m_polyhedrons_count = m_polyhedrons.size();
-        for(uint32_t i=0; i<m_vector_i_0.size(); i++)
-        {
-            output->m_polyhedrons[i] = m_vector_i_0[i];
-        }
+        output->m_polyhedrons = vector_to_array(m_vector_i_0);
 
+        output->m_facets_centroids = new uint32_t[3*m_polyhedrons_facets.size()];
+        output->m_facets_centroids_weights = new double[2*m_polyhedrons_facets.size()];
         m_vector_i_0.clear();
         for(uint32_t i=0; i<m_polyhedrons_facets.size(); i++)
         {
@@ -820,13 +834,18 @@ void BinarySpacePartition::binary_space_partition(BinarySpacePartitionInput* inp
             {
                 m_vector_i_0.push_back(m_deque_i_0[j]);
             }
+            
+            double3 centroid = approximate_facet_centroid(m_deque_i_0, m_vertices.data());
+            double3 weight;
+            barycentric_weight(m_polyhedrons_facets[i]->p0,m_polyhedrons_facets[i]->p1,m_polyhedrons_facets[i]->p2,centroid,m_vertices.data(), weight);
+            output->m_facets_centroids[3*i+0] = m_polyhedrons_facets[i]->p0;
+            output->m_facets_centroids[3*i+1] = m_polyhedrons_facets[i]->p1;
+            output->m_facets_centroids[3*i+2] = m_polyhedrons_facets[i]->p2;
+            output->m_facets_centroids_weights[2*i+0] = weight.x;
+            output->m_facets_centroids_weights[2*i+1] = weight.y;
         }
-        output->m_polyhedrons_facets = new uint32_t[m_vector_i_0.size()];
-        output->m_polyhedrons_facets_count = m_polyhedrons_facets.size();
-        for(uint32_t i=0; i<m_vector_i_0.size(); i++)
-        {
-            output->m_polyhedrons_facets[i] = m_vector_i_0[i];
-        }
+        output->m_facets_count = m_polyhedrons_facets.size();
+        output->m_facets = vector_to_array(m_vector_i_0);
     }
 
     // clean up
@@ -1030,18 +1049,31 @@ void BinarySpacePartition::get_polyhedron_facet_vertices(uint32_t facet, deque<u
         }
     }
     
-    if(res.size() < 3)
+    // make the first 3 points not collinear to help with future computation
+    uint32_t n = res.size();
+    while(n-->0 && is_collinear(res[0], res[1], res[2], m_vertices.data()))
     {
-        throw "something is wrong";
+        uint32_t front = res[0];
+        res.pop_front();
+        res.push_back(front);
     }
-    for(uint32_t i=0; i<res.size(); i++)
-    {
-        for(uint32_t j=i+1; j<res.size(); j++)
-        {
-            if(res[i] == res[j])
-            {
-                throw "something is wrong";
-            }
-        }
-    }
+//    if(n<0)
+//    {
+//        throw "something is wrong";
+//    }
+    
+//    if(res.size() < 3)
+//    {
+//        throw "something is wrong";
+//    }
+//    for(uint32_t i=0; i<res.size(); i++)
+//    {
+//        for(uint32_t j=i+1; j<res.size(); j++)
+//        {
+//            if(res[i] == res[j])
+//            {
+//                throw "something is wrong";
+//            }
+//        }
+//    }
 }

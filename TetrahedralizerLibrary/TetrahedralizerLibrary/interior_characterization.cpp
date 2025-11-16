@@ -3,200 +3,313 @@
 
 void InteriorCharacterization::interior_characterization(InteriorCharacterizationInput* input, InteriorCharacterizationOutput* output)
 {
-    vector<double> m_vertices_approximate_positions;
-    vector<double> m_polyhedrons_facets_approximate_areas;
-    vector<double> m_polyhedrons_facets_approximate_centers;
-    vector<double> m_polyhedrons_winding_numbers;
+    Polyhedralization polyhedralization(input->m_polyhedrons, input->m_polyhedrons_count, input->m_facets, input->m_facets_count);
+    vector<vector<uint32_t>> polyhedrons = flat_array_to_nested_vector(input->m_polyhedrons, input->m_polyhedrons_count);
+    vector<vector<uint32_t>> facets = flat_array_to_nested_vector(input->m_facets, input->m_facets_count);
+    vector<vector<vector<uint32_t>>> facets_vertices_mapping;
+    vector<uint32_t> facets_centroids_mapping = vector<uint32_t>(input->m_facets_count, UNDEFINED_VALUE);
+    vector<double> facets_approximated_areas;
+    unordered_map<pair<uint32_t,uint32_t>,vector<uint32_t>,pair_ii_hash> edges_incident_facets;
+    vector<vector<pair<uint32_t,uint32_t>>> vertices_incident_edges = vector<vector<pair<uint32_t,uint32_t>>>(input->m_vertices_count);
     
-    // estimate vertices positions
+    
+    // calculate some data
     {
-        GenericPointApproximationInput g_input;
-        g_input.m_vertices = input->m_vertices;
-        g_input.m_vertices_count = input->m_vertices_count;
-        GenericPointApproximationOutput g_output;
-        GenericPointApproximation genericPointApproximation;
-        genericPointApproximation.generic_point_approximation(&g_input, &g_output);
-        
-        for(uint32_t i=0; i<3*input->m_vertices_count; i++)
+        vector<double3> vertices_approximated_positions;
+        for(uint32_t i=0; i<input->m_constraints_count; i++)
         {
-            m_vertices_approximate_positions.push_back(g_output.m_approximate_positions[i]);
+            uint32_t c0 = input->m_constraints[3*i+0];
+            uint32_t c1 = input->m_constraints[3*i+1];
+            uint32_t c2 = input->m_constraints[3*i+2];
+            if(c0==c1||c0==c2||c1==c2||is_collinear(c0, c1, c2, input->m_vertices))
+            {
+                input->m_constraints[3*i+0] = UNDEFINED_VALUE;
+            }
         }
-        delete[] g_output.m_approximate_positions;
-    }
-    
-    
-    // estimate facets areaa and centers
-    {
-        // facets areas
-        double total_area = 0;
-        m_polyhedrons_facets_approximate_areas.resize(input->m_polyhedrons_facets_count);
-        m_polyhedrons_facets_approximate_centers.resize(3*input->m_polyhedrons_facets_count);
-        uint32_t f=0;
-        for(uint32_t i=0; i<input->m_polyhedrons_facets_count; i++)
+        for(uint32_t i=0; i<input->m_vertices_count; i++)
         {
-            // store facet vertices to m_vector_i_0
-            uint32_t n = input->m_polyhedrons_facets[f];
-            m_vector_i_0.clear();
-            for(uint32_t j=f+1; j<f+1+n; j++)
-            {
-                m_vector_i_0.push_back(input->m_polyhedrons_facets[j]);
-            }
-            f += n+1;
-
-            // calculate facet area
-            double area = 0;
-            double a11,a12,a13,a21,a22,a23,a31,a32,a33, r1,r2,r3;
-            a11 = m_vertices_approximate_positions[3*m_vector_i_0[0]+0];
-            a12 = m_vertices_approximate_positions[3*m_vector_i_0[0]+1];
-            a13 = m_vertices_approximate_positions[3*m_vector_i_0[0]+2];
+            vertices_approximated_positions.push_back(approximate_point(input->m_vertices[i]));
+        }
+        double total_area = 0.0;
+        for(uint32_t i=0; i<facets.size(); i++)
+        {
+            facets_vertices_mapping.push_back(vector<vector<uint32_t>>(facets[i].size()));
             
-            for(uint32_t j=2; j<m_vector_i_0.size(); j++)
+            double area = 0.0;
+            double3 p0 = vertices_approximated_positions[facets[i][0]];
+            for(uint32_t j=1; j<facets[i].size()-1; j++)
             {
-                a21 = m_vertices_approximate_positions[3*m_vector_i_0[j-1]+0] - a11;
-                a22 = m_vertices_approximate_positions[3*m_vector_i_0[j-1]+1] - a12;
-                a23 = m_vertices_approximate_positions[3*m_vector_i_0[j-1]+2] - a13;
-                a31 = m_vertices_approximate_positions[3*m_vector_i_0[j]+0] - a11;
-                a32 = m_vertices_approximate_positions[3*m_vector_i_0[j]+1] - a12;
-                a33 = m_vertices_approximate_positions[3*m_vector_i_0[j]+2] - a13;
-
-                r1 = a22*a33 - a23*a32;
-                r2 = -a21*a33 + a23*a31;
-                r3 = a21*a32 - a22*a31;
-
-                area += r1*r1 + r2*r2 + r3*r3;
+                double3 p1 = vertices_approximated_positions[facets[i][j]];
+                double3 p2 = vertices_approximated_positions[facets[i][j+1]];
+                area += (p1-p0).cross(p2-p0).length();
             }
+            facets_approximated_areas.push_back(area);
             total_area += area;
-            m_polyhedrons_facets_approximate_areas[i] = area;
-            
-            // calculate facet center
-            double cx(0),cy(0),cz(0);
-            for(uint32_t v : m_vector_i_0)
-            {
-                cx += m_vertices_approximate_positions[3*v+0];
-                cy += m_vertices_approximate_positions[3*v+1];
-                cz += m_vertices_approximate_positions[3*v+2];
-            }
-            cx /= m_vector_i_0.size();
-            cy /= m_vector_i_0.size();
-            cz /= m_vector_i_0.size();
-            m_polyhedrons_facets_approximate_centers[3*i+0] = cx;
-            m_polyhedrons_facets_approximate_centers[3*i+1] = cy;
-            m_polyhedrons_facets_approximate_centers[3*i+2] = cz;
         }
-        // normalize facet area so min cut will work
-        for(uint32_t i=0; i<m_polyhedrons_facets_approximate_areas.size(); i++)
+        for(uint32_t i=0; i<facets_approximated_areas.size(); i++)
         {
-            m_polyhedrons_facets_approximate_areas[i] /= total_area;
+            facets_approximated_areas[i] /= total_area;
+        }
+        
+        for(uint32_t i=0; i<facets.size(); i++)
+        {
+            for(uint32_t j=0; j<facets[i].size(); j++)
+            {
+                uint32_t e0 = facets[i][j];
+                uint32_t e1 = facets[i][(j+1)%facets[i].size()];
+                sort_ints(e0, e1);
+                edges_incident_facets[make_pair(e0, e1)].push_back(i);
+                vertices_incident_edges[e0].push_back(make_pair(e0, e1));
+                vertices_incident_edges[e1].push_back(make_pair(e0, e1));
+            }
         }
     }
-    
-    // estimate polyhedrons winding numbers
-    {
-        if(nullptr != input->m_polyhedrons_winding_numbers)
-        {
-            m_polyhedrons_winding_numbers = vector<double>(input->m_polyhedrons_winding_numbers, input->m_polyhedrons_winding_numbers+input->m_polyhedrons_count);
-            goto MIN_CUT;
-        }
-        m_polyhedrons_winding_numbers.resize(input->m_polyhedrons_count);
-        uint32_t f=0;
-        for(uint32_t i=0; i<input->m_polyhedrons_count; i++)
-        {
-            // store facets to m_vector_i_0
-            uint32_t n = input->m_polyhedrons[f];
-            m_vector_i_0.clear();
-            for(uint32_t j=f+1; j<f+1+n; j++)
-            {
-                m_vector_i_0.push_back(input->m_polyhedrons[j]);
-            }
-            f += n+1;
-            
-            double px(0),py(0),pz(0);
-            for(uint32_t f : m_vector_i_0)
-            {
-                px += m_polyhedrons_facets_approximate_centers[3*f+0];
-                py += m_polyhedrons_facets_approximate_centers[3*f+1];
-                pz += m_polyhedrons_facets_approximate_centers[3*f+2];
-            }
-            px /= m_vector_i_0.size();
-            py /= m_vector_i_0.size();
-            pz /= m_vector_i_0.size();
-            
-            double wind = 0;
-            for(uint32_t j=0; j<3*input->m_constraints_count; j+=3)
-            {
-                uint32_t c0(input->m_constraints[j+0]),c1(input->m_constraints[j+1]),c2(input->m_constraints[j+2]);
-                
-                double
-                ax(m_vertices_approximate_positions[3*c0+0] - px),
-                ay(m_vertices_approximate_positions[3*c0+1] - py),
-                az(m_vertices_approximate_positions[3*c0+2] - pz),
-                bx(m_vertices_approximate_positions[3*c1+0] - px),
-                by(m_vertices_approximate_positions[3*c1+1] - py),
-                bz(m_vertices_approximate_positions[3*c1+2] - pz),
-                cx(m_vertices_approximate_positions[3*c2+0] - px),
-                cy(m_vertices_approximate_positions[3*c2+1] - py),
-                cz(m_vertices_approximate_positions[3*c2+2] - pz);
-                
-                double
-                aa(sqrt(ax*ax + ay*ay + az*az)),
-                ba(sqrt(bx*bx + by*by + bz*bz)),
-                ca(sqrt(cx*cx + cy*cy + cz*cz));
-                
-                double y = ax*(by*cz-bz*cy) - ay*(bx*cz-bz*cx) + az*(bx*cy-by*cx);
-                double x = aa*ba*ca + (ax*bx+ay*by+az*bz)*ca + (bx*cx+by*cy+bz*cz)*aa + (cx*ax+cy*ay+cz*az)*ba;
-                double cur_wind = atan2(y, x);
-                cur_wind /= (2*numbers::pi);
-                
-                wind += cur_wind;
-            }
-            m_polyhedrons_winding_numbers[i] = wind;
-        }
-    }
-    
-    MIN_CUT:
-    
-    // build graph and calculate min cut
-    {
-        Polyhedralization polyhedralization(input->m_polyhedrons, input->m_polyhedrons_count, input->m_polyhedrons_facets, input->m_polyhedrons_facets_count);
-        GCoptimizationGeneralGraph gc((GCoptimization::SiteID)input->m_polyhedrons_count, 2);
 
-        // site cost
-        for(uint32_t i=0; i<input->m_polyhedrons_count; i++)
+    // associate constraints to facets vertices
+    for(uint32_t i=0; i<input->m_constraints_count; i++)
+    {
+        uint32_t c0 = input->m_constraints[3*i+0];
+        uint32_t c1 = input->m_constraints[3*i+1];
+        uint32_t c2 = input->m_constraints[3*i+2];
+        if(UNDEFINED_VALUE == c0)
         {
-            gc.setDataCost((GCoptimization::SiteID)i, 0, max(m_polyhedrons_winding_numbers[i],(double)0));
-            gc.setDataCost((GCoptimization::SiteID)i, 1, max(1-m_polyhedrons_winding_numbers[i],(double)0));
-
+            continue;
         }
-        // neightbor cost
-        for(uint32_t i=0; i<input->m_polyhedrons_facets_count; i++)
+        
+        clear_queue(m_queue_i_0); // facets to be visited
+        for(pair<uint32_t,uint32_t> e : vertices_incident_edges[c0])
         {
-            uint32_t n0,n1;
-            polyhedralization.get_polyhedron_facet_neighbors(i, n0, n1);
-            if(UNDEFINED_VALUE == n0 || UNDEFINED_VALUE == n1)
+            for(uint32_t f : edges_incident_facets[e])
+            {
+                m_queue_i_0.push(f);
+            }
+        }
+        for(pair<uint32_t,uint32_t> e : vertices_incident_edges[c1])
+        {
+            for(uint32_t f : edges_incident_facets[e])
+            {
+                m_queue_i_0.push(f);
+            }
+        }
+        for(pair<uint32_t,uint32_t> e : vertices_incident_edges[c2])
+        {
+            for(uint32_t f : edges_incident_facets[e])
+            {
+                m_queue_i_0.push(f);
+            }
+        }
+        m_u_set_i_0.clear(); // visited facets
+        
+        while(!m_queue_i_0.empty())
+        {
+            uint32_t f = m_queue_i_0.front();
+            m_queue_i_0.pop();
+            if(m_u_set_i_0.end() != m_u_set_i_0.find(f))
             {
                 continue;
             }
-            double w = m_polyhedrons_winding_numbers[n0] - m_polyhedrons_winding_numbers[n1];
-            w = m_polyhedrons_facets_approximate_areas[i] * exp(-(w*w));
-            gc.setNeighbors((GCoptimization::SiteID)n0, (GCoptimization::SiteID)n1, input->m_min_cut_neighbor_multiplier*w);
+            m_u_set_i_0.insert(f);
+            
+            bool search_neighbor = true;
+            uint32_t f0 = facets[f][0];
+            uint32_t f1 = facets[f][1];
+            uint32_t f2 = facets[f][2];
+            bool is_coplanar = 0 == orient3d(c0,c1,c2,f0,input->m_vertices) && 0 == orient3d(c0,c1,c2,f1,input->m_vertices) && 0 == orient3d(c0,c1,c2,f2,input->m_vertices);
+            if(is_coplanar)
+            {
+                search_neighbor = true;
+                for(uint32_t j=0; j<facets[f].size(); j++)
+                {
+                    if(vertex_in_triangle(facets[f][j], c0, c1, c2, input->m_vertices))
+                    {
+                        facets_vertices_mapping[f][j].push_back(i);
+                    }
+                }
+                if(UNDEFINED_VALUE == facets_centroids_mapping[f] && genericPoint::pointInTriangle(*input->m_facets_centroids[f],*input->m_vertices[c0],*input->m_vertices[c1],*input->m_vertices[c2]))
+                {
+                    facets_centroids_mapping[f] = i;
+                }
+            }
+            if(is_coplanar)
+            {
+                for(uint32_t j=0; j<facets[f].size(); j++)
+                {
+                    uint32_t e0 = facets[f][j];
+                    uint32_t e1 = facets[f][(j+1)%facets[f].size()];
+                    sort_ints(e0, e1);
+                    for(uint32_t nf : edges_incident_facets[make_pair(e0, e1)])
+                    {
+                        m_queue_i_0.push(nf);
+                    }
+                }
+            }
+//            if(!search_neighbor)
+//            {
+//                f0 = facets[f][0];
+//                for(uint32_t j=1; j<facets[f].size()-1; j++)
+//                {
+//                    if(is_coplanar)
+//                    {
+//                        f1 = facets[f][j];
+//                        f2 = facets[f][j+1];
+//                        if(vertex_in_triangle(c0, f0, f1, f2, input->m_vertices) ||
+//                           vertex_in_triangle(c1, f0, f1, f2, input->m_vertices) ||
+//                           vertex_in_triangle(c2, f0, f1, f2, input->m_vertices) ||
+//                           segment_cross_segment(c0, c1, f0, f1, input->m_vertices) ||
+//                           segment_cross_segment(c0, c1, f1, f2, input->m_vertices) ||
+//                           segment_cross_segment(c0, c1, f2, f0, input->m_vertices) ||
+//                           segment_cross_segment(c1, c2, f0, f1, input->m_vertices) ||
+//                           segment_cross_segment(c1, c2, f1, f2, input->m_vertices) ||
+//                           segment_cross_segment(c1, c2, f2, f0, input->m_vertices) ||
+//                           segment_cross_segment(c2, c0, f0, f1, input->m_vertices) ||
+//                           segment_cross_segment(c2, c0, f1, f2, input->m_vertices) ||
+//                           segment_cross_segment(c2, c0, f2, f0, input->m_vertices))
+//                        {
+//                            search_neighbor = true;
+//                            break;
+//                        }
+//                    }
+//                    else
+//                    {
+//                        if(is_collinear(f0, f1, f2, input->m_vertices) || // I am just tired of handling the degenerate case
+//                           segment_cross_triangle(c0, c1, f0, f1, f2, input->m_vertices) ||
+//                           segment_cross_triangle(c1, c2, f0, f1, f2, input->m_vertices) ||
+//                           segment_cross_triangle(c2, c0, f0, f1, f2, input->m_vertices) ||
+//                           segment_cross_triangle(f0, f1, c0, c1, c2, input->m_vertices) ||
+//                           segment_cross_triangle(f1, f2, c0, c1, c2, input->m_vertices) ||
+//                           segment_cross_triangle(f2, f0, c0, c1, c2, input->m_vertices))
+//                        {
+//                            search_neighbor = true;
+//                            break;
+//                        }
+//                    }
+//                }
+//            }
+        }
+    }
+
+    GCoptimizationGeneralGraph gc((GCoptimization::SiteID)polyhedrons.size()+1, 2);
+    // build graph and calculate min cut
+    {
+        // polyhedron cost
+        gc.setDataCost((GCoptimization::SiteID)polyhedrons.size(), 1, 1.0); // ghost polyhedron
+        for(uint32_t i=0; i<polyhedrons.size(); i++)
+        {
+            double out_area = 0.0; // area of facets point out
+            double in_area = 0.0;
+            
+            for(uint32_t j=0; j<polyhedrons[i].size(); j++)
+            {
+                int orient = 0;
+                uint32_t f = polyhedrons[i][j];
+                uint32_t t = facets_centroids_mapping[f];
+                if(UNDEFINED_VALUE == t)
+                {
+                    continue;
+                }
+                
+                uint32_t t0 = input->m_constraints[3*t+0];
+                uint32_t t1 = input->m_constraints[3*t+1];
+                uint32_t t2 = input->m_constraints[3*t+2];
+                for(uint32_t k=0; k<polyhedrons[i].size(); k++)
+                {
+                    if(k == j)
+                    {
+                        continue;
+                    }
+                    uint32_t nf = polyhedrons[i][k];
+                    uint32_t f0 = facets[nf][0];
+                    uint32_t f1 = facets[nf][1];
+                    uint32_t f2 = facets[nf][2];
+                    if(0 != (orient=orient3d(t0,t1,t2,f0, input->m_vertices)))
+                    {
+                        break;
+                    }
+                    if(0 != (orient=orient3d(t0,t1,t2,f1, input->m_vertices)))
+                    {
+                        break;
+                    }
+                    if(0 != (orient=orient3d(t0,t1,t2,f2, input->m_vertices)))
+                    {
+                        break;
+                    }
+                }
+                if(orient > 0)
+                {
+                    in_area += facets_approximated_areas[f];
+                }
+                else if(orient < 0)
+                {
+                    out_area += facets_approximated_areas[f];
+                }
+//                else
+//                {
+//                    throw "wtf";
+//                }
+            }
+            gc.setDataCost((GCoptimization::SiteID)i, 0, out_area);
+            gc.setDataCost((GCoptimization::SiteID)i, 1, 0.1*in_area);
+        }
+        
+        // neighbor cost
+        vector<bool> vertices_on_constrains = vector<bool>(input->m_vertices_count);
+        for(uint32_t i=0; i<facets.size(); i++)
+        {
+            if(UNDEFINED_VALUE == facets_centroids_mapping[i])
+            {
+                continue;
+            }
+            for(uint32_t v : facets[i])
+            {
+                vertices_on_constrains[v] = true;
+            }
+        }
+        for(uint32_t i=0; i<facets.size(); i++)
+        {
+            double w = 0.1;
+            for(uint32_t v : facets[i])
+            {
+                if(!vertices_on_constrains[v])
+                {
+                    w = 1.0;
+                    break;
+                }
+            }
+            
+            uint32_t n0,n1;
+            polyhedralization.get_polyhedron_facet_neighbors(i, n0, n1);
+            if(UNDEFINED_VALUE == n1)
+            {
+                n1 = polyhedrons.size();
+            }
+            gc.setNeighbors((GCoptimization::SiteID)n0, (GCoptimization::SiteID)n1, w*facets_approximated_areas[i]);
         }
         
         gc.swap();
-        
-        // copy result to output
-        output->m_polyhedrons_interior_labels = new uint32_t[input->m_polyhedrons_count];
-        for(uint32_t i=0; i<input->m_polyhedrons_count; i++)
+    }
+    
+    // produce output
+    {
+        output->m_polyhedrons_labels = new uint32_t[polyhedrons.size()];
+        for(uint32_t i=0; i<polyhedrons.size(); i++)
         {
-            output->m_polyhedrons_interior_labels[i] = gc.whatLabel((GCoptimization::SiteID)i);
+            output->m_polyhedrons_labels[i] = gc.whatLabel((GCoptimization::SiteID)i);
         }
-        if(nullptr == input->m_polyhedrons_winding_numbers)
+        
+        m_vector_i_0.clear();
+        for(uint32_t i=0; i<facets_vertices_mapping.size(); i++)
         {
-            output->m_polyhedrons_winding_numbers = new double[input->m_polyhedrons_count];
-            for(uint32_t i=0; i<input->m_polyhedrons_count; i++)
+            for(uint32_t j=0; j<facets_vertices_mapping[i].size(); j++)
             {
-                output->m_polyhedrons_winding_numbers[i] = m_polyhedrons_winding_numbers[i];
+                m_vector_i_0.push_back(facets_vertices_mapping[i][j].size());
+                for(uint32_t k=0; k<facets_vertices_mapping[i][j].size(); k++)
+                {
+                    m_vector_i_0.push_back(facets_vertices_mapping[i][j][k]);
+                }
             }
         }
+        output->m_facets_vertices_mapping = vector_to_array(m_vector_i_0);
+        output->m_facets_centroids_mapping = vector_to_array(facets_centroids_mapping);
     }
 }
 
@@ -206,32 +319,35 @@ InteriorCharacterizationHandle::InteriorCharacterizationHandle()
     m_input = new InteriorCharacterizationInput();
     m_input->m_vertices_count = 0;
     m_input->m_polyhedrons_count = 0;
-    m_input->m_polyhedrons_facets_count = 0;
+    m_input->m_facets_count = 0;
     m_input->m_constraints_count = 0;
     m_input->m_vertices = nullptr;
     m_input->m_polyhedrons = nullptr;
-    m_input->m_polyhedrons_facets = nullptr;
+    m_input->m_facets = nullptr;
+    m_input->m_facets_centroids = nullptr;
     m_input->m_constraints = nullptr;
     m_output = new InteriorCharacterizationOutput();
-    m_output->m_polyhedrons_winding_numbers = nullptr;
-    m_output->m_polyhedrons_interior_labels = nullptr;
+    m_output->m_polyhedrons_labels = nullptr;
+    m_output->m_facets_vertices_mapping = nullptr;
+    m_output->m_facets_centroids_mapping = nullptr;
     m_interiorCharacterization = new InteriorCharacterization();
 }
 void InteriorCharacterizationHandle::Dispose()
 {
     delete_vertices(m_input->m_vertices, m_input->m_vertices_count);
     delete[] m_input->m_polyhedrons;
-    delete[] m_input->m_polyhedrons_facets;
+    delete[] m_input->m_facets;
+    delete_vertices(m_input->m_facets_centroids, m_input->m_facets_count);
     delete[] m_input->m_constraints;
-    delete[] m_input->m_polyhedrons_winding_numbers;
     delete m_input;
-    delete[] m_output->m_polyhedrons_winding_numbers;
-    delete[] m_output->m_polyhedrons_interior_labels;
+    delete[] m_output->m_polyhedrons_labels;
+    delete[] m_output->m_facets_vertices_mapping;
+    delete[] m_output->m_facets_centroids_mapping;
     delete m_output;
     delete m_interiorCharacterization;
 }
 
-void InteriorCharacterizationHandle::AddInteriorCharacterizationInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t polyhedrons_facets_count, uint32_t* polyhedrons_facets, uint32_t constraints_count, uint32_t* constraints, double* polyhedrons_winding_numbers, double min_cut_neighbor_multiplier)
+void InteriorCharacterizationHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights, uint32_t constraints_count, uint32_t* constraints)
 {
     create_vertices(explicit_count, explicit_values, implicit_count, implicit_values, m_input->m_vertices, m_input->m_vertices_count);
 
@@ -239,33 +355,40 @@ void InteriorCharacterizationHandle::AddInteriorCharacterizationInput(uint32_t e
     m_input->m_polyhedrons = vector_to_array(vec);
     m_input->m_polyhedrons_count = polyhedrons_count;
     
-    vec =  flat_array_to_vector(polyhedrons_facets, polyhedrons_facets_count);
-    m_input->m_polyhedrons_facets = vector_to_array(vec);
-    m_input->m_polyhedrons_facets_count = polyhedrons_facets_count;
+    vec =  flat_array_to_vector(facets, facets_count);
+    m_input->m_facets = vector_to_array(vec);
+    m_input->m_facets_centroids = new genericPoint*[facets_count];
+    for(uint32_t i=0; i<facets_count; i++)
+    {
+        implicitPoint3D_BPT* p = new implicitPoint3D_BPT(m_input->m_vertices[facets_centroids[3*i+0]]->toExplicit3D(),
+                                                         m_input->m_vertices[facets_centroids[3*i+1]]->toExplicit3D(),
+                                                         m_input->m_vertices[facets_centroids[3*i+2]]->toExplicit3D(),
+                                                         facets_centroids_weights[2*i+0],
+                                                         facets_centroids_weights[2*i+1]);
+        m_input->m_facets_centroids[i] = p;
+    }
+    m_input->m_facets_count = facets_count;
     
     m_input->m_constraints_count = constraints_count;
     m_input->m_constraints = duplicate_array(constraints, 3*constraints_count);
-    
-    if(nullptr != polyhedrons_winding_numbers)
-    {
-        m_input->m_polyhedrons_winding_numbers = duplicate_array(polyhedrons_winding_numbers, polyhedrons_count);
-    }
-    
-    m_input->m_min_cut_neighbor_multiplier = min_cut_neighbor_multiplier;
 }
 
-void InteriorCharacterizationHandle::CalculateInteriorCharacterization()
+void InteriorCharacterizationHandle::Calculate()
 {
     m_interiorCharacterization->interior_characterization(m_input, m_output);
 }
 
-double* InteriorCharacterizationHandle::GetOutputPolyhedronsWindingNumbers()
+uint32_t* InteriorCharacterizationHandle::GetPolyhedronsLabels()
 {
-    return m_output->m_polyhedrons_winding_numbers;
+    return m_output->m_polyhedrons_labels;
 }
-uint32_t* InteriorCharacterizationHandle::GetOutputPolyhedronsLabels()
+uint32_t* InteriorCharacterizationHandle::GetFacetsVerticesMapping()
 {
-    return m_output->m_polyhedrons_interior_labels;
+    return m_output->m_facets_vertices_mapping;
+}
+uint32_t* InteriorCharacterizationHandle::GetFacetsCentroidsMapping()
+{
+    return m_output->m_facets_centroids_mapping;
 }
 
 
@@ -279,21 +402,25 @@ extern "C" LIBRARY_EXPORT void DisposeInteriorCharacterizationHandle(void* handl
     delete (InteriorCharacterizationHandle*)handle;
 }
 
-extern "C" LIBRARY_EXPORT void AddInteriorCharacterizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t polyhedrons_facets_count, uint32_t* polyhedrons_facets, uint32_t constraints_count, uint32_t* constraints, double* polyhedrons_winding_numbers, double min_cut_neighbor_multiplier)
+extern "C" LIBRARY_EXPORT void AddInteriorCharacterizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights, uint32_t constraints_count, uint32_t* constraints)
 {
-    ((InteriorCharacterizationHandle*)handle)->AddInteriorCharacterizationInput(explicit_count, explicit_values, implicit_count, implicit_values, polyhedrons_count, polyhedrons, polyhedrons_facets_count, polyhedrons_facets, constraints_count, constraints, polyhedrons_winding_numbers, min_cut_neighbor_multiplier);
+    ((InteriorCharacterizationHandle*)handle)->AddInput(explicit_count, explicit_values, implicit_count, implicit_values, polyhedrons_count, polyhedrons, facets_count, facets, facets_centroids, facets_centroids_weights, constraints_count, constraints);
 }
 
 extern "C" LIBRARY_EXPORT void CalculateInteriorCharacterization(void* handle)
 {
-    ((InteriorCharacterizationHandle*)handle)->CalculateInteriorCharacterization();
+    ((InteriorCharacterizationHandle*)handle)->Calculate();
 }
 
-extern "C" LIBRARY_EXPORT double* GetOutputPolyhedronsWindingNumbers(void* handle)
+extern "C" LIBRARY_EXPORT uint32_t* GetInteriorCharacterizationPolyhedronsLabels(void* handle)
 {
-    return ((InteriorCharacterizationHandle*)handle)->GetOutputPolyhedronsWindingNumbers();
+    return ((InteriorCharacterizationHandle*)handle)->GetPolyhedronsLabels();
 }
-extern "C" LIBRARY_EXPORT uint32_t* GetOutputPolyhedronsLabels(void* handle)
+extern "C" LIBRARY_EXPORT uint32_t* GetInteriorCharacterizationFacetsVerticesMapping(void* handle)
 {
-    return ((InteriorCharacterizationHandle*)handle)->GetOutputPolyhedronsLabels();
+    return ((InteriorCharacterizationHandle*)handle)->GetFacetsVerticesMapping();
+}
+extern "C" LIBRARY_EXPORT uint32_t* GetInteriorCharacterizationFacetsCentroidsMapping(void* handle)
+{
+    return ((InteriorCharacterizationHandle*)handle)->GetFacetsCentroidsMapping();
 }

@@ -15,23 +15,23 @@ public:
     uint32_t* m_polyhedrons; // # of facets followed by indexes
     uint32_t m_polyhedrons_count;
 
-    uint32_t* m_polyhedrons_facets; // # of vertices followed by indexes, vertices are ordered in cw or ccw
-    uint32_t m_polyhedrons_facets_count;
+    uint32_t* m_facets; // # of vertices followed by indexes, vertices are ordered in cw or ccw, first 3 vertices of are not collinear
+    genericPoint** m_facets_centroids;
+    uint32_t m_facets_count;
     
     uint32_t* m_constraints; // Oriented such that the right hand curls around a triangle and the thumb points in the out direction.
     uint32_t m_constraints_count; // # of constraints, same as m_constraints.size()/3
-    
-    double* m_polyhedrons_winding_numbers; // If this is not nullptr, then skip winding numbers calculation.
-//    uint32_t m_polyhedrons_winding_numbers_count; // same as m_polyhedrons_count
-    
-    double m_min_cut_neighbor_multiplier; // Neighbor (edge) cost in the dual graph of the polyhedraliztion will be multiplied by this.
 };
 class InteriorCharacterizationOutput
 {
 public:
-    double* m_polyhedrons_winding_numbers; // nullptr if m_polyhedrons_winding_numbers is given in input
-    
-    uint32_t* m_polyhedrons_interior_labels; // 0 if the polyhedron is out, otherwise the polyhedron is in.
+    uint32_t* m_polyhedrons_labels;
+    // 1 if the polyhedron is in, otherwise the polyhedron is out
+    uint32_t* m_facets_vertices_mapping;
+    // for every vertex in every facet, record # of triangles followed by indexes of the triangles
+    // note that vertices are duplicated across facets
+    uint32_t* m_facets_centroids_mapping;
+    // for every facet centriod, an incident triangle will be recorded, UNDEFINED_VALUE if no such triangle
 };
 
 
@@ -53,22 +53,24 @@ public:
     InteriorCharacterizationHandle();
     void Dispose();
     
-    void AddInteriorCharacterizationInput(uint32_t, double*, uint32_t, uint32_t*, uint32_t, uint32_t*, uint32_t, uint32_t*, uint32_t, uint32_t*, double*, double);
+    void AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights, uint32_t constraints_count, uint32_t* constraints);
     
-    void CalculateInteriorCharacterization();
+    void Calculate();
     
-    double* GetOutputPolyhedronsWindingNumbers();
-    uint32_t* GetOutputPolyhedronsLabels();
+    uint32_t* GetPolyhedronsLabels();
+    uint32_t* GetFacetsVerticesMapping();
+    uint32_t* GetFacetsCentroidsMapping();
 };
 
 extern "C" LIBRARY_EXPORT void* CreateInteriorCharacterizationHandle();
 extern "C" LIBRARY_EXPORT void DisposeInteriorCharacterizationHandle(void* handle);
 
-extern "C" LIBRARY_EXPORT void AddInteriorCharacterizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t polyhedrons_facets_count, uint32_t* polyhedrons_facets, uint32_t constraints_count, uint32_t* constraints, double* polyhedrons_winding_numbers, double min_cut_neighbor_multiplier);
+extern "C" LIBRARY_EXPORT void AddInteriorCharacterizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights, uint32_t constraints_count, uint32_t* constraints);
 
 extern "C" LIBRARY_EXPORT void CalculateInteriorCharacterization(void* handle);
 
-extern "C" LIBRARY_EXPORT double* GetOutputPolyhedronsWindingNumbers(void* handle);
-extern "C" LIBRARY_EXPORT uint32_t* GetOutputPolyhedronsLabels(void* handle);
+extern "C" LIBRARY_EXPORT uint32_t* GetInteriorCharacterizationPolyhedronsLabels(void* handle);
+extern "C" LIBRARY_EXPORT uint32_t* GetInteriorCharacterizationFacetsVerticesMapping(void* handle);
+extern "C" LIBRARY_EXPORT uint32_t* GetInteriorCharacterizationFacetsCentroidsMapping(void* handle);
 
 #endif

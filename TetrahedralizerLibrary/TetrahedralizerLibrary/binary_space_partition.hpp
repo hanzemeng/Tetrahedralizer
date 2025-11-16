@@ -32,8 +32,10 @@ public:
     uint32_t* m_polyhedrons; // # of facets followed by indexes
     uint32_t m_polyhedrons_count;
 
-    uint32_t* m_polyhedrons_facets; // # of vertices followed by indexes, vertices are ordered in cw or ccw
-    uint32_t m_polyhedrons_facets_count;
+    uint32_t* m_facets; // # of vertices followed by indexes, vertices are ordered in cw or ccw, first 3 vertices of are not collinear
+    uint32_t* m_facets_centroids; // every facet centroid is defined by 3 coplanar explicit vertices
+    double* m_facets_centroids_weights; // and the weight of the explicit vertices, note the 3 weight is ignored
+    uint32_t m_facets_count;
 };
 
 
@@ -51,7 +53,7 @@ class PolyhedronFacet
 {
     public:
     vector<uint32_t> edges; // bounding edges, sorted clockwise or counter clockwise
-    uint32_t p0,p1,p2; // three points that defines the plane
+    uint32_t p0,p1,p2; // three points that define the plane
     uint32_t ip0, ip1; // two incident polyhedrons
 
     PolyhedronFacet();
@@ -108,17 +110,20 @@ public:
     BinarySpacePartitionHandle();
     void Dispose();
 
-    void AddBinarySpacePartitionInput(uint32_t, double*, uint32_t, uint32_t*, uint32_t, uint32_t*, bool);
-    void CalculateBinarySpacePartition();
+    void AddInput(uint32_t, double*, uint32_t, uint32_t*, uint32_t, uint32_t*, bool);
+    void Calculate();
 
-    uint32_t GetOutputInsertedVerticesCount();
-    uint32_t* GetOutputInsertedVertices();
+    uint32_t GetInsertedVerticesCount();
+    uint32_t* GetInsertedVertices();
 
-    uint32_t GetOutputPolyhedronsCount();
-    uint32_t* GetOutputPolyhedrons();
+    uint32_t GetPolyhedronsCount();
+    uint32_t* GetPolyhedrons();
 
-    uint32_t GetOutputPolyhedronsFacetsCount();
-    uint32_t* GetOutputPolyhedronsFacets();
+    uint32_t GetFacetsCount();
+    uint32_t* GetFacets();
+    uint32_t* GetFacetsCentroids();
+    double* GetFacetsCentroidsWeights();
+    
 };
 
 extern "C" LIBRARY_EXPORT void* CreateBinarySpacePartitionHandle();
@@ -128,13 +133,13 @@ extern "C" LIBRARY_EXPORT void AddBinarySpacePartitionInput(void* handle, uint32
 
 extern "C" LIBRARY_EXPORT void CalculateBinarySpacePartition(void* handle);
 
-extern "C" LIBRARY_EXPORT uint32_t GetOutputInsertedVerticesCount(void* handle);
-extern "C" LIBRARY_EXPORT uint32_t* GetOutputInsertedVertices(void* handle);
-
-extern "C" LIBRARY_EXPORT uint32_t GetOutputPolyhedronsCount(void* handle);
-extern "C" LIBRARY_EXPORT uint32_t* GetOutputPolyhedrons(void* handle);
-
-extern "C" LIBRARY_EXPORT uint32_t GetOutputPolyhedronsFacetsCount(void* handle);
-extern "C" LIBRARY_EXPORT uint32_t* GetOutputPolyhedronsFacets(void* handle);
+extern "C" LIBRARY_EXPORT uint32_t GetBinarySpacePartitionInsertedVerticesCount(void* handle);
+extern "C" LIBRARY_EXPORT uint32_t* GetBinarySpacePartitionInsertedVertices(void* handle);
+extern "C" LIBRARY_EXPORT uint32_t GetBinarySpacePartitionPolyhedronsCount(void* handle);
+extern "C" LIBRARY_EXPORT uint32_t* GetBinarySpacePartitionPolyhedrons(void* handle);
+extern "C" LIBRARY_EXPORT uint32_t GetBinarySpacePartitionFacetsCount(void* handle);
+extern "C" LIBRARY_EXPORT uint32_t* GetBinarySpacePartitionFacets(void* handle);
+extern "C" LIBRARY_EXPORT uint32_t* GetBinarySpacePartitionFacetsCentroids(void* handle);
+extern "C" LIBRARY_EXPORT double* GetBinarySpacePartitionFacetsCentroidsWeights(void* handle);
 
 #endif

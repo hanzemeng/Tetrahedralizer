@@ -17,7 +17,9 @@ public class BinarySpacePartition
     {
         public List<int> m_insertedVertices; // 5/9 followed by indices of explicit vertices
         public List<int> m_polyhedrons; // # of polyhedron facets, followed by facets indexes.
-        public List<int> m_polyhedronsFacets; // # of facets vertices, followed by vertices indexes ordered in cw or ccw.
+        public List<int> m_facets; // # of facets vertices, followed by vertices indexes ordered in cw or ccw.
+        public List<int> m_facetsCentroids; // every facet centroid is defined by 3 coplanar explicit vertices
+        public List<double> m_facetsCentroidsWeights; // and the weight of the explicit vertices, note the 3 weight is ignored
     }
 
 
@@ -32,17 +34,21 @@ public class BinarySpacePartition
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern int CalculateBinarySpacePartition(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-        static extern int GetOutputInsertedVerticesCount(IntPtr handle);
+        static extern int GetBinarySpacePartitionInsertedVerticesCount(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-        static extern IntPtr GetOutputInsertedVertices(IntPtr handle);
+        static extern IntPtr GetBinarySpacePartitionInsertedVertices(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-        static extern int GetOutputPolyhedronsCount(IntPtr handle);
+        static extern int GetBinarySpacePartitionPolyhedronsCount(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-        static extern IntPtr GetOutputPolyhedrons(IntPtr handle);
+        static extern IntPtr GetBinarySpacePartitionPolyhedrons(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-        static extern int GetOutputPolyhedronsFacetsCount(IntPtr handle);
+        static extern int GetBinarySpacePartitionFacetsCount(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-        static extern IntPtr GetOutputPolyhedronsFacets(IntPtr handle);
+        static extern IntPtr GetBinarySpacePartitionFacets(IntPtr handle);
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        static extern IntPtr GetBinarySpacePartitionFacetsCentroids(IntPtr handle);
+        [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+        static extern IntPtr GetBinarySpacePartitionFacetsCentroidsWeights(IntPtr handle);
 
         double[] explicitVertices = input.m_explicitVertices.ToArray();
         TetrahedralizerUtility.SwapElementsByInterval(explicitVertices, 3);
@@ -54,27 +60,20 @@ public class BinarySpacePartition
 
         CalculateBinarySpacePartition(handle);
 
-        void PopulateOutput(int n, IntPtr ptr, ref List<int> res)
-        {
-            res = new List<int>();
-            for(int i=0; i<n; i++)
-            {
-                int j = ptr.ReadInt32();
-                res.Add(j);
-                for(;j>0;j--)
-                {
-                    res.Add(ptr.ReadInt32());
-                }
-            }
-        }
-
-        PopulateOutput(GetOutputInsertedVerticesCount(handle), GetOutputInsertedVertices(handle), ref output.m_insertedVertices);
-        PopulateOutput(GetOutputPolyhedronsCount(handle), GetOutputPolyhedrons(handle), ref output.m_polyhedrons);
-        PopulateOutput(GetOutputPolyhedronsFacetsCount(handle), GetOutputPolyhedronsFacets(handle), ref output.m_polyhedronsFacets);
-
+        IntPtr ptr = GetBinarySpacePartitionInsertedVertices(handle);
+        output.m_insertedVertices = ptr.ReadInt32NestedRepeat(GetBinarySpacePartitionInsertedVerticesCount(handle));
+        ptr = GetBinarySpacePartitionPolyhedrons(handle);
+        output.m_polyhedrons = ptr.ReadInt32NestedRepeat(GetBinarySpacePartitionPolyhedronsCount(handle));
+        ptr = GetBinarySpacePartitionFacets(handle);
+        output.m_facets = ptr.ReadInt32NestedRepeat(GetBinarySpacePartitionFacetsCount(handle));
+        ptr = GetBinarySpacePartitionFacetsCentroids(handle);
+        output.m_facetsCentroids = ptr.ReadInt32Repeat(3*GetBinarySpacePartitionFacetsCount(handle));
+        ptr = GetBinarySpacePartitionFacetsCentroidsWeights(handle);
+        output.m_facetsCentroidsWeights = ptr.ReadDoubleRepeat(2*GetBinarySpacePartitionFacetsCount(handle));
+        
         if(input.m_removeCollinearSegments)
         {
-            List<List<int>> facets = TetrahedralizerUtility.FlatIListToNestedList(output.m_polyhedronsFacets);
+            List<List<int>> facets = TetrahedralizerUtility.FlatIListToNestedList(output.m_facets);
             List<List<int>> newFacets = new List<List<int>>();
             using GenericPointPredicate genericPointPredicate = new GenericPointPredicate(input.m_explicitVertices, output.m_insertedVertices);
 
@@ -94,7 +93,7 @@ public class BinarySpacePartition
                 newFacets.Add(newFacet);
             }
 
-            output.m_polyhedronsFacets = TetrahedralizerUtility.NestedListToFlatList(newFacets);
+            output.m_facets = TetrahedralizerUtility.NestedListToFlatList(newFacets);
         }
 
         DisposeBinarySpacePartitionHandle(handle);

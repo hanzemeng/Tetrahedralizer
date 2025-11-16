@@ -11,7 +11,9 @@ public class PolyhedralizationTetrahedralization
         public IList<double> m_explicitVertices; // Every 3 doubles are x,y,z of a point. Assuming left hand coordinate.
         public IList<int> m_implicitVertices; // 5/9 followed by indexes of m_explicitVertices
         public List<int> m_polyhedrons; // # of polyhedron facets, followed by facets indexes.
-        public List<int> m_polyhedronsFacets; // # of facets vertices, followed by vertices indexes ordered in cw or ccw.
+        public List<int> m_facets; // # of facets vertices, followed by vertices indexes ordered in cw or ccw.
+        public List<int> m_facetsCentroids; // every facet centroid is defined by 3 coplanar explicit vertices
+        public List<double> m_facetsCentroidsWeights; // and the weight of the explicit vertices, note the 3rd weight is ignored
     }
     public class PolyhedralizationTetrahedralizationOutput
     {
@@ -30,7 +32,7 @@ public class PolyhedralizationTetrahedralization
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void AddPolyhedralizationTetrahedralizationInput(IntPtr handle, 
         int explicit_count, double[] explicit_values, int implicit_count, int[] implicit_values, 
-        int polyhedrons_count, int[] polyhedrons, int polyhedrons_facets_count, int[] polyhedrons_facets);
+        int polyhedrons_count, int[] polyhedrons, int facets_count, int[] facets, int[] facets_centroids, double[] facets_centroids_weights);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void CalculatePolyhedralizationTetrahedralization(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
@@ -55,7 +57,7 @@ public class PolyhedralizationTetrahedralization
         IntPtr handle = CreatePolyhedralizationTetrahedralizationHandle();
 
         AddPolyhedralizationTetrahedralizationInput(handle, explicitVertices.Length/3, explicitVertices, implicitVerticesCount, implicitVertices,
-        TetrahedralizerUtility.CountFlatIListElements(input.m_polyhedrons), input.m_polyhedrons.ToArray(), TetrahedralizerUtility.CountFlatIListElements(input.m_polyhedronsFacets), input.m_polyhedronsFacets.ToArray());
+        TetrahedralizerUtility.CountFlatIListElements(input.m_polyhedrons), input.m_polyhedrons.ToArray(), TetrahedralizerUtility.CountFlatIListElements(input.m_facets), input.m_facets.ToArray(), input.m_facetsCentroids.ToArray(), input.m_facetsCentroidsWeights.ToArray());
         CalculatePolyhedralizationTetrahedralization(handle);
 
         void PopulateOutput(int n, IntPtr ptr, ref List<int> res)

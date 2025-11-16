@@ -59,43 +59,33 @@ public class TetrahedralMeshCreation
         {
             CreateInternal(
             vertices, triangles, weldedTriangles, uv0IslandsIndexes, subMeshDescriptors,
-            input.m_polyhedralization.m_explicitVertices, input.m_polyhedralization.m_implicitVertices, input.m_polyhedralization.m_polyhedrons, input.m_polyhedralization.m_polyhedronsFacets,
-            meshVertexDataMapper, tetrahedralMesh, progress);
+            input.m_polyhedralization, meshVertexDataMapper, tetrahedralMesh, progress);
         });
     }
 
     private void CreateInternal(
         Vector3[] vertices, int[] triangles, int[] weldedTriangles, int[] uv0IslandsIndexes, List<SubMeshDescriptor> subMeshDescriptors,
-        List<double> explicitVertices, List<int> implicitVertices, List<int> polyhedrons, List<int> facets,
-        MeshVertexDataMapper meshVertexDataMapper, TetrahedralMesh tetrahedralMesh, IProgress<string> progress=null)
+        Polyhedralization polyhedralization, MeshVertexDataMapper meshVertexDataMapper, TetrahedralMesh tetrahedralMesh, IProgress<string> progress=null)
     {
-        List<Vector3> approximatedVertices = TetrahedralizerUtility.PackVector3s(GenericPointApproximation.CalculateGenericPointApproximation(explicitVertices, implicitVertices));
-        List<List<int>> nestedPolyhedrons = TetrahedralizerUtility.FlatIListToNestedList(polyhedrons);
-        List<List<int>> nestedFacets = TetrahedralizerUtility.FlatIListToNestedList(facets);
-        int[] uv0IslandsFrequency = new int[uv0IslandsIndexes.Max()+1];
-        int[] ps = new int[3];
-        double[] ts = new double[3];
-
-        if(null != progress)
+        List<Vector3> approximatedVertices = TetrahedralizerUtility.PackVector3s(GenericPointApproximation.CalculateGenericPointApproximation(polyhedralization.m_explicitVertices, polyhedralization.m_implicitVertices));
+        List<List<int>> nestedPolyhedrons = TetrahedralizerUtility.FlatIListToNestedList(polyhedralization.m_polyhedrons);
+        List<List<int>> nestedFacets = TetrahedralizerUtility.FlatIListToNestedList(polyhedralization.m_facets);
+        List<List<List<int>>> facetsAssociations = nestedFacets.Select(i=>i.Select(j=>new List<int>()).ToList()).ToList();
         {
-            progress.Report("Associating facets.");
+            int index = 0;
+            for(int i=0; i<nestedFacets.Count; i++)
+            {
+                for(int j=0; j<nestedFacets[i].Count; j++)
+                {
+                    int n = polyhedralization.m_facetsVerticesMapping[index++];
+                    for(int k=0; k<n; k++)
+                    {
+                        facetsAssociations[i][j].Add(polyhedralization.m_facetsVerticesMapping[index++]);
+                    }
+                }
+            }
         }
-        List<List<List<int>>> facetsAssociations;
-        List<int> centroidsAssociations;
-        {
-            FacetAssociation.FacetAssociationOutput FAOutput = new FacetAssociation.FacetAssociationOutput();
-            FacetAssociation.FacetAssociationInput FAInput = new FacetAssociation.FacetAssociationInput();
-            FacetAssociation facetAssociation = new FacetAssociation();
-            FAInput.m_explicitVertices = explicitVertices;
-            FAInput.m_implicitVertices = implicitVertices;
-            FAInput.m_facets = facets;
-            FAInput.m_constraints = weldedTriangles;
-            facetAssociation.CalculateFacetAssociation(FAInput, FAOutput);
-
-            facetsAssociations = FAOutput.m_facetsVerticesMapping;
-            centroidsAssociations = FAOutput.m_facetsCentroidsMapping;
-        }
-
+        
         if(null != progress)
         {
             progress.Report("Tetrahedralizing polyhedrons.");
@@ -105,24 +95,40 @@ public class TetrahedralMeshCreation
             PolyhedralizationTetrahedralization.PolyhedralizationTetrahedralizationOutput PTOutput = new PolyhedralizationTetrahedralization.PolyhedralizationTetrahedralizationOutput();
             PolyhedralizationTetrahedralization.PolyhedralizationTetrahedralizationInput PTInput = new PolyhedralizationTetrahedralization.PolyhedralizationTetrahedralizationInput();
             PolyhedralizationTetrahedralization polyhedralizationTetrahedralization = new PolyhedralizationTetrahedralization();
-            PTInput.m_explicitVertices = explicitVertices;
-            PTInput.m_implicitVertices = implicitVertices;
-            PTInput.m_polyhedrons = polyhedrons;
-            PTInput.m_polyhedronsFacets = facets;
+            PTInput.m_explicitVertices = polyhedralization.m_explicitVertices;
+            PTInput.m_implicitVertices = polyhedralization.m_implicitVertices;
+            PTInput.m_polyhedrons = polyhedralization.m_polyhedrons;
+            PTInput.m_facets = polyhedralization.m_facets;
+            PTInput.m_facetsCentroids = polyhedralization.m_facetsCentroids;
+            PTInput.m_facetsCentroidsWeights = polyhedralization.m_facetsCentroidsWeights;
             polyhedralizationTetrahedralization.CalculatePolyhedralizationTetrahedralization(PTInput, PTOutput);
             //Debug.Log(PTOutput.m_insertedFacetsCentroids.Count);
             //Debug.Log(PTOutput.m_insertedPolyhedronsCentroids.Count);
             Vector3[] polyhedronsFacetsCentroids = Enumerable.Repeat(Vector3.zero, nestedFacets.Count).ToArray();
+            Vector3 ApproximateCentroid(int f)
+            {
+                if(Vector3.zero != polyhedronsFacetsCentroids[f])
+                {
+                    return polyhedronsFacetsCentroids[f];
+                }
+                float w0 = (float)polyhedralization.m_facetsCentroidsWeights[2*f+0];
+                float w1 = (float)polyhedralization.m_facetsCentroidsWeights[2*f+1];
+                float w2 = 1f-w0-w1;
+                Vector3 center = w0 * approximatedVertices[polyhedralization.m_facetsCentroids[3*f+0]] +
+                                 w1 * approximatedVertices[polyhedralization.m_facetsCentroids[3*f+1]] +
+                                 w2 * approximatedVertices[polyhedralization.m_facetsCentroids[3*f+2]];
+                polyhedronsFacetsCentroids[f] = center;
+                return polyhedronsFacetsCentroids[f];
+            }
+
             foreach(int f in PTOutput.m_insertedFacetsCentroids)
             {
-                Vector3 center = nestedFacets[f].Aggregate(Vector3.zero,(i,j)=>i+=approximatedVertices[j]) / (float)nestedFacets[f].Count;
-                polyhedronsFacetsCentroids[f] = center;
                 int i = approximatedVertices.Count;
-                approximatedVertices.Add(center);
+                approximatedVertices.Add(ApproximateCentroid(f));
                 nestedFacets[f].Add(i);
-                if(TetrahedralizerConstant.UNDEFINED_VALUE != centroidsAssociations[f])
+                if(TetrahedralizerConstant.UNDEFINED_VALUE != polyhedralization.m_facetsCentroidsMapping[f])
                 {
-                    facetsAssociations[f].Add(new List<int>{centroidsAssociations[f]});
+                    facetsAssociations[f].Add(new List<int>{polyhedralization.m_facetsCentroidsMapping[f]});
                 }
                 else
                 {
@@ -131,16 +137,7 @@ public class TetrahedralMeshCreation
             }
             foreach(int p in PTOutput.m_insertedPolyhedronsCentroids)
             {
-                Vector3 center = Vector3.zero;
-                foreach(int f in nestedPolyhedrons[p])
-                {
-                    if(Vector3.zero == polyhedronsFacetsCentroids[f])
-                    {
-                        polyhedronsFacetsCentroids[f] = nestedFacets[f].Aggregate(Vector3.zero,(i,j)=>i+=approximatedVertices[j]) / (float)nestedFacets[f].Count;
-                    }
-                    center += polyhedronsFacetsCentroids[f];
-                }
-                center /= (float)nestedPolyhedrons[p].Count;
+                Vector3 center = nestedPolyhedrons[p].Aggregate(Vector3.zero,(i,j)=>i+=ApproximateCentroid(j)) / (float)nestedPolyhedrons[p].Count;
                 approximatedVertices.Add(center);
             }
             tetrahedrons = PTOutput.m_tetrahedrons;
@@ -161,6 +158,7 @@ public class TetrahedralMeshCreation
                 originalTrianglesSubmeshes[j/3] = i;
             }
         }
+
         List<int> neighbors = Enumerable.Repeat(TetrahedralizerConstant.UNDEFINED_VALUE, tetrahedrons.Count).ToList();
         Dictionary<(int,int,int),int> neighborsRecords = new Dictionary<(int, int, int), int>();
         List<List<int>> verticesIncidentFacets = Enumerable.Range(0,approximatedVertices.Count).Select(i=>new List<int>()).ToList();
@@ -172,6 +170,9 @@ public class TetrahedralMeshCreation
             }
         }
 
+        int[] uv0IslandsFrequency = new int[uv0IslandsIndexes.Max()+1];
+        int[] ps = new int[3];
+        double[] ts = new double[3];
         // returns the triangle that contains the facet vertex
         int MapVertexData(int facet, int vertex)
         {
@@ -194,7 +195,7 @@ public class TetrahedralMeshCreation
                 }
                 
                 // if the another triangle is on a different uv island, then use the uv island incidented by the facet centroid
-                if(TetrahedralizerConstant.UNDEFINED_VALUE == centroidsAssociations[facet] || uvIsland != uv0IslandsIndexes[centroidsAssociations[facet]])
+                if(TetrahedralizerConstant.UNDEFINED_VALUE == polyhedralization.m_facetsCentroidsMapping[facet] || uvIsland != uv0IslandsIndexes[polyhedralization.m_facetsCentroidsMapping[facet]])
                 {
                     continue;
                 }

@@ -64,4 +64,8 @@ void Polyhedralization::get_polyhedron_facet_neighbors(uint32_t f, uint32_t& n0,
 {
     n0 = m_neighbors[2*f+0];
     n1 = m_neighbors[2*f+1];
+    if(UNDEFINED_VALUE == n0)
+    {
+        swap(n0, n1);
+    }
 }
