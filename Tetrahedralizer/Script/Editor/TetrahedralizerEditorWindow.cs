@@ -48,6 +48,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
 
         public GameObject m_gameObject;
         public bool m_aggressivelyAddVirtualConstraints;
+        public double m_polyhedronInMultiplier;
         public Polyhedralization m_polyhedralization;
         public TetrahedralMesh m_tetrahedralMesh;
         public Material m_material;
@@ -73,6 +74,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
             m_synchronizeMeshesPreviews = binaryReader.ReadBoolean();
             m_gameObject = LoadFromGUID<GameObject>(binaryReader.ReadString());
             m_aggressivelyAddVirtualConstraints = binaryReader.ReadBoolean();
+            m_polyhedronInMultiplier = binaryReader.ReadDouble();
             m_polyhedralization = LoadFromGUID<Polyhedralization>(binaryReader.ReadString());
             m_tetrahedralMesh = LoadFromGUID<TetrahedralMesh>(binaryReader.ReadString());
             m_material = LoadFromGUID<Material>(binaryReader.ReadString());
@@ -100,6 +102,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
             binaryWriter.Write(m_synchronizeMeshesPreviews);
             binaryWriter.Write(GetGUID(m_gameObject));
             binaryWriter.Write(m_aggressivelyAddVirtualConstraints);
+            binaryWriter.Write(m_polyhedronInMultiplier);
             binaryWriter.Write(GetGUID(m_polyhedralization));
             binaryWriter.Write(GetGUID(m_tetrahedralMesh));
             binaryWriter.Write(GetGUID(m_material));
@@ -336,6 +339,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
             UpdateMesh(1, null == m_settings.m_polyhedralization ? null : m_settings.m_polyhedralization.ToMesh().mesh);
         }
         m_settings.m_aggressivelyAddVirtualConstraints = EditorGUILayout.Toggle(new GUIContent("Aggressive Cutting: ", "If true, every triangle can be represented as a union of polyhedrons facets. Otherwise, every polygon formed by coplanar triangles can be represented as a union of polyhedrons facets."), m_settings.m_aggressivelyAddVirtualConstraints);
+        m_settings.m_polyhedronInMultiplier = EditorGUILayout.Slider(new GUIContent("Polyhedron In Multiplier: ", "The likelihood of considering a polyhedron to be inside the input model. A smaller value means more likely."), (float)m_settings.m_polyhedronInMultiplier, 0.01f, 1f);
 
         GUILayout.Space(TetrahedralizerEditorWindowSettings.SPACE_SIZE);
         if(!m_asyncTaskIsRunning && null!=m_settings.m_polyhedralization && (GUILayout.Button($"Create Polyhedralized Mesh (F)") || CurrentKeyIsDown(KeyCode.F)))
@@ -345,6 +349,7 @@ public class TetrahedralizerEditorWindow : EditorWindow
             PolyhedralizedMeshCreation.PolyhedralizedMeshCreationOutput output = new PolyhedralizedMeshCreation.PolyhedralizedMeshCreationOutput();
             input.m_mesh = m_mesh;
             input.m_aggressivelyAddVirtualConstraints = m_settings.m_aggressivelyAddVirtualConstraints;
+            input.m_polyhedronInMultiplier = m_settings.m_polyhedronInMultiplier;
 
             m_asyncTaskIsRunning = true;
             try

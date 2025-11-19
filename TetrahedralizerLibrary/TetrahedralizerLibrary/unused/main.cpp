@@ -105,7 +105,7 @@ int main(int argc, const char * argv[])
     
     void* IC = CreateInteriorCharacterizationHandle();
     AddInteriorCharacterizationInput(IC, 8, explicit_values, GetBinarySpacePartitionInsertedVerticesCount(BSP), GetBinarySpacePartitionInsertedVertices(BSP), GetBinarySpacePartitionPolyhedronsCount(BSP), GetBinarySpacePartitionPolyhedrons(BSP),
-                                     GetBinarySpacePartitionFacetsCount(BSP), GetBinarySpacePartitionFacets(BSP), GetBinarySpacePartitionFacetsCentroids(BSP), GetBinarySpacePartitionFacetsCentroidsWeights(BSP), 12, constraints);
+                                     GetBinarySpacePartitionFacetsCount(BSP), GetBinarySpacePartitionFacets(BSP), GetBinarySpacePartitionFacetsCentroids(BSP), GetBinarySpacePartitionFacetsCentroidsWeights(BSP), 12, constraints, 1.0);
     CalculateInteriorCharacterization(IC);
     DisposeBinarySpacePartitionHandle(BSP);
     DisposeInteriorCharacterizationHandle(IC);

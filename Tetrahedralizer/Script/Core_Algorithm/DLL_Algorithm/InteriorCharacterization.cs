@@ -14,6 +14,7 @@ public class InteriorCharacterization
         public IList<int> m_facetsCentroids; // every facet centroid is defined by 3 coplanar explicit vertices
         public IList<double> m_facetsCentroidsWeights; // and the weight of the explicit vertices, note the 3rd weight is ignored
         public IList<int> m_constraints; // Every 3 ints is a constraint (triangle). Curl around the points and your thumb points outward. Assuming left hand coordinate.
+        public double m_polyhedronInMultiplier; // Multiply this to the cost of labeling a polyhedron to be in, should be in (0,1)
         
     }
     public class InteriorCharacterizationOutput
@@ -37,7 +38,7 @@ public class InteriorCharacterization
         static extern void AddInteriorCharacterizationInput(IntPtr handle, 
         int explicit_count, double[] explicit_values, int implicit_count, int[] implicit_values, 
         int polyhedrons_count, int[] polyhedrons, int facets_count, int[] facets, int[] facets_centroids, double[] facets_centroids_weights,
-        int constraints_count, int[] constraints);
+        int constraints_count, int[] constraints, double polyhedronInMultiplier);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
         static extern void CalculateInteriorCharacterization(IntPtr handle);
         [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
@@ -61,7 +62,7 @@ public class InteriorCharacterization
         AddInteriorCharacterizationInput(handle, 
         input.m_explicitVertices.Count/3, explicitVertices, implicitCount, implicitVertices, 
         polyhedronsCount, input.m_polyhedrons.ToArray(), facetsCount, input.m_facets.ToArray(), input.m_facetsCentroids.ToArray(), input.m_facetsCentroidsWeights.ToArray(),
-        input.m_constraints.Count/3, constraints);
+        input.m_constraints.Count/3, constraints, input.m_polyhedronInMultiplier);
 
         CalculateInteriorCharacterization(handle);
 

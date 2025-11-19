@@ -21,6 +21,8 @@ public:
     
     uint32_t* m_constraints; // Oriented such that the right hand curls around a triangle and the thumb points in the out direction.
     uint32_t m_constraints_count; // # of constraints, same as m_constraints.size()/3
+    
+    double m_polyhedron_in_multiplier; // multiply this to the cost labeling a polyhedron to be in
 };
 class InteriorCharacterizationOutput
 {
@@ -53,7 +55,7 @@ public:
     InteriorCharacterizationHandle();
     void Dispose();
     
-    void AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights, uint32_t constraints_count, uint32_t* constraints);
+    void AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights, uint32_t constraints_count, uint32_t* constraints, double polyhedron_in_multiplier);
     
     void Calculate();
     
@@ -65,7 +67,7 @@ public:
 extern "C" LIBRARY_EXPORT void* CreateInteriorCharacterizationHandle();
 extern "C" LIBRARY_EXPORT void DisposeInteriorCharacterizationHandle(void* handle);
 
-extern "C" LIBRARY_EXPORT void AddInteriorCharacterizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights, uint32_t constraints_count, uint32_t* constraints);
+extern "C" LIBRARY_EXPORT void AddInteriorCharacterizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights, uint32_t constraints_count, uint32_t* constraints, double polyhedron_in_multiplier);
 
 extern "C" LIBRARY_EXPORT void CalculateInteriorCharacterization(void* handle);
 

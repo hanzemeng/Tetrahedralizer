@@ -310,6 +310,31 @@ public class TetrahedralMeshCreation
         tetrahedralMesh.SetFacetsSubmeshes(resultTrianglesSubmeshes);
         tetrahedralMesh.SetNeighbors(neighbors);
 
+        //{
+        //    for(int i=0; i<neighbors.Count; i++)
+        //    {
+        //        if(neighbors[i] < 0)
+        //        {
+        //            continue;
+        //        }
+        //        int n = neighbors[i];
+        //        Vector3 p0 = tetrahedralMesh.vertices[3*i+0];
+        //        Vector3 p1 = tetrahedralMesh.vertices[3*i+1];
+        //        Vector3 p2 = tetrahedralMesh.vertices[3*i+2];
+        //        Vector3 n0 = tetrahedralMesh.vertices[3*n+0];
+        //        Vector3 n1 = tetrahedralMesh.vertices[3*n+1];
+        //        Vector3 n2 = tetrahedralMesh.vertices[3*n+2];
+
+        //        Sorter.SortVector3(ref p0, ref p1, ref p2);
+        //        Sorter.SortVector3(ref n0, ref n1, ref n2);
+
+        //        if(p0!=n0 || p1!=n1 || p2!=n2)
+        //        {
+        //            throw new Exception();
+        //        }
+        //    }
+        //}
+
         if(null != progress)
         {
             progress.Report("Finishing up.");

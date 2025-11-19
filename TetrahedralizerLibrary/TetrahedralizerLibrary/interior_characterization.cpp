@@ -248,35 +248,18 @@ void InteriorCharacterization::interior_characterization(InteriorCharacterizatio
 //                }
             }
             gc.setDataCost((GCoptimization::SiteID)i, 0, out_area);
-            gc.setDataCost((GCoptimization::SiteID)i, 1, 0.1*in_area);
+            gc.setDataCost((GCoptimization::SiteID)i, 1, input->m_polyhedron_in_multiplier * in_area);
         }
         
         // neighbor cost
-        vector<bool> vertices_on_constrains = vector<bool>(input->m_vertices_count);
         vector<bool> polyhedrons_connected_to_ghost = vector<bool>(polyhedrons.size(), false);
         for(uint32_t i=0; i<facets.size(); i++)
         {
-            if(UNDEFINED_VALUE == facets_centroids_mapping[i])
+            if(UNDEFINED_VALUE != facets_centroids_mapping[i])
             {
                 continue;
             }
-            for(uint32_t v : facets[i])
-            {
-                vertices_on_constrains[v] = true;
-            }
-        }
-        for(uint32_t i=0; i<facets.size(); i++)
-        {
-            double w = 0.1;
-            for(uint32_t v : facets[i])
-            {
-                if(!vertices_on_constrains[v])
-                {
-                    w = 1.0;
-                    break;
-                }
-            }
-            
+
             uint32_t n0,n1;
             polyhedralization.get_polyhedron_facet_neighbors(i, n0, n1);
             if(UNDEFINED_VALUE == n1)
@@ -288,7 +271,7 @@ void InteriorCharacterization::interior_characterization(InteriorCharacterizatio
                 polyhedrons_connected_to_ghost[n0] = true;
                 n1 = polyhedrons.size();
             }
-            gc.setNeighbors((GCoptimization::SiteID)n0, (GCoptimization::SiteID)n1, w*facets_approximated_areas[i]);
+            gc.setNeighbors((GCoptimization::SiteID)n0, (GCoptimization::SiteID)n1, facets_approximated_areas[i]);
         }
         
         gc.swap();
@@ -353,7 +336,7 @@ void InteriorCharacterizationHandle::Dispose()
     delete m_interiorCharacterization;
 }
 
-void InteriorCharacterizationHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights, uint32_t constraints_count, uint32_t* constraints)
+void InteriorCharacterizationHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights, uint32_t constraints_count, uint32_t* constraints, double polyhedron_in_multiplier)
 {
     create_vertices(explicit_count, explicit_values, implicit_count, implicit_values, m_input->m_vertices, m_input->m_vertices_count);
 
@@ -383,6 +366,8 @@ void InteriorCharacterizationHandle::AddInput(uint32_t explicit_count, double* e
     
     m_input->m_constraints_count = constraints_count;
     m_input->m_constraints = duplicate_array(constraints, 3*constraints_count);
+    
+    m_input->m_polyhedron_in_multiplier = polyhedron_in_multiplier;
 }
 
 void InteriorCharacterizationHandle::Calculate()
@@ -414,9 +399,9 @@ extern "C" LIBRARY_EXPORT void DisposeInteriorCharacterizationHandle(void* handl
     delete (InteriorCharacterizationHandle*)handle;
 }
 
-extern "C" LIBRARY_EXPORT void AddInteriorCharacterizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights, uint32_t constraints_count, uint32_t* constraints)
+extern "C" LIBRARY_EXPORT void AddInteriorCharacterizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights, uint32_t constraints_count, uint32_t* constraints, double polyhedron_in_multiplier)
 {
-    ((InteriorCharacterizationHandle*)handle)->AddInput(explicit_count, explicit_values, implicit_count, implicit_values, polyhedrons_count, polyhedrons, facets_count, facets, facets_centroids, facets_centroids_weights, constraints_count, constraints);
+    ((InteriorCharacterizationHandle*)handle)->AddInput(explicit_count, explicit_values, implicit_count, implicit_values, polyhedrons_count, polyhedrons, facets_count, facets, facets_centroids, facets_centroids_weights, constraints_count, constraints, polyhedron_in_multiplier);
 }
 
 extern "C" LIBRARY_EXPORT void CalculateInteriorCharacterization(void* handle)

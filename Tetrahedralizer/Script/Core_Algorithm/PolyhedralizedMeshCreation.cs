@@ -10,6 +10,7 @@ public class PolyhedralizedMeshCreation
     {
         public Mesh m_mesh;
         public bool m_aggressivelyAddVirtualConstraints; // If true, every constraint can be represented as a union of polyhedrons facets. Otherwise, every polygon formed by coplanar constraints can be represented as a union of polyhedrons facets.
+        public double m_polyhedronInMultiplier; // Multiply this to the cost of labeling a polyhedron to be in, should be in (0,1)
     }
     public class PolyhedralizedMeshCreationOutput
     {
@@ -24,7 +25,7 @@ public class PolyhedralizedMeshCreation
         Polyhedralization polyhedralization = ScriptableObject.CreateInstance<Polyhedralization>();
         output.m_polyhedralization = polyhedralization;
 
-        CreateInternal(polyhedralization, weldedTriangles, TetrahedralizerUtility.UnpackVector3s(weldedVertices), input.m_aggressivelyAddVirtualConstraints);
+        CreateInternal(polyhedralization, weldedTriangles, TetrahedralizerUtility.UnpackVector3s(weldedVertices), input.m_aggressivelyAddVirtualConstraints, input.m_polyhedronInMultiplier);
     }
     public Task CreateAsync(PolyhedralizedMeshCreationInput input, PolyhedralizedMeshCreationOutput output, IProgress<string> progress=null)
     {
@@ -36,11 +37,11 @@ public class PolyhedralizedMeshCreation
 
         return Task.Run(() =>
         {
-            CreateInternal(polyhedralization, weldedTriangles, TetrahedralizerUtility.UnpackVector3s(weldedVertices), input.m_aggressivelyAddVirtualConstraints, progress);
+            CreateInternal(polyhedralization, weldedTriangles, TetrahedralizerUtility.UnpackVector3s(weldedVertices), input.m_aggressivelyAddVirtualConstraints, input.m_polyhedronInMultiplier, progress);
         });
     }
 
-    private void CreateInternal(Polyhedralization polyhedralization, int[] weldedTriangles, List<double> weldedVerticesUnpack, bool aggressivelyAddVirtualConstraints, IProgress<string> progress=null)
+    private void CreateInternal(Polyhedralization polyhedralization, int[] weldedTriangles, List<double> weldedVerticesUnpack, bool aggressivelyAddVirtualConstraints, double polyhedronInMultiplier, IProgress<string> progress=null)
     {
         if(null != progress)
         {
@@ -85,6 +86,7 @@ public class PolyhedralizedMeshCreation
             ICInput.m_facetsCentroids = BSPOutput.m_facetsCentroids;
             ICInput.m_facetsCentroidsWeights = BSPOutput.m_facetsCentroidsWeights;
             ICInput.m_constraints = weldedTriangles;
+            ICInput.m_polyhedronInMultiplier = polyhedronInMultiplier;
             interiorCharacterization.CalculateInteriorCharacterization(ICInput, ICOutput);
         }
 
@@ -96,18 +98,18 @@ public class PolyhedralizedMeshCreation
         polyhedralization.m_facetsCentroidsWeights = BSPOutput.m_facetsCentroidsWeights;
         polyhedralization.m_facetsVerticesMapping = ICOutput.m_facetsVerticesMapping;
         polyhedralization.m_facetsCentroidsMapping = ICOutput.m_facetsCentroidsMapping;
-        
 
         // remove unused facets
+        List<List<int>> facets;
         {
             List<List<int>> newFacets = new List<List<int>>();
             List<int> newFacetsCentroids = new List<int>();
             List<double> newFacetsCentroidsWeights = new List<double>();
             List<List<List<int>>> newFacetsVerticesMapping = new List<List<List<int>>>();
             List<int> newFacetsCentroidsMapping = new List<int>();
-
+            facets = TetrahedralizerUtility.FlatIListToNestedList(polyhedralization.m_facets);
             List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(polyhedralization.m_polyhedrons);
-            List<List<int>> facets = TetrahedralizerUtility.FlatIListToNestedList(polyhedralization.m_facets);
+            
             List<List<List<int>>> facetsVerticesMapping = facets.Select(i=>i.Select(j=>new List<int>()).ToList()).ToList();
             {
                 int index=0;
@@ -152,7 +154,7 @@ public class PolyhedralizedMeshCreation
                 }
             }
             polyhedralization.m_polyhedrons = TetrahedralizerUtility.NestedListToFlatList(polyhedrons);
-            polyhedralization.m_facets = TetrahedralizerUtility.NestedListToFlatList(newFacets);
+            facets = newFacets;
             polyhedralization.m_facetsCentroids = newFacetsCentroids;
             polyhedralization.m_facetsCentroidsWeights = newFacetsCentroidsWeights;
             List<int> temp = new List<int>();
@@ -160,72 +162,95 @@ public class PolyhedralizedMeshCreation
             polyhedralization.m_facetsVerticesMapping = temp;
             polyhedralization.m_facetsCentroidsMapping = newFacetsCentroidsMapping;
         }
+        
+        List<List<int>> implicitPoints;
+        // remove unused implicit points
+        {
+            int explictPointsCount = polyhedralization.m_explicitVertices.Count/3;
+            implicitPoints = TetrahedralizerUtility.FlatIListToNestedList(polyhedralization.m_implicitVertices);
+            bool[] neededPoints = Enumerable.Repeat(false, implicitPoints.Count).ToArray();
+            facets.ForEach(i=>i.ForEach(j=>{if(j>=explictPointsCount){neededPoints[j-explictPointsCount]=true;}}));
+
+            int[] mappings = new int[implicitPoints.Count];
+            List<List<int>> newImplicitPoints = new List<List<int>>();
+            for(int i=0; i<implicitPoints.Count; i++)
+            {
+                if(!neededPoints[i])
+                {
+                    continue;
+                }
+                mappings[i] = newImplicitPoints.Count + explictPointsCount;
+                newImplicitPoints.Add(implicitPoints[i]);
+            }
+
+            for(int i=0; i<facets.Count; i++)
+            {
+                for(int j=0; j<facets[i].Count; j++)
+                {
+                    if(facets[i][j] >= explictPointsCount)
+                    {
+                        facets[i][j] = mappings[facets[i][j]-explictPointsCount];
+                    }
+                }
+            }
+
+            implicitPoints = newImplicitPoints;
+        }
+
+        // remove unused explict points
+        {
+            int explictPointsCount = polyhedralization.m_explicitVertices.Count/3;
+            bool[] neededPoints = Enumerable.Repeat(false, explictPointsCount).ToArray();
+            implicitPoints.ForEach(i=>i.ForEach(j=>neededPoints[j]=true));
+            facets.ForEach(i=>i.ForEach(j=>{if(j<explictPointsCount){neededPoints[j]=true;}}));
+            polyhedralization.m_facetsCentroids.ForEach(i=>neededPoints[i]=true);
+
+            int[] mappings = new int[explictPointsCount];
+            List<double> newExplictPoints = new List<double>();
+            for(int i=0; i<explictPointsCount; i++)
+            {
+                if(!neededPoints[i])
+                {
+                    continue;
+                }
+                mappings[i] = newExplictPoints.Count/3;
+                newExplictPoints.Add(polyhedralization.m_explicitVertices[3*i+0]);
+                newExplictPoints.Add(polyhedralization.m_explicitVertices[3*i+1]);
+                newExplictPoints.Add(polyhedralization.m_explicitVertices[3*i+2]);
+            }
+
+            int implicitPointsOffset = explictPointsCount - newExplictPoints.Count/3;
+            for(int i=0; i<implicitPoints.Count; i++)
+            {
+                for(int j=0; j<implicitPoints[i].Count; j++)
+                {
+                    implicitPoints[i][j] = mappings[implicitPoints[i][j]];
+                }
+            }
+            for(int i=0; i<facets.Count; i++)
+            {
+                for(int j=0; j<facets[i].Count; j++)
+                {
+                    if(facets[i][j] < explictPointsCount)
+                    {
+                        facets[i][j] = mappings[facets[i][j]];
+                    }
+                    else
+                    {
+                        facets[i][j] = facets[i][j] - implicitPointsOffset;
+                    }
+                }
+            }
+            for(int i=0; i<polyhedralization.m_facetsCentroids.Count; i++)
+            {
+                polyhedralization.m_facetsCentroids[i] = mappings[polyhedralization.m_facetsCentroids[i]];
+            }
+            polyhedralization.m_explicitVertices = newExplictPoints;
+            polyhedralization.m_implicitVertices = TetrahedralizerUtility.NestedListToFlatList(implicitPoints);
+            polyhedralization.m_facets = TetrahedralizerUtility.NestedListToFlatList(facets);
+        }
+
         polyhedralization.CalculateFacetsOrients();
-
-        //{
-        //    int explictPointsCount = polyhedralization.m_explicitVertices.Count/3;
-        //    List<List<int>> implicitPoints = TetrahedralizerUtility.FlatIListToNestedList(polyhedralization.m_implicitVertices);
-        //    bool[] neededPoints = Enumerable.Repeat(false, implicitPoints.Count).ToArray();
-        //    newPolyhedronsFacets.ForEach(i=>i.ForEach(j=>{if(j>=explictPointsCount){neededPoints[j-explictPointsCount]=true;}}));
-
-        //    int[] implicitMappings = new int[neededPoints.Count()];
-        //    List<List<int>> newImplicitPoints = new List<List<int>>();
-        //    for(int i=0; i<implicitPoints.Count; i++)
-        //    {
-        //        if(!neededPoints[i])
-        //        {
-        //            continue;
-        //        }
-        //        implicitMappings[i] = newImplicitPoints.Count;
-        //        newImplicitPoints.Add(implicitPoints[i]);
-        //    }
-
-        //    neededPoints = Enumerable.Repeat(false, explictPointsCount).ToArray();
-        //    newPolyhedronsFacets.ForEach(i=>i.ForEach(j=>{if(j<explictPointsCount){neededPoints[j]=true;}}));
-        //    newImplicitPoints.ForEach(i=>i.ForEach(j=>neededPoints[j]=true));
-
-        //    int[] explicitMappings = new int[neededPoints.Count()];
-        //    List<double> newExplictPoints = new List<double>();
-        //    for(int i=0; i<explictPointsCount; i++)
-        //    {
-        //        if(!neededPoints[i])
-        //        {
-        //            continue;
-        //        }
-        //        explicitMappings[i] = newExplictPoints.Count/3;
-        //        newExplictPoints.Add(polyhedralization.m_explicitVertices[3*i+0]);
-        //        newExplictPoints.Add(polyhedralization.m_explicitVertices[3*i+1]);
-        //        newExplictPoints.Add(polyhedralization.m_explicitVertices[3*i+2]);
-        //    }
-
-        //    int newExplictPointsCount = newExplictPoints.Count/3;
-        //    for(int i=0; i<newImplicitPoints.Count; i++)
-        //    {
-        //        for(int j=0; j<newImplicitPoints[i].Count; j++)
-        //        {
-        //            newImplicitPoints[i][j] = explicitMappings[newImplicitPoints[i][j]];
-        //        }
-        //    }
-        //    for(int i=0; i<newPolyhedronsFacets.Count; i++)
-        //    {
-        //        for(int j=0; j<newPolyhedronsFacets[i].Count; j++)
-        //        {
-        //            if(newPolyhedronsFacets[i][j] < explictPointsCount)
-        //            {
-        //                newPolyhedronsFacets[i][j] = explicitMappings[newPolyhedronsFacets[i][j]];
-        //            }
-        //            else
-        //            {
-        //                newPolyhedronsFacets[i][j] = implicitMappings[newPolyhedronsFacets[i][j]-explictPointsCount]+newExplictPointsCount;
-        //            }
-        //        }
-        //    }
-
-        //    polyhedralization.m_explicitVertices = newExplictPoints;
-        //    polyhedralization.m_implicitVertices = TetrahedralizerUtility.NestedListToFlatList(newImplicitPoints);
-        //    polyhedralization.m_polyhedronsFacets = TetrahedralizerUtility.NestedListToFlatList(newPolyhedronsFacets);
-        //    polyhedralization.CalculatePolyhedronsFacetsOrients();
-        //}
 
         if(null != progress)
         {
