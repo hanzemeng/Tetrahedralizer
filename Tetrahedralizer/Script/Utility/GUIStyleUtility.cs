@@ -1,41 +1,45 @@
-#if UNITY_EDITOR
-
-using UnityEngine;
-using UnityEditor;
-
-public static class GUIStyleUtility
+namespace Hanzzz.Tetrahedralizer
 {
-    private static GUIStyle m_centerLabelStyleField;
-    public static GUIStyle centerLabelStyle
+    #if UNITY_EDITOR
+    
+    using UnityEngine;
+    using UnityEditor;
+    
+    public static class GUIStyleUtility
     {
-        get
+        private static GUIStyle m_centerLabelStyleField;
+        public static GUIStyle centerLabelStyle
         {
-            if(null == m_centerLabelStyleField)
+            get
             {
-                m_centerLabelStyleField = new GUIStyle(EditorStyles.label)
+                if(null == m_centerLabelStyleField)
                 {
-                    alignment = TextAnchor.MiddleCenter
-                };
+                    m_centerLabelStyleField = new GUIStyle(EditorStyles.label)
+                    {
+                        alignment = TextAnchor.MiddleCenter
+                    };
+                }
+                return m_centerLabelStyleField;
             }
-            return m_centerLabelStyleField;
+        }
+    
+        private static GUIStyle m_centerBoldLabelStyleField;
+        public static GUIStyle centerBoldLabelStyle
+        {
+            get
+            {
+                if(null == m_centerBoldLabelStyleField)
+                {
+                    m_centerBoldLabelStyleField = new GUIStyle(EditorStyles.boldLabel)
+                    {
+                        alignment = TextAnchor.MiddleCenter
+                    };
+                }
+                return m_centerBoldLabelStyleField;
+            }
         }
     }
-
-    private static GUIStyle m_centerBoldLabelStyleField;
-    public static GUIStyle centerBoldLabelStyle
-    {
-        get
-        {
-            if(null == m_centerBoldLabelStyleField)
-            {
-                m_centerBoldLabelStyleField = new GUIStyle(EditorStyles.boldLabel)
-                {
-                    alignment = TextAnchor.MiddleCenter
-                };
-            }
-            return m_centerBoldLabelStyleField;
-        }
-    }
+    
+    #endif
+    
 }
-
-#endif

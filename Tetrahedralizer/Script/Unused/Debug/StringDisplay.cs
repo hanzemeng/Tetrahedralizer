@@ -1,6 +1,12 @@
-//using UnityEngine;
 
-//public class StringDisplay : MonoBehaviour
-//{
-//    [TextArea] public string m_stringData;
-//}
+
+namespace Hanzzz.Tetrahedralizer
+{
+    //using UnityEngine;
+    
+    //public class StringDisplay : MonoBehaviour
+    //{
+    //    [TextArea] public string m_stringData;
+    //}
+    
+}
