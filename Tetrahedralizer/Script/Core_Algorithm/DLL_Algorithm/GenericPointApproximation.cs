@@ -38,11 +38,11 @@ namespace Hanzzz.Tetrahedralizer
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern void DisposeGenericPointApproximationHandle(IntPtr handle);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-            static extern void AddGenericPointApproximationVertices(IntPtr handle, int explicit_count, double[] explicit_values, int implicit_count, int[] implicit_values);
+            static extern void AddGenericPointApproximationInput(IntPtr handle, int explicit_count, double[] explicit_values, int implicit_count, int[] implicit_values);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-            static extern int ApproximateGenericPoint(IntPtr handle);
+            static extern int CalculateGenericPointApproximation(IntPtr handle);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-            static extern IntPtr GetOutputApproximation(IntPtr handle);
+            static extern IntPtr GetGenericPointApproximationPositions(IntPtr handle);
     
     
             double[] explicitVertices = input.m_explicitVertices.ToArray();
@@ -51,13 +51,13 @@ namespace Hanzzz.Tetrahedralizer
             int implicitCount = TetrahedralizerUtility.CountFlatIListElements(input.m_implicitVertices);
     
             IntPtr handle = CreateGenericPointApproximationHandle();
-            AddGenericPointApproximationVertices(handle, input.m_explicitVertices.Count/3, explicitVertices, implicitCount, implicitVertices);
+            AddGenericPointApproximationInput(handle, input.m_explicitVertices.Count/3, explicitVertices, implicitCount, implicitVertices);
     
-            ApproximateGenericPoint(handle);
+            CalculateGenericPointApproximation(handle);
     
             int n = input.m_explicitVertices.Count+3*implicitCount;
             output.m_approximatePositions = new List<double>(n);
-            IntPtr ptr = GetOutputApproximation(handle);
+            IntPtr ptr = GetGenericPointApproximationPositions(handle);
             for(int i=0; i<n; i++)
             {
                 output.m_approximatePositions.Add(BitConverter.Int64BitsToDouble(Marshal.ReadInt64(ptr)));

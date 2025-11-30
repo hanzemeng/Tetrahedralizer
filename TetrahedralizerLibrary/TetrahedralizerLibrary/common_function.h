@@ -3,83 +3,6 @@
 
 #include "common_header.h"
 
-inline void create_vertices(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, genericPoint**& vertices, u_int32_t& vertices_count)
-{
-    vertices = new genericPoint*[explicit_count+implicit_count];
-    vertices_count = explicit_count+implicit_count;
-    
-    for(uint32_t i=0; i<explicit_count; i++)
-    {
-        vertices[i] = new explicitPoint3D(explicit_values[3*i+0],explicit_values[3*i+1],explicit_values[3*i+2]);
-    }
-    
-    uint32_t j = 0;
-    for(uint32_t i=0; i<implicit_count; i++)
-    {
-        genericPoint* new_vertex;
-        if(5 == implicit_values[j]) // line plane
-        {
-            new_vertex = new implicitPoint3D_LPI(
-                                                 vertices[implicit_values[j+1]]->toExplicit3D(),
-                                                 vertices[implicit_values[j+2]]->toExplicit3D(),
-                                                 vertices[implicit_values[j+3]]->toExplicit3D(),
-                                                 vertices[implicit_values[j+4]]->toExplicit3D(),
-                                                 vertices[implicit_values[j+5]]->toExplicit3D());
-            j += 6;
-        }
-        else if(9 == implicit_values[j]) // three planes
-        {
-            new_vertex = new implicitPoint3D_TPI(
-                                                 vertices[implicit_values[j+1]]->toExplicit3D(),
-                                                 vertices[implicit_values[j+2]]->toExplicit3D(),
-                                                 vertices[implicit_values[j+3]]->toExplicit3D(),
-                                                 vertices[implicit_values[j+4]]->toExplicit3D(),
-                                                 vertices[implicit_values[j+5]]->toExplicit3D(),
-                                                 vertices[implicit_values[j+6]]->toExplicit3D(),
-                                                 vertices[implicit_values[j+7]]->toExplicit3D(),
-                                                 vertices[implicit_values[j+8]]->toExplicit3D(),
-                                                 vertices[implicit_values[j+9]]->toExplicit3D());
-            j += 10;
-        }
-        else
-        {
-            throw "wrong input";
-        }
-        
-        vertices[explicit_count+i] = new_vertex;
-    }
-}
-inline void delete_vertex(genericPoint* vertex)
-{
-    if(vertex->isLPI())
-    {
-        delete (implicitPoint3D_LPI*)vertex;
-    }
-    else if(vertex->isTPI())
-    {
-        delete (implicitPoint3D_TPI*)vertex;
-    }
-    else if(vertex->isExplicit3D())
-    {
-        delete (explicitPoint3D*)vertex;
-    }
-    else if(vertex->isBPT())
-    {
-        delete (implicitPoint3D_BPT*)vertex;
-    }
-    else
-    {
-        throw "unknown type";
-    }
-}
-inline void delete_vertices(genericPoint** vertices, uint32_t vertices_count)
-{
-    for(uint32_t i=0; i<vertices_count; i++)
-    {
-        delete_vertex(vertices[i]);
-    }
-    delete[] vertices;
-}
 
 template <typename T>
 inline T* duplicate_array(T* src, uint32_t n)
@@ -364,53 +287,169 @@ inline bool barycentric_weight(uint32_t t0, uint32_t t1, uint32_t t2, const doub
     return barycentric_weight(p0,p1,p2,p,w);
 }
 
-// true if ray hits the bounding box
-inline bool raycast_AABB(const double3& origin, const double3& dir, const double3& min, const double3& max, double& tmin, double& tmax)
+
+inline void create_vertices(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, genericPoint**& vertices, u_int32_t& vertices_count)
 {
-    tmin = (min.x - origin.x) / dir.x;
-    tmax = (max.x - origin.x) / dir.x;
-    if (tmin > tmax) std::swap(tmin, tmax);
-
-    double tymin = (min.y - origin.y) / dir.y;
-    double tymax = (max.y - origin.y) / dir.y;
-    if (tymin > tymax) std::swap(tymin, tymax);
-
-    if ((tmin > tymax) || (tymin > tmax))
-        return false;
-
-    if (tymin > tmin) tmin = tymin;
-    if (tymax < tmax) tmax = tymax;
-
-    double tzmin = (min.z - origin.z) / dir.z;
-    double tzmax = (max.z - origin.z) / dir.z;
-    if (tzmin > tzmax) std::swap(tzmin, tzmax);
-
-    if ((tmin > tzmax) || (tzmin > tmax))
-        return false;
-
-    if (tzmin > tmin) tmin = tzmin;
-    if (tzmax < tmax) tmax = tzmax;
-
-    return true;
+    vertices = new genericPoint*[explicit_count+implicit_count];
+    vertices_count = explicit_count+implicit_count;
+    
+    for(uint32_t i=0; i<explicit_count; i++)
+    {
+        vertices[i] = new explicitPoint3D(explicit_values[3*i+0],explicit_values[3*i+1],explicit_values[3*i+2]);
+    }
+    
+    uint32_t j = 0;
+    for(uint32_t i=0; i<implicit_count; i++)
+    {
+        genericPoint* new_vertex;
+        if(5 == implicit_values[j]) // line plane
+        {
+            new_vertex = new implicitPoint3D_LPI(
+                                                 vertices[implicit_values[j+1]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+2]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+3]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+4]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+5]]->toExplicit3D());
+            j += 6;
+        }
+        else if(9 == implicit_values[j]) // three planes
+        {
+            new_vertex = new implicitPoint3D_TPI(
+                                                 vertices[implicit_values[j+1]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+2]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+3]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+4]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+5]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+6]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+7]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+8]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+9]]->toExplicit3D());
+            j += 10;
+        }
+        else
+        {
+            throw "wrong input";
+        }
+        
+        vertices[explicit_count+i] = new_vertex;
+    }
+}
+inline vector<genericPoint*> create_vertices(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values)
+{
+    vector<genericPoint*> vertices;
+    
+    for(uint32_t i=0; i<explicit_count; i++)
+    {
+        vertices.push_back(new explicitPoint3D(explicit_values[3*i+0],explicit_values[3*i+1],explicit_values[3*i+2]));
+    }
+    uint32_t j = 0;
+    for(uint32_t i=0; i<implicit_count; i++)
+    {
+        genericPoint* new_vertex;
+        if(5 == implicit_values[j]) // line plane
+        {
+            new_vertex = new implicitPoint3D_LPI(
+                                                 vertices[implicit_values[j+1]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+2]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+3]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+4]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+5]]->toExplicit3D());
+            j += 6;
+        }
+        else if(9 == implicit_values[j]) // three planes
+        {
+            new_vertex = new implicitPoint3D_TPI(
+                                                 vertices[implicit_values[j+1]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+2]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+3]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+4]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+5]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+6]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+7]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+8]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+9]]->toExplicit3D());
+            j += 10;
+        }
+        else
+        {
+            throw "wrong input";
+        }
+        
+        vertices.push_back(new_vertex);
+    }
+    
+    return vertices;
+}
+inline void delete_vertex(genericPoint* vertex)
+{
+    if(vertex->isLPI())
+    {
+        delete (implicitPoint3D_LPI*)vertex;
+    }
+    else if(vertex->isTPI())
+    {
+        delete (implicitPoint3D_TPI*)vertex;
+    }
+    else if(vertex->isExplicit3D())
+    {
+        delete (explicitPoint3D*)vertex;
+    }
+    else if(vertex->isBPT())
+    {
+        delete (implicitPoint3D_BPT*)vertex;
+    }
+    else
+    {
+        throw "unknown type";
+    }
+}
+inline void delete_vertices(genericPoint** vertices, uint32_t vertices_count)
+{
+    for(uint32_t i=0; i<vertices_count; i++)
+    {
+        delete_vertex(vertices[i]);
+    }
+    delete[] vertices;
+}
+inline void delete_vertices(vector<genericPoint*>& vertices)
+{
+    for(uint32_t i=0; i<vertices.size(); i++)
+    {
+        delete_vertex(vertices[i]);
+    }
 }
 
-// behind also counts
-inline bool raycast_triangle(const double3& orig, const double3& dir, const double3& v0, const double3& v1, const double3& v2, double& t, double3& w)
+inline vector<uint32_t> create_constraints(uint32_t constraints_count, uint32_t* constraints, genericPoint** vertices, bool add_placeholder)
 {
-    double3 n = (v1-v0).cross(v2-v0);
-
-    double denom = dir.dot(n);
-    if(fabs(denom) < 1e-9) // parallel
+    vector<uint32_t> res;
+    unordered_set<tuple<uint32_t,uint32_t,uint32_t>,trio_iii_hash> unique_constraints;
+    for(uint32_t i=0; i<constraints_count; i++)
     {
-        return false;
+        uint32_t c0 = constraints[3*i+0];
+        uint32_t c1 = constraints[3*i+1];
+        uint32_t c2 = constraints[3*i+2];
+        uint32_t t0 = c0;
+        uint32_t t1 = c1;
+        uint32_t t2 = c2;
+        
+        sort_ints(t0, t1, t2);
+        if(unique_constraints.end() != unique_constraints.find(make_tuple(t0,t1,t2)) || t0 == t1 || t0 == t2 || t1 == t2 || is_collinear(t0, t1, t2, vertices))
+        {
+            unique_constraints.insert(make_tuple(t0,t1,t2));
+            if(add_placeholder)
+            {
+                res.push_back(UNDEFINED_VALUE);
+                res.push_back(UNDEFINED_VALUE);
+                res.push_back(UNDEFINED_VALUE);
+            }
+            continue;
+        }
+        unique_constraints.insert(make_tuple(t0,t1,t2));
+        res.push_back(c0);
+        res.push_back(c1);
+        res.push_back(c2);
     }
-    t = (v0 - orig).dot(n) / denom;
-//    if(t < 0) // behind
-//    {
-//        return false;
-//    }
-
-    return barycentric_weight(v0,v1,v2,orig + dir * t,w);
+    return res;
 }
 
 #endif

@@ -195,7 +195,7 @@ namespace Hanzzz.Tetrahedralizer
             g.transform.SetParent(parent, false);
             g.transform.localPosition = position;
             g.AddComponent<MeshFilter>().mesh = mesh;
-            g.AddComponent<MeshRenderer>().SetMaterials(materials);
+            g.AddComponent<MeshRenderer>().SetSharedMaterials(materials);
     
             return g;
         }

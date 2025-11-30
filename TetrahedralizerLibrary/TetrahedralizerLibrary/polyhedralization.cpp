@@ -4,21 +4,31 @@
 Polyhedralization::Polyhedralization()
 {
 }
-Polyhedralization::Polyhedralization(uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets)
+Polyhedralization::Polyhedralization(uint32_t polyhedrons_count, uint32_t* polyhedrons)
 {
-    assign_polyhedrons(polyhedrons_count, polyhedrons, facets_count, facets);
+    assign_polyhedrons(flat_array_to_nested_vector(polyhedrons, polyhedrons_count));
+}
+Polyhedralization::Polyhedralization(const vector<vector<uint32_t>>& polyhedrons)
+{
+    assign_polyhedrons(polyhedrons);
 }
 
 
-void Polyhedralization::assign_polyhedrons(uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets)
+void Polyhedralization::assign_polyhedrons(const vector<vector<uint32_t>>& polyhedrons)
 {
-    m_neighbors = vector<uint32_t>(2*facets_count, UNDEFINED_VALUE);
-
-    vector<vector<uint32_t>> nestedPolyhedrons = flat_array_to_nested_vector(polyhedrons, polyhedrons_count);
-    
-    for(uint32_t i=0; i<nestedPolyhedrons.size(); i++)
+    uint32_t facets_count = polyhedrons[0][0];
+    for(uint32_t i=0; i<polyhedrons.size(); i++)
     {
-        for(uint32_t f : nestedPolyhedrons[i])
+        for(uint32_t j=0; j<polyhedrons[i].size(); j++)
+        {
+            facets_count = max(facets_count, polyhedrons[i][j]);
+        }
+    }
+    m_neighbors = vector<uint32_t>(2*(facets_count+1), UNDEFINED_VALUE);
+    
+    for(uint32_t i=0; i<polyhedrons.size(); i++)
+    {
+        for(uint32_t f : polyhedrons[i])
         {
             if(UNDEFINED_VALUE == m_neighbors[2*f+0])
             {

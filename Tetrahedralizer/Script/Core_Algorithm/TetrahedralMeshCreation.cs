@@ -27,6 +27,7 @@ namespace Hanzzz.Tetrahedralizer
             TetrahedralizerUtility.RemoveDuplicateVertices(weldedVertices, weldedTriangles);
             Vector3[] vertices = input.m_mesh.vertices;
             int[] triangles = input.m_mesh.triangles;
+            int[] uv0IslandsIndexes = input.m_mesh.GetUV0IslandsIndexes();
     
             List<SubMeshDescriptor> subMeshDescriptors = Enumerable.Range(0,input.m_mesh.subMeshCount).Select(i=>input.m_mesh.GetSubMesh(i)).ToList();
     
@@ -36,7 +37,7 @@ namespace Hanzzz.Tetrahedralizer
             TetrahedralMesh tetrahedralMesh = ScriptableObject.CreateInstance<TetrahedralMesh>();
             output.m_tetrahedralMesh = tetrahedralMesh;
     
-            //CreateInternal(vertices, triangles, subMeshDescriptors, input.m_tetrahedralization.m_tetrahedrons, input.m_tetrahedralization.m_explicitVertices, input.m_tetrahedralization.m_implicitVertices, weldedTriangles, meshTriangleFinder, meshVertexDataMapper, tetrahedralMesh);
+            CreateInternal(vertices, triangles, weldedTriangles, uv0IslandsIndexes, subMeshDescriptors, input.m_polyhedralization, meshVertexDataMapper, tetrahedralMesh, null);
         }
     
         public Task CreateAsync(TetrahedralMeshCreationInput input, TetrahedralMeshCreationOutput output, IProgress<string> progress=null)

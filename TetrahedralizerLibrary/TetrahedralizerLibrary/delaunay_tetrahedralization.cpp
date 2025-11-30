@@ -3,42 +3,28 @@
 #pragma mark - External_Handle
 
 DelaunayTetrahedralizationHandle::DelaunayTetrahedralizationHandle()
-{
-    m_input = new DelaunayTetrahedralizationInput();
-    m_input->m_vertices = nullptr;
-    m_input->m_vertices_count = 0;
-    m_output = new DelaunayTetrahedralizationOutput();
-    m_output->m_tetrahedrons_count = 0;
-    m_delaunayTetrahedralization = new DelaunayTetrahedralization();
-}
+{}
 void DelaunayTetrahedralizationHandle::Dispose()
 {
-    delete_vertices(m_input->m_vertices, m_input->m_vertices_count);
-    delete m_input;
-    
-    delete[] m_output->m_tetrahedrons;
-    delete m_output;
-    
-    delete m_delaunayTetrahedralization;
+    delete_vertices(m_vertices);
+}
+void DelaunayTetrahedralizationHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values)
+{
+    m_vertices = create_vertices(explicit_count, explicit_values, implicit_count, implicit_values);
 }
 
-void DelaunayTetrahedralizationHandle::AddInputVertices(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values)
+void DelaunayTetrahedralizationHandle::Calculate()
 {
-    create_vertices(explicit_count, explicit_values, implicit_count, implicit_values, m_input->m_vertices, m_input->m_vertices_count);
-}
-
-void DelaunayTetrahedralizationHandle::CalculateDelaunayTetrahedralization()
-{
-    m_delaunayTetrahedralization->delaunay_tetrahedralization(m_input, m_output);
+    delaunay_tetrahedralization();
 }
 
 uint32_t DelaunayTetrahedralizationHandle::GetOutputTetrahedronsCount()
 {
-    return m_output->m_tetrahedrons_count;
+    return m_tetrahedrons.size() / 4;
 }
 uint32_t* DelaunayTetrahedralizationHandle::GetOutputTetrahedrons()
 {
-    return m_output->m_tetrahedrons;
+    return m_tetrahedrons.data();
 }
 
 extern "C" LIBRARY_EXPORT void* CreateDelaunayTetrahedralizationHandle()
@@ -51,14 +37,14 @@ extern "C" LIBRARY_EXPORT void DisposeDelaunayTetrahedralizationHandle(void* han
     delete (DelaunayTetrahedralizationHandle*)handle;
 }
 
-extern "C" LIBRARY_EXPORT void AddDelaunayTetrahedralizationVertices(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values)
+extern "C" LIBRARY_EXPORT void AddDelaunayTetrahedralizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values)
 {
-    ((DelaunayTetrahedralizationHandle*)handle)->AddInputVertices(explicit_count, explicit_values, implicit_count, implicit_values);
+    ((DelaunayTetrahedralizationHandle*)handle)->AddInput(explicit_count, explicit_values, implicit_count, implicit_values);
 }
 
 extern "C" LIBRARY_EXPORT void CalculateDelaunayTetrahedralization(void* handle)
 {
-    ((DelaunayTetrahedralizationHandle*)handle)->CalculateDelaunayTetrahedralization();
+    ((DelaunayTetrahedralizationHandle*)handle)->Calculate();
 }
 
 extern "C" LIBRARY_EXPORT uint32_t GetOutputTetrahedronsCount(void* handle)
@@ -72,10 +58,8 @@ extern "C" LIBRARY_EXPORT uint32_t* GetOutputTetrahedrons(void* handle)
 
 #pragma mark - Internal_Core
 
-void DelaunayTetrahedralization::delaunay_tetrahedralization(DelaunayTetrahedralizationInput* input, DelaunayTetrahedralizationOutput* output)
+void DelaunayTetrahedralizationHandle::delaunay_tetrahedralization()
 {
-    m_vertices = input->m_vertices;
-    m_vertices_count = input->m_vertices_count;
     m_tetrahedrons.clear();
     clear_queue(m_tetrahedrons_gaps);
     m_neighbors.clear();
@@ -87,11 +71,11 @@ void DelaunayTetrahedralization::delaunay_tetrahedralization(DelaunayTetrahedral
         p0 = 0;
         p1 = 1;
         
-        for(p2=2; p2<m_vertices_count; p2++)
+        for(p2=2; p2<m_vertices.size(); p2++)
         {
-            for(p3=p2+1; p3<m_vertices_count; p3++)
+            for(p3=p2+1; p3<m_vertices.size(); p3++)
             {
-                if(0 == orient3d(p0,p1,p2,p3,m_vertices))
+                if(0 == orient3d(p0,p1,p2,p3,m_vertices.data()))
                 {
                     continue;
                 }
@@ -101,7 +85,7 @@ void DelaunayTetrahedralization::delaunay_tetrahedralization(DelaunayTetrahedral
         throw "input vertices are all on the same plane";
 
         FOUND_FIRST_TETRAHEDRON:
-        if(-1 == orient3d(p0,p1,p2,p3,m_vertices))
+        if(-1 == orient3d(p0,p1,p2,p3,m_vertices.data()))
         {
             swap(p0,p1);
         }
@@ -138,7 +122,7 @@ void DelaunayTetrahedralization::delaunay_tetrahedralization(DelaunayTetrahedral
     }
 
     uint32_t origin_t = 0;
-    for(uint32_t i=2; i<m_vertices_count; i++)
+    for(uint32_t i=2; i<m_vertices.size(); i++)
     {
         if(op2 == i || op3 == i)
         {
@@ -168,7 +152,7 @@ void DelaunayTetrahedralization::delaunay_tetrahedralization(DelaunayTetrahedral
                         continue;
                     }
                     get_tetrahedron_face(origin_t, f, p0, p1, p2);
-                    if(orient3d(p0,p1,p2,i,m_vertices) < 0)
+                    if(orient3d(p0,p1,p2,i,m_vertices.data()) < 0)
                     {
                         last_f = m_neighbors[origin_t+f]&3;
                         get_tetrahedron_neighbor(origin_t,f,origin_t);
@@ -246,27 +230,31 @@ void DelaunayTetrahedralization::delaunay_tetrahedralization(DelaunayTetrahedral
         }
     }
 
-    // copy the output, do not include deleted tetrahedron and infinte tetrahedron
-    output->m_tetrahedrons = new uint32_t[m_tetrahedrons.size()];
-    uint32_t j=0;
+    // remove deleted and infinte tetrahedrons
     for(uint32_t i=0; i<m_tetrahedrons.size(); i+=4)
     {
-        if(UNDEFINED_VALUE == m_tetrahedrons[i] || INFINITE_VERTEX == m_tetrahedrons[i+3])
+        if(UNDEFINED_VALUE != m_tetrahedrons[i] && INFINITE_VERTEX != m_tetrahedrons[i+3])
         {
             continue;
         }
-        output->m_tetrahedrons[j+0] = m_tetrahedrons[i+0];
-        output->m_tetrahedrons[j+1] = m_tetrahedrons[i+1];
-        output->m_tetrahedrons[j+2] = m_tetrahedrons[i+2];
-        output->m_tetrahedrons[j+3] = m_tetrahedrons[i+3];
-        j+=4;
+        
+        uint32_t j = m_tetrahedrons.size() - 4;
+        swap(m_tetrahedrons[i+0], m_tetrahedrons[j+0]);
+        swap(m_tetrahedrons[i+1], m_tetrahedrons[j+1]);
+        swap(m_tetrahedrons[i+2], m_tetrahedrons[j+2]);
+        swap(m_tetrahedrons[i+3], m_tetrahedrons[j+3]);
+        m_tetrahedrons.pop_back();
+        m_tetrahedrons.pop_back();
+        m_tetrahedrons.pop_back();
+        m_tetrahedrons.pop_back();
+        
+        i-=4;
     }
-    output->m_tetrahedrons_count = j/4;
 }
 
 #pragma mark - Internal_Helper
 
-void DelaunayTetrahedralization::get_tetrahedron_opposite_vertex(uint32_t t, uint32_t& p)
+void DelaunayTetrahedralizationHandle::get_tetrahedron_opposite_vertex(uint32_t t, uint32_t& p)
 {
     uint32_t i = t & 3;
     t = t & 0xfffffffc;
@@ -288,7 +276,7 @@ void DelaunayTetrahedralization::get_tetrahedron_opposite_vertex(uint32_t t, uin
             throw "wrong face index";
     }
 }
-void DelaunayTetrahedralization::get_tetrahedron_neighbor(uint32_t t, uint32_t i, uint32_t& n)
+void DelaunayTetrahedralizationHandle::get_tetrahedron_neighbor(uint32_t t, uint32_t i, uint32_t& n)
 {
     if(UNDEFINED_VALUE == m_neighbors[t+i])
     {
@@ -299,7 +287,7 @@ void DelaunayTetrahedralization::get_tetrahedron_neighbor(uint32_t t, uint32_t i
         n = m_neighbors[t+i] & 0xfffffffc;
     }
 }
-void DelaunayTetrahedralization::get_tetrahedron_face(uint32_t t, uint32_t i, uint32_t& f0,uint32_t& f1,uint32_t& f2)
+void DelaunayTetrahedralizationHandle::get_tetrahedron_face(uint32_t t, uint32_t i, uint32_t& f0,uint32_t& f1,uint32_t& f2)
 {
     switch(i)
     {
@@ -327,12 +315,12 @@ void DelaunayTetrahedralization::get_tetrahedron_face(uint32_t t, uint32_t i, ui
             throw "wrong face index";
     }
 }
-void DelaunayTetrahedralization::get_tetrahedron_face(uint32_t t, uint32_t& f0,uint32_t& f1,uint32_t& f2)
+void DelaunayTetrahedralizationHandle::get_tetrahedron_face(uint32_t t, uint32_t& f0,uint32_t& f1,uint32_t& f2)
 {
     get_tetrahedron_face(t&0xfffffffc,t&3,f0,f1,f2);
 }
 
-int DelaunayTetrahedralization::symbolic_perturbation(uint32_t p0,uint32_t p1,uint32_t p2,uint32_t p3,uint32_t p4)
+int DelaunayTetrahedralizationHandle::symbolic_perturbation(uint32_t p0,uint32_t p1,uint32_t p2,uint32_t p3,uint32_t p4)
 {
     uint32_t indices[5] = {p0,p1,p2,p3,p4};
     uint32_t swaps = 0;
@@ -353,7 +341,7 @@ int DelaunayTetrahedralization::symbolic_perturbation(uint32_t p0,uint32_t p1,ui
         swaps += count;
     }while(0 != count);
 
-    int oriA = orient3d(indices[1], indices[2], indices[3], indices[4], m_vertices);
+    int oriA = orient3d(indices[1], indices[2], indices[3], indices[4], m_vertices.data());
     if (oriA != 0)
     {
         if((swaps % 2) != 0)
@@ -363,19 +351,19 @@ int DelaunayTetrahedralization::symbolic_perturbation(uint32_t p0,uint32_t p1,ui
         return oriA;
     }
 
-    int oriB = -orient3d(indices[0], indices[2], indices[3], indices[4], m_vertices);
+    int oriB = -orient3d(indices[0], indices[2], indices[3], indices[4], m_vertices.data());
     if ((swaps % 2) != 0)
     {
         oriB = -oriB;
     }
     return oriB;
 }
-int DelaunayTetrahedralization::in_sphere(uint32_t t,uint32_t p)
+int DelaunayTetrahedralizationHandle::in_sphere(uint32_t t,uint32_t p)
 {
     int res;
     if(INFINITE_VERTEX != m_tetrahedrons[t+3])
     {
-        res = ::in_sphere(m_tetrahedrons[t+0],m_tetrahedrons[t+1],m_tetrahedrons[t+2],m_tetrahedrons[t+3],p,m_vertices);
+        res = ::in_sphere(m_tetrahedrons[t+0],m_tetrahedrons[t+1],m_tetrahedrons[t+2],m_tetrahedrons[t+3],p,m_vertices.data());
         if(0 != res)
         {
             return res;
@@ -388,7 +376,7 @@ int DelaunayTetrahedralization::in_sphere(uint32_t t,uint32_t p)
         return res;
     }
 
-    res = orient3d(m_tetrahedrons[t+0],m_tetrahedrons[t+1],m_tetrahedrons[t+2],p,m_vertices);
+    res = orient3d(m_tetrahedrons[t+0],m_tetrahedrons[t+1],m_tetrahedrons[t+2],p,m_vertices.data());
     if(0 != res)
     {
         return res;
@@ -396,7 +384,7 @@ int DelaunayTetrahedralization::in_sphere(uint32_t t,uint32_t p)
     uint32_t opposite_p;
     get_tetrahedron_opposite_vertex(m_neighbors[t+0],opposite_p);
     
-    res = ::in_sphere(m_tetrahedrons[t+0],m_tetrahedrons[t+1],m_tetrahedrons[t+2],opposite_p,p,m_vertices);
+    res = ::in_sphere(m_tetrahedrons[t+0],m_tetrahedrons[t+1],m_tetrahedrons[t+2],opposite_p,p,m_vertices.data());
     if(0 != res)
     {
         return -res;
@@ -409,7 +397,7 @@ int DelaunayTetrahedralization::in_sphere(uint32_t t,uint32_t p)
     return -res;
 }
 
-uint32_t DelaunayTetrahedralization::add_tetrahedron(uint32_t p0,uint32_t p1,uint32_t p2,uint32_t p3)
+uint32_t DelaunayTetrahedralizationHandle::add_tetrahedron(uint32_t p0,uint32_t p1,uint32_t p2,uint32_t p3)
 {
     uint32_t res;
     if(m_tetrahedrons_gaps.empty())
@@ -441,7 +429,7 @@ uint32_t DelaunayTetrahedralization::add_tetrahedron(uint32_t p0,uint32_t p1,uin
     return res;
 }
 
-void DelaunayTetrahedralization::remove_tetrahedron(uint32_t t)
+void DelaunayTetrahedralizationHandle::remove_tetrahedron(uint32_t t)
 {
     m_tetrahedrons_gaps.push(t);
     for(uint32_t i=0; i<4; i++)
@@ -457,7 +445,7 @@ void DelaunayTetrahedralization::remove_tetrahedron(uint32_t t)
     }
 }
 
-void DelaunayTetrahedralization::tetrahedralize_hole_helper(uint32_t p0, uint32_t p1, uint32_t t)
+void DelaunayTetrahedralizationHandle::tetrahedralize_hole_helper(uint32_t p0, uint32_t p1, uint32_t t)
 {
     sort_ints(p0,p1);
     auto it = m_u_map_ii_i_0.find({p0,p1});

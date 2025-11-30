@@ -29,14 +29,6 @@ namespace Hanzzz.Tetrahedralizer
                 des.Add(src[i]);
             }
         }
-    
-        public static void Add<T>(this List<T> list, params T[] items)
-        {
-            for(int i=0; i<items.Length; i++)
-            {
-                list.Add(items[i]);
-            }
-        }
     }
     
 }

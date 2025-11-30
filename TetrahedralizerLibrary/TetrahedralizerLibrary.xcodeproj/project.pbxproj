@@ -63,8 +63,6 @@
 				tetrahedralization.hpp,
 				triangle_tetrahedron_intersection.h,
 				unused/main.cpp,
-				unused/mesh_raycaster.hpp,
-				unused/texture_projection.hpp,
 			);
 			target = 887F387B2E0E1F1F00A37971 /* TetrahedralizerLibrary */;
 		};

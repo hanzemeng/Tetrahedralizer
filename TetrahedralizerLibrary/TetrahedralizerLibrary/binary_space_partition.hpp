@@ -6,48 +6,15 @@
 #include "tetrahedralization.hpp"
 #include "triangle_tetrahedron_intersection.h"
 
-class BinarySpacePartitionInput
-{
-public:
-    genericPoint** m_vertices;
-    uint32_t m_vertices_count;
-
-    uint32_t* m_tetrahedrons; // Oriented such that the right hand curls around the first 3 points and the thumb points to the 4th point.
-    uint32_t m_tetrahedrons_count; // number of tetrahedrons, same as m_tetrahedrons.size()/4
-
-    uint32_t* m_constraints; // Orientation does not matter.
-    uint32_t m_constraints_count; // number of constraints, same as m_constraints.size()/3
-    
-    bool m_aggressively_add_virtual_constraints;
-    // If all constraints incidented by an constraint edge are coplanar
-    // if true, a virtual constraint will be added
-    // if false, a virtual constraint will be added if all incidented constraints lie on one side of the edge
-};
-class BinarySpacePartitionOutput
-{
-public:
-    uint32_t* m_inserted_vertices; // 5/9 followed by indices of explicit vertices
-    uint32_t m_inserted_vertices_count;
-
-    uint32_t* m_polyhedrons; // # of facets followed by indexes
-    uint32_t m_polyhedrons_count;
-
-    uint32_t* m_facets; // # of vertices followed by indexes, vertices are ordered in cw or ccw, first 3 vertices of are not collinear
-    uint32_t* m_facets_centroids; // every facet centroid is defined by 3 coplanar explicit vertices
-    double* m_facets_centroids_weights; // and the weight of the explicit vertices, note the 3 weight is ignored
-    uint32_t m_facets_count;
-};
-
 
 class PolyhedronEdge
 {
     public:
     uint32_t e0, e1; // two endpoints
     uint32_t p0, p1, p2, p3, p4, p5; // p0, p1, p2 is a plane, p3, p4, p5 is a plane. The line is the intersection of the two plane. Only use p0, p1 if both are explicit points.
-//    uint32_t f; // a incident polyhedron facet
 
     PolyhedronEdge();
-    PolyhedronEdge(PolyhedronEdge* other);
+    PolyhedronEdge(const PolyhedronEdge& other);
 };
 class PolyhedronFacet
 {
@@ -57,56 +24,12 @@ class PolyhedronFacet
     uint32_t ip0, ip1; // two incident polyhedrons
 
     PolyhedronFacet();
-    PolyhedronFacet(PolyhedronFacet* other);
+    PolyhedronFacet(const PolyhedronFacet& other);
 };
-class Polyhedron
-{
-    public:
-    vector<uint32_t> facets;
-};
-
-class BinarySpacePartition
-{
-public:
-    void binary_space_partition(BinarySpacePartitionInput* input, BinarySpacePartitionOutput* output);
-
-private:
-    vector<genericPoint*> m_vertices;
-    uint32_t* m_tetrahedrons;
-    Tetrahedralization m_tetrahedralization;
-    vector<uint32_t> m_constraints;
-
-    vector<Polyhedron*> m_polyhedrons;
-    vector<PolyhedronFacet*> m_polyhedrons_facets;
-    vector<PolyhedronEdge*> m_polyhedrons_edges;
-
-    vector<uint32_t> m_vertices_incidents;
-    vector<uint32_t> m_tetrahedrons_polyhedrons_mapping; // tetrahedron index is divided by 4
-    map<uint32_t, vector<uint32_t>> m_polyhedrons_intersect_constraints;
-
-    uint32_t m_virtual_constraints_count;
-
-    vector<uint32_t> m_new_vertices_mappings;
-    COMMON_FIELDS
-
-    uint32_t find_or_add_edge(uint32_t p0, uint32_t p1);
-    uint32_t find_or_add_facet(uint32_t e0, uint32_t e1, uint32_t e2, uint32_t p0, uint32_t p1,  uint32_t p2);
-    void add_virtual_constraint(uint32_t e0, uint32_t e1, uint32_t c); // e0 and e1 incident the constraint c
-    void get_polyhedron_facet_vertices(uint32_t f, uint32_t& f0,uint32_t& f1,uint32_t& f2); // only for facet with 3 vertices
-    uint32_t add_LPI(uint32_t e0, uint32_t e1, uint32_t p0,uint32_t p1,uint32_t p2); // LPI: line plane intersection
-    uint32_t add_TPI(uint32_t p0,uint32_t p1,uint32_t p2,uint32_t p3,uint32_t p4,uint32_t p5,uint32_t p6,uint32_t p7,uint32_t p8); // TPI: three planes intersection
-    void sort_polyhedron_facet(uint32_t facet);
-    void get_polyhedron_facet_vertices(uint32_t facet, deque<uint32_t>& res); // the facet must be sorted
-};
-
 
 class BinarySpacePartitionHandle
 {
 public:
-    BinarySpacePartitionInput* m_input;
-    BinarySpacePartitionOutput* m_output;
-    BinarySpacePartition* m_binarySpacePartition;
-
     BinarySpacePartitionHandle();
     void Dispose();
 
@@ -123,6 +46,36 @@ public:
     uint32_t* GetFacets();
     uint32_t* GetFacetsCentroids();
     double* GetFacetsCentroidsWeights();
+    
+    
+private:
+    vector<genericPoint*> m_vertices;
+    Tetrahedralization m_tetrahedralization;
+    vector<uint32_t> m_constraints;
+    bool m_aggressively_add_virtual_constraints;
+    
+    vector<vector<uint32_t>> m_polyhedrons;
+    vector<PolyhedronFacet> m_polyhedrons_facets;
+    vector<PolyhedronEdge> m_polyhedrons_edges;
+    
+    vector<uint32_t> m_inserted_vertices;
+    uint32_t m_inserted_vertices_count;
+    vector<uint32_t> m_output_polyhedrons;
+    uint32_t m_output_polyhedrons_count;
+    vector<uint32_t> m_output_facets;
+    vector<uint32_t> m_output_facets_centroids;
+    vector<double> m_output_facets_centroids_weights;
+    uint32_t m_output_facets_count;
+    COMMON_FIELDS
+
+    void binary_space_partition();
+    uint32_t find_or_add_edge(uint32_t p0, uint32_t p1);
+    uint32_t find_or_add_facet(uint32_t e0, uint32_t e1, uint32_t e2, uint32_t p0, uint32_t p1,  uint32_t p2);
+    void add_virtual_constraint(uint32_t e0, uint32_t e1, uint32_t c); // e0 and e1 incident the constraint c
+    uint32_t add_LPI(uint32_t e0, uint32_t e1, uint32_t p0,uint32_t p1,uint32_t p2); // LPI: line plane intersection
+    uint32_t add_TPI(uint32_t p0,uint32_t p1,uint32_t p2,uint32_t p3,uint32_t p4,uint32_t p5,uint32_t p6,uint32_t p7,uint32_t p8); // TPI: three planes intersection
+    void sort_polyhedron_facet(uint32_t facet);
+    void get_polyhedron_facet_vertices(uint32_t facet, deque<uint32_t>& res); // the facet must be sorted
     
 };
 

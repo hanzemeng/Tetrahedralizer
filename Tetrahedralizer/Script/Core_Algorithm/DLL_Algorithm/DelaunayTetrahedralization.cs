@@ -26,7 +26,7 @@ namespace Hanzzz.Tetrahedralizer
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern void DisposeDelaunayTetrahedralizationHandle(IntPtr handle);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-            static extern void AddDelaunayTetrahedralizationVertices(IntPtr handle, int explicit_count, double[] explicit_values, int implicit_count, int[] implicit_values);
+            static extern void AddDelaunayTetrahedralizationInput(IntPtr handle, int explicit_count, double[] explicit_values, int implicit_count, int[] implicit_values);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern void CalculateDelaunayTetrahedralization(IntPtr handle);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
@@ -42,7 +42,7 @@ namespace Hanzzz.Tetrahedralizer
     
             IntPtr handle = CreateDelaunayTetrahedralizationHandle();
     
-            AddDelaunayTetrahedralizationVertices(handle, explicitVertices.Length/3, explicitVertices, implicitVerticesCount, implicitVertices);
+            AddDelaunayTetrahedralizationInput(handle, explicitVertices.Length/3, explicitVertices, implicitVerticesCount, implicitVertices);
             CalculateDelaunayTetrahedralization(handle);
     
             IntPtr ptr = GetOutputTetrahedrons(handle);

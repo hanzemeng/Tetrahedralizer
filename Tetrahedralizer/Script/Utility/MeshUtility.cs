@@ -1,5 +1,7 @@
+using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 
 namespace Hanzzz.Tetrahedralizer
@@ -19,6 +21,10 @@ namespace Hanzzz.Tetrahedralizer
         // for every triangle, identify the uv island index it belongs in
         public static int[] GetUV0IslandsIndexes(this Mesh mesh)
         {
+            if(!mesh.HasVertexAttribute(VertexAttribute.TexCoord0))
+            {
+                return Enumerable.Repeat(0,mesh.GetIndexCount()/3).ToArray();
+            }
             Vector2[] uvs = mesh.uv;
             int[] tris = mesh.triangles;
             List<HashSet<Vector2>> uvIslands = new List<HashSet<Vector2>>();
