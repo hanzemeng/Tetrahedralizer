@@ -1,14 +1,5 @@
 #include "tetrahedralization.hpp"
-
-Tetrahedralization::Tetrahedralization()
-{}
-Tetrahedralization::Tetrahedralization(uint32_t* tetrahedrons, uint32_t tetrahedrons_count)
-{
-    assign_tetrahedrons(tetrahedrons, tetrahedrons_count);
-}
-Tetrahedralization::~Tetrahedralization()
-{}
-
+using namespace std;
 
 void Tetrahedralization::assign_tetrahedrons(uint32_t* tetrahedrons, uint32_t tetrahedrons_count)
 {

@@ -1,18 +1,5 @@
 #include "polyhedralization.hpp"
-
-
-Polyhedralization::Polyhedralization()
-{
-}
-Polyhedralization::Polyhedralization(uint32_t polyhedrons_count, uint32_t* polyhedrons)
-{
-    assign_polyhedrons(flat_array_to_nested_vector(polyhedrons, polyhedrons_count));
-}
-Polyhedralization::Polyhedralization(const vector<vector<uint32_t>>& polyhedrons)
-{
-    assign_polyhedrons(polyhedrons);
-}
-
+using namespace std;
 
 void Polyhedralization::assign_polyhedrons(const vector<vector<uint32_t>>& polyhedrons)
 {

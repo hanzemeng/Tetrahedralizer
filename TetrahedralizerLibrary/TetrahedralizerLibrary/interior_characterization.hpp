@@ -8,9 +8,7 @@
 class InteriorCharacterizationHandle
 {
 public:
-    InteriorCharacterizationHandle();
     void Dispose();
-    
     void AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights, uint32_t constraints_count, uint32_t* constraints, double polyhedron_in_multiplier);
     
     void Calculate();
@@ -20,16 +18,16 @@ public:
     uint32_t* GetFacetsCentroidsMapping(); // for every facet centriod, an incident triangle will be recorded, UNDEFINED_VALUE if no such triangle
     
 private:
-    vector<genericPoint*> m_vertices;
-    vector<vector<uint32_t>> m_polyhedrons;
-    vector<vector<uint32_t>> m_facets;
-    vector<genericPoint*> m_facets_centroids;
-    vector<uint32_t> m_constraints;
+    std::vector<std::shared_ptr<genericPoint>> m_vertices;
+    std::vector<std::vector<uint32_t>> m_polyhedrons;
+    std::vector<std::vector<uint32_t>> m_facets;
+    std::vector<std::shared_ptr<genericPoint>> m_facets_centroids;
+    std::vector<uint32_t> m_constraints;
     double m_polyhedron_in_multiplier; // multiply this to the cost labeling a polyhedron to be in
     
-    vector<uint32_t> m_polyhedrons_labels;
-    vector<uint32_t> m_facets_vertices_mapping;
-    vector<uint32_t> m_facets_centroids_mapping;
+    std::vector<uint32_t> m_polyhedrons_labels;
+    std::vector<uint32_t> m_facets_vertices_mapping;
+    std::vector<uint32_t> m_facets_centroids_mapping;
     COMMON_FIELDS
     
     void interior_characterization();

@@ -111,8 +111,7 @@ namespace Hanzzz.Tetrahedralizer
     
             for(int i=0; i<vertices.Count; i++)
             {
-                int index;
-                if(!mapping.TryGetValue(vertices[i], out index))
+                if(!mapping.TryGetValue(vertices[i], out int index))
                 {
                     mapping[vertices[i]] = mapping.Count;
                     res.Add(new List<int>{i});
@@ -194,7 +193,7 @@ namespace Hanzzz.Tetrahedralizer
             GameObject g = new GameObject();
             g.transform.SetParent(parent, false);
             g.transform.localPosition = position;
-            g.AddComponent<MeshFilter>().mesh = mesh;
+            g.AddComponent<MeshFilter>().sharedMesh = mesh;
             g.AddComponent<MeshRenderer>().SetSharedMaterials(materials);
     
             return g;

@@ -1,13 +1,8 @@
 #include "delaunay_tetrahedralization.hpp"
+using namespace std;
 
-#pragma mark - External_Handle
-
-DelaunayTetrahedralizationHandle::DelaunayTetrahedralizationHandle()
-{}
 void DelaunayTetrahedralizationHandle::Dispose()
-{
-    delete_vertices(m_vertices);
-}
+{}
 void DelaunayTetrahedralizationHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values)
 {
     m_vertices = create_vertices(explicit_count, explicit_values, implicit_count, implicit_values);
@@ -56,7 +51,6 @@ extern "C" LIBRARY_EXPORT uint32_t* GetOutputTetrahedrons(void* handle)
     return ((DelaunayTetrahedralizationHandle*)handle)->GetOutputTetrahedrons();
 }
 
-#pragma mark - Internal_Core
 
 void DelaunayTetrahedralizationHandle::delaunay_tetrahedralization()
 {
@@ -252,7 +246,6 @@ void DelaunayTetrahedralizationHandle::delaunay_tetrahedralization()
     }
 }
 
-#pragma mark - Internal_Helper
 
 void DelaunayTetrahedralizationHandle::get_tetrahedron_opposite_vertex(uint32_t t, uint32_t& p)
 {

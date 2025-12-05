@@ -223,9 +223,8 @@ namespace Hanzzz.Tetrahedralizer
                     int t0 = p0;
                     int t1 = p1;
                     int t2 = p2;
-                    int n;
                     Sorter.SortInt3(ref t0, ref t1, ref t2);
-                    if(neighborsRecords.TryGetValue((t0,t1,t2), out n))
+                    if(neighborsRecords.TryGetValue((t0,t1,t2), out int n))
                     {
                         neighbors[index] = n;
                         neighbors[n] = index;

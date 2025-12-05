@@ -8,18 +8,15 @@
 class GenericPointPredicateHandle
 {
 public:
+    void AddInput(uint32_t, double*, uint32_t, uint32_t*);
     void Dispose();
     
-    // number of vertices, then x,y,z of every vertex
-    // number of vertices, then 5/9 followed by indices of explicit vertices
-    void AddInputVertices(uint32_t, double*, uint32_t, uint32_t*);
     
     int Orient3d(uint32_t p0,uint32_t p1,uint32_t p2,uint32_t p3);
     bool IsCollinear(uint32_t p0,uint32_t p1,uint32_t p2);
 
 private:
-    genericPoint** m_vertices;
-    uint32_t m_vertices_count;
+    std::vector<std::shared_ptr<genericPoint>> m_vertices;
 };
 
 extern "C" LIBRARY_EXPORT void* CreateGenericPointPredicateHandle();

@@ -1,4 +1,5 @@
 #include "polyhedralization_tetrahedralization.hpp"
+using namespace std;
 
 void PolyhedralizationTetrahedralizationHandle::polyhedralization_tetrahedralization()
 {
@@ -35,8 +36,7 @@ void PolyhedralizationTetrahedralizationHandle::polyhedralization_tetrahedraliza
             if(connect_vertex == UNDEFINED_VALUE) // add a point at the facet center
             {
                 connect_vertex = m_vertices.size();
-                implicitPoint3D_BPT* center = new implicitPoint3D_BPT(m_facets_centroids[i]->toBPT().P(),m_facets_centroids[i]->toBPT().Q(),m_facets_centroids[i]->toBPT().R(),m_facets_centroids[i]->toBPT().V(),m_facets_centroids[i]->toBPT().U());
-                m_vertices.push_back(center);
+                m_vertices.push_back(m_facets_centroids[i]);
                 m_inserted_facets_centroids.push_back(i);
             }
             
@@ -155,7 +155,7 @@ uint32_t PolyhedralizationTetrahedralizationHandle::find_connect_vertex(uint32_t
     }
     center /= (double)m_u_set_i_0.size();
     uint32_t connect_vertex = m_vertices.size();
-    m_vertices.push_back(new explicitPoint3D(center.x, center.y, center.z));
+    m_vertices.push_back(std::make_shared<explicitPoint3D> (center.x, center.y, center.z));
     m_inserted_polyhedrons_centroids.push_back(polyhedron);
     return connect_vertex;
 }
@@ -194,30 +194,14 @@ void PolyhedralizationTetrahedralizationHandle::add_tetrahedron(uint32_t t0,uint
 }
 
 
-PolyhedralizationTetrahedralizationHandle::PolyhedralizationTetrahedralizationHandle()
-{}
-
 void PolyhedralizationTetrahedralizationHandle::Dispose()
-{
-    delete_vertices(m_vertices);
-    delete_vertices(m_facets_centroids);
-}
-
+{}
 void PolyhedralizationTetrahedralizationHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights)
 {
     m_vertices = create_vertices(explicit_count, explicit_values, implicit_count, implicit_values);
     m_polyhedrons = flat_array_to_nested_vector(polyhedrons, polyhedrons_count);
     m_facets = flat_array_to_nested_vector(facets, facets_count);
-
-    for(uint32_t i=0; i<facets_count; i++)
-    {
-        implicitPoint3D_BPT* p = new implicitPoint3D_BPT(m_vertices[facets_centroids[3*i+0]]->toExplicit3D(),
-                                                         m_vertices[facets_centroids[3*i+1]]->toExplicit3D(),
-                                                         m_vertices[facets_centroids[3*i+2]]->toExplicit3D(),
-                                                         facets_centroids_weights[2*i+0],
-                                                         facets_centroids_weights[2*i+1]);
-        m_facets_centroids.push_back(p);
-    }
+    m_facets_centroids = create_vertices(facets_count, facets_centroids, facets_centroids_weights, m_vertices.data());
 }
 
 void PolyhedralizationTetrahedralizationHandle::Calculate()

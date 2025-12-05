@@ -105,11 +105,11 @@ namespace Hanzzz.Tetrahedralizer
             {
                 mesh = MeshUtility.GetEmptyMesh();
             }
-            m_meshFilter.mesh = mesh;
+            m_meshFilter.sharedMesh = mesh;
         }
         public void AssignMaterials(List<Material> materials)
         {
-            m_meshRenderer.SetMaterials(materials);
+            m_meshRenderer.SetSharedMaterials(materials);
         }
     
         public void DrawOnGUI(Rect rect)

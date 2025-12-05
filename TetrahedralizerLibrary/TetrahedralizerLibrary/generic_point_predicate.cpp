@@ -1,22 +1,20 @@
 #include "generic_point_predicate.hpp"
 
 void GenericPointPredicateHandle::Dispose()
-{
-    delete_vertices(m_vertices, m_vertices_count);
-}
+{}
 
-void GenericPointPredicateHandle::AddInputVertices(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values)
+void GenericPointPredicateHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values)
 {
-    create_vertices(explicit_count, explicit_values, implicit_count, implicit_values, m_vertices, m_vertices_count);
+    m_vertices = create_vertices(explicit_count, explicit_values, implicit_count, implicit_values);
 }
 
 int GenericPointPredicateHandle::Orient3d(uint32_t p0,uint32_t p1,uint32_t p2,uint32_t p3)
 {
-    return orient3d(p0, p1, p2, p3, m_vertices);
+    return orient3d(p0, p1, p2, p3, m_vertices.data());
 }
 bool GenericPointPredicateHandle::IsCollinear(uint32_t p0,uint32_t p1,uint32_t p2)
 {
-    return is_collinear(p0, p1, p2, m_vertices);
+    return is_collinear(p0, p1, p2, m_vertices.data());
 }
 
 
@@ -32,7 +30,7 @@ extern "C" LIBRARY_EXPORT void DisposeGenericPointPredicateHandle(void* handle)
 
 extern "C" LIBRARY_EXPORT void AddGenericPointPredicateVertices(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values)
 {
-    ((GenericPointPredicateHandle*)handle)->AddInputVertices(explicit_count, explicit_values, implicit_count, implicit_values);
+    ((GenericPointPredicateHandle*)handle)->AddInput(explicit_count, explicit_values, implicit_count, implicit_values);
 }
 
 extern "C" LIBRARY_EXPORT int CalculateOrient3d(void* handle, uint32_t p0,uint32_t p1,uint32_t p2,uint32_t p3)

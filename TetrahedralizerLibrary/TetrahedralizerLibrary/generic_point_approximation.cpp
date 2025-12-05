@@ -12,13 +12,8 @@ void GenericPointApproximationHandle::generic_point_approximation()
     }
 }
 
-GenericPointApproximationHandle::GenericPointApproximationHandle()
-{}
 void GenericPointApproximationHandle::Dispose()
-{
-    delete_vertices(m_vertices);
-}
-
+{}
 void GenericPointApproximationHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values)
 {
     m_vertices = create_vertices(explicit_count, explicit_values, implicit_count, implicit_values);

@@ -9,10 +9,6 @@
 class Tetrahedralization
 {
 public:
-    Tetrahedralization();
-    Tetrahedralization(uint32_t* tetrahedrons, uint32_t tetrahedrons_count); // 4*m_tetrahedrons_count == m_tetrahedrons.size()
-    ~Tetrahedralization();
-
     void assign_tetrahedrons(uint32_t* tetrahedrons, uint32_t tetrahedrons_count);
     uint32_t get_tetrahedrons_count();
     uint32_t get_tetrahedron_vertex(uint32_t t, uint32_t i);
@@ -21,9 +17,9 @@ public:
     uint32_t get_vertex_incident_tetrahedron(uint32_t v);
 
 private:
-    vector<uint32_t> m_tetrahedrons;
-    vector<uint32_t> m_neighbors; // neighbors order: 0,1,2  1,0,3  0,2,3, 2,1,3
-    vector<uint32_t> m_vertices_incidents;
+    std::vector<uint32_t> m_tetrahedrons;
+    std::vector<uint32_t> m_neighbors; // neighbors order: 0,1,2  1,0,3  0,2,3, 2,1,3
+    std::vector<uint32_t> m_vertices_incidents;
     COMMON_FIELDS
 };
 

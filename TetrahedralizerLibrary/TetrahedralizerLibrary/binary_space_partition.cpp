@@ -1,14 +1,8 @@
 #include "binary_space_partition.hpp"
+using namespace std;
 
-#pragma mark - External_Handle
-
-BinarySpacePartitionHandle::BinarySpacePartitionHandle()
-{}
 void BinarySpacePartitionHandle::Dispose()
-{
-    delete_vertices(m_vertices);
-}
-
+{}
 void BinarySpacePartitionHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t tetrahedrons_count, uint32_t* tetrahedrons, uint32_t constraints_count, uint32_t* constraints, bool aggressively_add_virtual_constraints)
 {
     m_vertices = create_vertices(explicit_count, explicit_values, 0, nullptr);
@@ -111,10 +105,9 @@ extern "C" LIBRARY_EXPORT double* GetBinarySpacePartitionFacetsCentroidsWeights(
     return ((BinarySpacePartitionHandle*)handle)->GetFacetsCentroidsWeights();
 }
 
-#pragma mark - Internal_Core
 
-PolyhedronEdge::PolyhedronEdge(){}
-PolyhedronEdge::PolyhedronEdge(const PolyhedronEdge& other)
+BinarySpacePartitionHandle::PolyhedronEdge::PolyhedronEdge(){}
+BinarySpacePartitionHandle::PolyhedronEdge::PolyhedronEdge(const PolyhedronEdge& other)
 {
     this->e0 = other.e0;
     this->e1 = other.e1;
@@ -126,8 +119,8 @@ PolyhedronEdge::PolyhedronEdge(const PolyhedronEdge& other)
     this->p5 = other.p5;
 }
 
-PolyhedronFacet::PolyhedronFacet(){}
-PolyhedronFacet::PolyhedronFacet(const PolyhedronFacet& other)
+BinarySpacePartitionHandle::PolyhedronFacet::PolyhedronFacet(){}
+BinarySpacePartitionHandle::PolyhedronFacet::PolyhedronFacet(const PolyhedronFacet& other)
 {
     this->edges = other.edges;
     this->p0 = other.p0;
@@ -269,18 +262,18 @@ void BinarySpacePartitionHandle::binary_space_partition()
         }
     }
 
-    map<uint32_t, vector<uint32_t>> polyhedrons_intersect_constraints;
-    // for every polyhedron, find the constraints that intersect it.
+    // for every polyhedron, find the constraints that intersect it
+    map<uint32_t,uint32_t> polyhedrons_slice_order; // key is polyhedron, value is the root node of its slice tree
     {
+        map<uint32_t, vector<pair<uint32_t, vector<shared_ptr<genericPoint>>>>> polyhedrons_intersect_constraints;
         for(uint32_t i=0; i<m_constraints.size()/3; i++)
         {
             uint32_t c0 = m_constraints[3*i+0];
             uint32_t c1 = m_constraints[3*i+1];
             uint32_t c2 = m_constraints[3*i+2];
 
-            m_u_set_i_0.clear(); // stores improperly intersected tetrahedrons
-            m_u_set_i_1.clear(); // stores visited polyhedrons
-            m_u_set_i_1.insert(UNDEFINED_VALUE);
+            m_u_set_i_0.clear(); // stores visited polyhedrons
+            m_u_set_i_0.insert(UNDEFINED_VALUE);
             clear_queue(m_queue_i_0); // stores tetrahedrons to be visited
             m_queue_i_0.push(m_tetrahedralization.get_vertex_incident_tetrahedron(c0));
             m_queue_i_0.push(m_tetrahedralization.get_vertex_incident_tetrahedron(c1));
@@ -290,13 +283,13 @@ void BinarySpacePartitionHandle::binary_space_partition()
             {
                 uint32_t t = m_queue_i_0.front();
                 m_queue_i_0.pop();
-                if(m_u_set_i_1.end() != m_u_set_i_1.find(t))
+                if(m_u_set_i_0.end() != m_u_set_i_0.find(t))
                 {
                     continue;
                 }
-                m_u_set_i_1.insert(t);
+                m_u_set_i_0.insert(t);
 
-                int int_type = triangle_tetrahedron_intersection(c0, c1, c2,
+                auto [int_type,clip_vertices] = TriangleTetrahedronIntersection::triangle_tetrahedron_intersection(c0, c1, c2,
                                                                  m_tetrahedralization.get_tetrahedron_vertex(t,0),
                                                                  m_tetrahedralization.get_tetrahedron_vertex(t,1),
                                                                  m_tetrahedralization.get_tetrahedron_vertex(t,2),
@@ -308,7 +301,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
                 }
                 if(2 == int_type)
                 {
-                    m_u_set_i_0.insert(t);
+                    polyhedrons_intersect_constraints[t].push_back(make_pair(i,clip_vertices));
                 }
                 
                 for(uint32_t f=0; f<4; f++)
@@ -316,395 +309,391 @@ void BinarySpacePartitionHandle::binary_space_partition()
                     m_queue_i_0.push(m_tetrahedralization.get_tetrahedron_neighbor(t, f));
                 }
             }
-
-            m_u_set_i_0.erase(UNDEFINED_VALUE);
-            // if the constraint improperly intersects a tetrahedron, they are associated
-            for(uint32_t t : m_u_set_i_0)
-            {
-                polyhedrons_intersect_constraints[t].push_back(i);
-            }
+        }
+        
+        for(auto& [p, slices] : polyhedrons_intersect_constraints)
+        {
+            polyhedrons_slice_order[p] = build_polyhedrons_slice_tree(slices);
         }
     }
+    
 
     m_inserted_vertices_count = 0;
     // slice each polyhedron with its list of improper constraints.
     {
-        for(auto it=polyhedrons_intersect_constraints.begin(); it!=polyhedrons_intersect_constraints.end(); it++)
+        while(!polyhedrons_slice_order.empty())
         {
-            while(!it->second.empty())
+            uint32_t p = polyhedrons_slice_order.begin()->first;
+            PolyhedronConstraint& polyhedronConstraint = m_polyhedrons_slice_tree[polyhedrons_slice_order.begin()->second];
+            polyhedrons_slice_order.erase(polyhedrons_slice_order.begin());
+            uint32_t c = polyhedronConstraint.c;
+            uint32_t c0 = m_constraints[3*c+0];
+            uint32_t c1 = m_constraints[3*c+1];
+            uint32_t c2 = m_constraints[3*c+2];
+            
+            m_vector_i_0.clear(); // top polyhedron's facets
+            m_vector_i_1.clear(); // bottom polyhedron's facets
+            m_u_set_i_0.clear(); // edges on the constraint
+            m_u_map_i_iii_0.clear(); // keys are processed edges, values are (intersection vertex, top edge, bottom edge)
+            for(uint32_t f : m_polyhedrons[p])
             {
-                uint32_t p = it->first;
-                uint32_t c = it->second.back();
-                it->second.pop_back();
-                uint32_t c0 = m_constraints[3*c+0];
-                uint32_t c1 = m_constraints[3*c+1];
-                uint32_t c2 = m_constraints[3*c+2];
+                uint32_t i0(UNDEFINED_VALUE), i1(UNDEFINED_VALUE);
+                m_vector_i_2.clear(); // edges on top of the constraint
+                m_vector_i_3.clear(); // edges on bottom of the constraint
+                bool has_edge_on_constraint = false;
                 
-                m_vector_i_0.clear(); // top polyhedron's facets
-                m_vector_i_1.clear(); // bottom polyhedron's facets
-                m_u_set_i_0.clear(); // edges on the constraint
-                m_u_map_i_iii_0.clear(); // keys are processed edges, values are (intersection vertex, top edge, bottom edge)
-                for(uint32_t f : m_polyhedrons[p])
+                for(uint32_t e : m_polyhedrons_facets[f].edges)
                 {
-                    uint32_t i0(UNDEFINED_VALUE), i1(UNDEFINED_VALUE);
-                    m_vector_i_2.clear(); // edges on top of the constraint
-                    m_vector_i_3.clear(); // edges on bottom of the constraint
-                    bool has_edge_on_constraint = false;
-                    
-                    for(uint32_t e : m_polyhedrons_facets[f].edges)
+                    if(m_u_map_i_iii_0.end() != m_u_map_i_iii_0.find(e))
                     {
-                        if(m_u_map_i_iii_0.end() != m_u_map_i_iii_0.find(e))
+                        auto [i_p,top_e,bottom_e] = m_u_map_i_iii_0[e];
+                        if(UNDEFINED_VALUE == i_p && top_e == UNDEFINED_VALUE && bottom_e == UNDEFINED_VALUE)
                         {
-                            auto [i_p,top_e,bottom_e] = m_u_map_i_iii_0[e];
-                            if(UNDEFINED_VALUE == i_p && top_e == UNDEFINED_VALUE && bottom_e == UNDEFINED_VALUE)
-                            {
-                                m_u_set_i_0.insert(e); // e is on the constraint
-                                has_edge_on_constraint = true;
-                                continue;
-                            }
-                            
-                            if(UNDEFINED_VALUE != i_p)
-                            {
-                                if(UNDEFINED_VALUE == i0 || i_p == i0)
-                                {
-                                    i0 = i_p;
-                                }
-                                else
-                                {
-                                    i1 = i_p;
-                                }
-                            }
-                            if(UNDEFINED_VALUE != top_e)
-                            {
-                                m_vector_i_2.push_back(top_e);
-                            }
-                            if(UNDEFINED_VALUE != bottom_e)
-                            {
-                                m_vector_i_3.push_back(bottom_e);
-                            }
+                            m_u_set_i_0.insert(e); // e is on the constraint
+                            has_edge_on_constraint = true;
                             continue;
                         }
                         
-                        uint32_t e0(m_polyhedrons_edges[e].e0), e1(m_polyhedrons_edges[e].e1);
-                        int o0(orient3d(c0,c1,c2,e0, m_vertices.data())), o1(orient3d(c0,c1,c2,e1, m_vertices.data()));
-                        if(0 == o0)
+                        if(UNDEFINED_VALUE != i_p)
                         {
-                            if(0 == o1)
+                            if(UNDEFINED_VALUE == i0 || i_p == i0)
                             {
-                                m_u_set_i_0.insert(e);
-                                has_edge_on_constraint = true;
-                                m_u_map_i_iii_0[e] = {UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE};
+                                i0 = i_p;
                             }
                             else
                             {
-                                if(1 == o1)
-                                {
-                                    m_vector_i_2.push_back(e);
-                                    m_u_map_i_iii_0[e] = {e0,e,UNDEFINED_VALUE};
-                                }
-                                else
-                                {
-                                    m_vector_i_3.push_back(e);
-                                    m_u_map_i_iii_0[e] = {e0,UNDEFINED_VALUE,e};
-                                }
-                                
-                                if(UNDEFINED_VALUE == i0 || e0 == i0)
-                                {
-                                    i0 = e0;
-                                }
-                                else
-                                {
-                                    i1 = e0;
-                                }
+                                i1 = i_p;
                             }
                         }
-                        else if(1 == o0)
+                        if(UNDEFINED_VALUE != top_e)
                         {
-                            if(0 == o1)
+                            m_vector_i_2.push_back(top_e);
+                        }
+                        if(UNDEFINED_VALUE != bottom_e)
+                        {
+                            m_vector_i_3.push_back(bottom_e);
+                        }
+                        continue;
+                    }
+                    
+                    uint32_t e0(m_polyhedrons_edges[e].e0), e1(m_polyhedrons_edges[e].e1);
+                    int o0(orient3d(c0,c1,c2,e0, m_vertices.data())), o1(orient3d(c0,c1,c2,e1, m_vertices.data()));
+                    if(0 == o0)
+                    {
+                        if(0 == o1)
+                        {
+                            m_u_set_i_0.insert(e);
+                            has_edge_on_constraint = true;
+                            m_u_map_i_iii_0[e] = {UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE};
+                        }
+                        else
+                        {
+                            if(1 == o1)
                             {
                                 m_vector_i_2.push_back(e);
-                                m_u_map_i_iii_0[e] = {e1,e,UNDEFINED_VALUE};
-                                if(UNDEFINED_VALUE == i0 || e1 == i0)
-                                {
-                                    i0 = e1;
-                                }
-                                else
-                                {
-                                    i1 = e1;
-                                }
-                            }
-                            else if(1 == o1)
-                            {
-                                m_vector_i_2.push_back(e);
-                                m_u_map_i_iii_0[e] = {UNDEFINED_VALUE,e,UNDEFINED_VALUE};
+                                m_u_map_i_iii_0[e] = {e0,e,UNDEFINED_VALUE};
                             }
                             else
                             {
-                                uint32_t new_i;
-                                if(UNDEFINED_VALUE == m_polyhedrons_edges[e].p2)
-                                {
-                                    uint32_t oe0(m_polyhedrons_edges[e].p0), oe1(m_polyhedrons_edges[e].p1);
-                                    new_i = add_LPI(oe0,oe1,c0,c1,c2);
-                                }
-                                else
-                                {
-                                    new_i = add_TPI(c0,c1,c2,m_polyhedrons_edges[e].p0,m_polyhedrons_edges[e].p1,m_polyhedrons_edges[e].p2,m_polyhedrons_edges[e].p3,m_polyhedrons_edges[e].p4,m_polyhedrons_edges[e].p5);
-                                }
-                                
-                                m_polyhedrons_edges[e].e0 = e0;
-                                m_polyhedrons_edges[e].e1 = new_i;
-                                m_vector_i_2.push_back(e);
-                                uint32_t bottom_e = m_polyhedrons_edges.size();
-                                m_polyhedrons_edges.push_back(PolyhedronEdge(m_polyhedrons_edges[e]));
-                                m_polyhedrons_edges[bottom_e].e0 = new_i;
-                                m_polyhedrons_edges[bottom_e].e1 = e1;
-                                m_vector_i_3.push_back(bottom_e);
-                                
-                                m_u_map_i_iii_0[e] = {new_i,e,bottom_e};
-                                
-                                if(UNDEFINED_VALUE == i0 || new_i == i0)
-                                {
-                                    i0 = new_i;
-                                }
-                                else
-                                {
-                                    i1 = new_i;
-                                }
+                                m_vector_i_3.push_back(e);
+                                m_u_map_i_iii_0[e] = {e0,UNDEFINED_VALUE,e};
+                            }
+                            
+                            if(UNDEFINED_VALUE == i0 || e0 == i0)
+                            {
+                                i0 = e0;
+                            }
+                            else
+                            {
+                                i1 = e0;
+                            }
+                        }
+                    }
+                    else if(1 == o0)
+                    {
+                        if(0 == o1)
+                        {
+                            m_vector_i_2.push_back(e);
+                            m_u_map_i_iii_0[e] = {e1,e,UNDEFINED_VALUE};
+                            if(UNDEFINED_VALUE == i0 || e1 == i0)
+                            {
+                                i0 = e1;
+                            }
+                            else
+                            {
+                                i1 = e1;
+                            }
+                        }
+                        else if(1 == o1)
+                        {
+                            m_vector_i_2.push_back(e);
+                            m_u_map_i_iii_0[e] = {UNDEFINED_VALUE,e,UNDEFINED_VALUE};
+                        }
+                        else
+                        {
+                            uint32_t new_i;
+                            if(UNDEFINED_VALUE == m_polyhedrons_edges[e].p2)
+                            {
+                                uint32_t oe0(m_polyhedrons_edges[e].p0), oe1(m_polyhedrons_edges[e].p1);
+                                new_i = add_LPI(oe0,oe1,c0,c1,c2);
+                            }
+                            else
+                            {
+                                new_i = add_TPI(c0,c1,c2,m_polyhedrons_edges[e].p0,m_polyhedrons_edges[e].p1,m_polyhedrons_edges[e].p2,m_polyhedrons_edges[e].p3,m_polyhedrons_edges[e].p4,m_polyhedrons_edges[e].p5);
+                            }
+                            
+                            m_polyhedrons_edges[e].e0 = e0;
+                            m_polyhedrons_edges[e].e1 = new_i;
+                            m_vector_i_2.push_back(e);
+                            uint32_t bottom_e = m_polyhedrons_edges.size();
+                            m_polyhedrons_edges.push_back(PolyhedronEdge(m_polyhedrons_edges[e]));
+                            m_polyhedrons_edges[bottom_e].e0 = new_i;
+                            m_polyhedrons_edges[bottom_e].e1 = e1;
+                            m_vector_i_3.push_back(bottom_e);
+                            
+                            m_u_map_i_iii_0[e] = {new_i,e,bottom_e};
+                            
+                            if(UNDEFINED_VALUE == i0 || new_i == i0)
+                            {
+                                i0 = new_i;
+                            }
+                            else
+                            {
+                                i1 = new_i;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if(0 == o1)
+                        {
+                            m_vector_i_3.push_back(e);
+                            m_u_map_i_iii_0[e] = {e1,UNDEFINED_VALUE,e};
+                            if(UNDEFINED_VALUE == i0 || e1 == i0)
+                            {
+                                i0 = e1;
+                            }
+                            else
+                            {
+                                i1 = e1;
+                            }
+                        }
+                        else if(1 == o1)
+                        {
+                            uint32_t new_i;
+                            if(UNDEFINED_VALUE == m_polyhedrons_edges[e].p2)
+                            {
+                                uint32_t oe0(m_polyhedrons_edges[e].p0), oe1(m_polyhedrons_edges[e].p1);
+                                new_i = add_LPI(oe0,oe1,c0,c1,c2);
+                            }
+                            else
+                            {
+                                new_i = add_TPI(c0,c1,c2,m_polyhedrons_edges[e].p0,m_polyhedrons_edges[e].p1,m_polyhedrons_edges[e].p2,m_polyhedrons_edges[e].p3,m_polyhedrons_edges[e].p4,m_polyhedrons_edges[e].p5);
+                            }
+                            
+                            m_polyhedrons_edges[e].e0 = e1;
+                            m_polyhedrons_edges[e].e1 = new_i;
+                            m_vector_i_2.push_back(e);
+                            uint32_t bottom_e = m_polyhedrons_edges.size();
+                            m_polyhedrons_edges.push_back(PolyhedronEdge(m_polyhedrons_edges[e]));
+                            m_polyhedrons_edges[bottom_e].e0 = new_i;
+                            m_polyhedrons_edges[bottom_e].e1 = e0;
+                            m_vector_i_3.push_back(bottom_e);
+                            
+                            m_u_map_i_iii_0[e] = {new_i,e,bottom_e};
+                            if(UNDEFINED_VALUE == i0 || new_i == i0)
+                            {
+                                i0 = new_i;
+                            }
+                            else
+                            {
+                                i1 = new_i;
                             }
                         }
                         else
                         {
-                            if(0 == o1)
-                            {
-                                m_vector_i_3.push_back(e);
-                                m_u_map_i_iii_0[e] = {e1,UNDEFINED_VALUE,e};
-                                if(UNDEFINED_VALUE == i0 || e1 == i0)
-                                {
-                                    i0 = e1;
-                                }
-                                else
-                                {
-                                    i1 = e1;
-                                }
-                            }
-                            else if(1 == o1)
-                            {
-                                uint32_t new_i;
-                                if(UNDEFINED_VALUE == m_polyhedrons_edges[e].p2)
-                                {
-                                    uint32_t oe0(m_polyhedrons_edges[e].p0), oe1(m_polyhedrons_edges[e].p1);
-                                    new_i = add_LPI(oe0,oe1,c0,c1,c2);
-                                }
-                                else
-                                {
-                                    new_i = add_TPI(c0,c1,c2,m_polyhedrons_edges[e].p0,m_polyhedrons_edges[e].p1,m_polyhedrons_edges[e].p2,m_polyhedrons_edges[e].p3,m_polyhedrons_edges[e].p4,m_polyhedrons_edges[e].p5);
-                                }
-                                
-                                m_polyhedrons_edges[e].e0 = e1;
-                                m_polyhedrons_edges[e].e1 = new_i;
-                                m_vector_i_2.push_back(e);
-                                uint32_t bottom_e = m_polyhedrons_edges.size();
-                                m_polyhedrons_edges.push_back(PolyhedronEdge(m_polyhedrons_edges[e]));
-                                m_polyhedrons_edges[bottom_e].e0 = new_i;
-                                m_polyhedrons_edges[bottom_e].e1 = e0;
-                                m_vector_i_3.push_back(bottom_e);
-                                
-                                m_u_map_i_iii_0[e] = {new_i,e,bottom_e};
-                                if(UNDEFINED_VALUE == i0 || new_i == i0)
-                                {
-                                    i0 = new_i;
-                                }
-                                else
-                                {
-                                    i1 = new_i;
-                                }
-                            }
-                            else
-                            {
-                                m_vector_i_3.push_back(e);
-                                m_u_map_i_iii_0[e] = {UNDEFINED_VALUE,UNDEFINED_VALUE,e};
-                            }
+                            m_vector_i_3.push_back(e);
+                            m_u_map_i_iii_0[e] = {UNDEFINED_VALUE,UNDEFINED_VALUE,e};
                         }
-                    }
-                    
-                    if(has_edge_on_constraint || i1 == UNDEFINED_VALUE) // constraint intersects on one or more edges of the facet or does not intersect the facet
-                    {
-                        if(!m_vector_i_2.empty())
-                        {
-                            m_vector_i_0.push_back(f);
-                        }
-                        else if(!m_vector_i_3.empty())
-                        {
-                            m_vector_i_1.push_back(f);
-                        }
-                    }
-                    else
-                    {
-                        uint32_t i_e = m_polyhedrons_edges.size();
-                        m_polyhedrons_edges.push_back(PolyhedronEdge());
-                        m_polyhedrons_edges[i_e].e0 = i0;
-                        m_polyhedrons_edges[i_e].e1 = i1;
-                        m_polyhedrons_edges[i_e].p0 = m_polyhedrons_facets[f].p0;
-                        m_polyhedrons_edges[i_e].p1 = m_polyhedrons_facets[f].p1;
-                        m_polyhedrons_edges[i_e].p2 = m_polyhedrons_facets[f].p2;
-                        m_polyhedrons_edges[i_e].p3 = c0;
-                        m_polyhedrons_edges[i_e].p4 = c1;
-                        m_polyhedrons_edges[i_e].p5 = c2;
-                        m_u_set_i_0.insert(i_e);
-                        
-                        m_polyhedrons_facets[f].edges.clear();
-                        uint32_t bottom_f = m_polyhedrons_facets.size();
-                        m_polyhedrons_facets.push_back(PolyhedronFacet(m_polyhedrons_facets[f]));
-                        m_polyhedrons_facets[f].edges = m_vector_i_2;
-                        m_polyhedrons_facets[f].edges.push_back(i_e);
-                        m_polyhedrons_facets[bottom_f].edges = m_vector_i_3;
-                        m_polyhedrons_facets[bottom_f].edges.push_back(i_e);
-                        m_vector_i_0.push_back(f);
-                        m_vector_i_1.push_back(bottom_f);
                     }
                 }
                 
-                if(0 == m_vector_i_0.size() || 0 == m_vector_i_1.size())
+                if(has_edge_on_constraint || i1 == UNDEFINED_VALUE) // constraint intersects on one or more edges of the facet or does not intersect the facet
+                {
+                    if(!m_vector_i_2.empty())
+                    {
+                        m_vector_i_0.push_back(f);
+                    }
+                    else if(!m_vector_i_3.empty())
+                    {
+                        m_vector_i_1.push_back(f);
+                    }
+                }
+                else
+                {
+                    uint32_t i_e = m_polyhedrons_edges.size();
+                    m_polyhedrons_edges.push_back(PolyhedronEdge());
+                    m_polyhedrons_edges[i_e].e0 = i0;
+                    m_polyhedrons_edges[i_e].e1 = i1;
+                    m_polyhedrons_edges[i_e].p0 = m_polyhedrons_facets[f].p0;
+                    m_polyhedrons_edges[i_e].p1 = m_polyhedrons_facets[f].p1;
+                    m_polyhedrons_edges[i_e].p2 = m_polyhedrons_facets[f].p2;
+                    m_polyhedrons_edges[i_e].p3 = c0;
+                    m_polyhedrons_edges[i_e].p4 = c1;
+                    m_polyhedrons_edges[i_e].p5 = c2;
+                    m_u_set_i_0.insert(i_e);
+                    
+                    m_polyhedrons_facets[f].edges.clear();
+                    uint32_t bottom_f = m_polyhedrons_facets.size();
+                    m_polyhedrons_facets.push_back(PolyhedronFacet(m_polyhedrons_facets[f]));
+                    m_polyhedrons_facets[f].edges = m_vector_i_2;
+                    m_polyhedrons_facets[f].edges.push_back(i_e);
+                    m_polyhedrons_facets[bottom_f].edges = m_vector_i_3;
+                    m_polyhedrons_facets[bottom_f].edges.push_back(i_e);
+                    m_vector_i_0.push_back(f);
+                    m_vector_i_1.push_back(bottom_f);
+                }
+            }
+            
+            // constraint does not slice the polyhedron
+            if(0 == m_vector_i_0.size() || 0 == m_vector_i_1.size())
+            {
+                if(0 != m_vector_i_0.size() && UNDEFINED_VALUE != polyhedronConstraint.top)
+                {
+                    polyhedrons_slice_order[p] = polyhedronConstraint.top;
+                }
+                if(0 != m_vector_i_1.size() && UNDEFINED_VALUE != polyhedronConstraint.bot)
+                {
+                    polyhedrons_slice_order[p] = polyhedronConstraint.bot;
+                }
+                continue;
+            }
+//            if(m_vector_i_0.size()<3 || m_vector_i_1.size()<3 || m_u_set_i_0.size()<3)
+//            {
+//                throw "wtf";
+//            }
+            
+            uint32_t bottom_polyhedron = m_polyhedrons.size();
+            m_polyhedrons.push_back(vector<uint32_t>());
+            
+            uint32_t common_facet = m_polyhedrons_facets.size();
+            m_polyhedrons_facets.push_back(PolyhedronFacet());
+            m_polyhedrons_facets[common_facet].p0 = c0;
+            m_polyhedrons_facets[common_facet].p1 = c1;
+            m_polyhedrons_facets[common_facet].p2 = c2;
+            m_polyhedrons_facets[common_facet].ip0 = p;
+            m_polyhedrons_facets[common_facet].ip1 = bottom_polyhedron;
+            for(uint32_t e : m_u_set_i_0)
+            {
+                m_polyhedrons_facets[common_facet].edges.push_back(e);
+            }
+            
+            m_polyhedrons[p] = m_vector_i_0;
+            m_polyhedrons[p].push_back(common_facet);
+            m_polyhedrons[bottom_polyhedron] = m_vector_i_1;
+            m_polyhedrons[bottom_polyhedron].push_back(common_facet);
+            
+            for(uint32_t f : m_polyhedrons[bottom_polyhedron])
+            {
+                if(f == common_facet)
                 {
                     continue;
                 }
-                if(m_vector_i_0.size()<3 || m_vector_i_1.size()<3 || m_u_set_i_0.size()<3)
+                uint32_t n;
+                if(p == m_polyhedrons_facets[f].ip0)
                 {
-                    cout << "wtf" << endl;
+                    m_polyhedrons_facets[f].ip0 = bottom_polyhedron;
+                    n = m_polyhedrons_facets[f].ip1;
+                }
+                else
+                {
+                    m_polyhedrons_facets[f].ip1 = bottom_polyhedron;
+                    n = m_polyhedrons_facets[f].ip0;
+                }
+                if(n != UNDEFINED_VALUE)
+                {
+                    if(m_polyhedrons[n].end() == find(m_polyhedrons[n].begin(), m_polyhedrons[n].end(), f))
+                    {
+                        m_polyhedrons[n].push_back(f);
+                    }
+                }
+            }
+            
+            for(auto [k, v] : m_u_map_i_iii_0)
+            {
+                uint32_t original_e = k;
+                uint32_t i_e = get<0>(v);
+                uint32_t top_e = get<1>(v);
+                uint32_t bottom_e = get<2>(v);
+                
+                if(UNDEFINED_VALUE == i_e || UNDEFINED_VALUE == top_e || UNDEFINED_VALUE == bottom_e)
+                {
+                    continue;
                 }
                 
-                uint32_t bottom_polyhedron = m_polyhedrons.size();
-                m_polyhedrons.push_back(vector<uint32_t>());
-                
-                uint32_t common_facet = m_polyhedrons_facets.size();
-                m_polyhedrons_facets.push_back(PolyhedronFacet());
-                m_polyhedrons_facets[common_facet].p0 = c0;
-                m_polyhedrons_facets[common_facet].p1 = c1;
-                m_polyhedrons_facets[common_facet].p2 = c2;
-                m_polyhedrons_facets[common_facet].ip0 = p;
-                m_polyhedrons_facets[common_facet].ip1 = bottom_polyhedron;
-                for(uint32_t e : m_u_set_i_0)
+                if(original_e == bottom_e)
                 {
-                    m_polyhedrons_facets[common_facet].edges.push_back(e);
+                    swap(top_e,bottom_e);
                 }
-                
-                m_polyhedrons[p] = m_vector_i_0;
-                m_polyhedrons[p].push_back(common_facet);
-                m_polyhedrons[bottom_polyhedron] = m_vector_i_1;
-                m_polyhedrons[bottom_polyhedron].push_back(common_facet);
-                
-                for(uint32_t f : m_polyhedrons[bottom_polyhedron])
+                m_u_set_i_0.clear(); // visited polyhedrons
+                m_u_set_i_0.insert(UNDEFINED_VALUE);
+                clear_queue(m_queue_i_0); // polyhedrons to be visited
+                m_queue_i_0.push(p);
+                while(!m_queue_i_0.empty())
                 {
-                    if(f == common_facet)
+                    uint32_t cur = m_queue_i_0.front();
+                    m_queue_i_0.pop();
+                    if(m_u_set_i_0.end() != m_u_set_i_0.find(cur))
                     {
                         continue;
                     }
-                    uint32_t n;
-                    if(p == m_polyhedrons_facets[f].ip0)
+                    m_u_set_i_0.insert(cur);
+                    
+                    bool search_neighbor = false;
+                    for(uint32_t f : m_polyhedrons[cur])
                     {
-                        m_polyhedrons_facets[f].ip0 = bottom_polyhedron;
-                        n = m_polyhedrons_facets[f].ip1;
-                    }
-                    else
-                    {
-                        m_polyhedrons_facets[f].ip1 = bottom_polyhedron;
-                        n = m_polyhedrons_facets[f].ip0;
-                    }
-                    if(n != UNDEFINED_VALUE)
-                    {
-                        if(m_polyhedrons[n].end() == find(m_polyhedrons[n].begin(), m_polyhedrons[n].end(), f))
+                        if(m_polyhedrons_facets[f].edges.end() != find(m_polyhedrons_facets[f].edges.begin(),m_polyhedrons_facets[f].edges.end(), original_e))
                         {
-                            m_polyhedrons[n].push_back(f);
+                            search_neighbor = true;
+                            if(m_polyhedrons[p].end() != find(m_polyhedrons[p].begin(), m_polyhedrons[p].end(), f))
+                            {
+                                continue;
+                            }
+                            if(m_polyhedrons[bottom_polyhedron].end() != find(m_polyhedrons[bottom_polyhedron].begin(), m_polyhedrons[bottom_polyhedron].end(), f))
+                            {
+                                continue;
+                            }
+                            if(m_polyhedrons_facets[f].edges.end() == find(m_polyhedrons_facets[f].edges.begin(),m_polyhedrons_facets[f].edges.end(), bottom_e))
+                            {
+                                m_polyhedrons_facets[f].edges.push_back(bottom_e);
+                            }
                         }
                     }
-                }
-                
-                for(auto [k, v] : m_u_map_i_iii_0)
-                {
-                    uint32_t original_e = k;
-                    uint32_t i_e = get<0>(v);
-                    uint32_t top_e = get<1>(v);
-                    uint32_t bottom_e = get<2>(v);
                     
-                    if(UNDEFINED_VALUE == i_e || UNDEFINED_VALUE == top_e || UNDEFINED_VALUE == bottom_e)
+                    if(search_neighbor)
                     {
-                        continue;
-                    }
-                    
-                    if(original_e == bottom_e)
-                    {
-                        swap(top_e,bottom_e);
-                    }
-                    m_u_set_i_0.clear(); // visited polyhedrons
-                    m_u_set_i_0.insert(UNDEFINED_VALUE);
-                    clear_queue(m_queue_i_0); // polyhedrons to be visited
-                    m_queue_i_0.push(p);
-                    while(!m_queue_i_0.empty())
-                    {
-                        uint32_t cur = m_queue_i_0.front();
-                        m_queue_i_0.pop();
-                        if(m_u_set_i_0.end() != m_u_set_i_0.find(cur))
-                        {
-                            continue;
-                        }
-                        m_u_set_i_0.insert(cur);
-                        
-                        bool search_neighbor = false;
                         for(uint32_t f : m_polyhedrons[cur])
                         {
-                            if(m_polyhedrons_facets[f].edges.end() != find(m_polyhedrons_facets[f].edges.begin(),m_polyhedrons_facets[f].edges.end(), original_e))
+                            if(cur == m_polyhedrons_facets[f].ip0)
                             {
-                                search_neighbor = true;
-                                if(m_polyhedrons[p].end() != find(m_polyhedrons[p].begin(), m_polyhedrons[p].end(), f))
-                                {
-                                    continue;
-                                }
-                                if(m_polyhedrons[bottom_polyhedron].end() != find(m_polyhedrons[bottom_polyhedron].begin(), m_polyhedrons[bottom_polyhedron].end(), f))
-                                {
-                                    continue;
-                                }
-                                if(m_polyhedrons_facets[f].edges.end() == find(m_polyhedrons_facets[f].edges.begin(),m_polyhedrons_facets[f].edges.end(), bottom_e))
-                                {
-                                    m_polyhedrons_facets[f].edges.push_back(bottom_e);
-                                }
+                                m_queue_i_0.push(m_polyhedrons_facets[f].ip1);
                             }
-                        }
-                        
-                        if(search_neighbor)
-                        {
-                            for(uint32_t f : m_polyhedrons[cur])
+                            else
                             {
-                                if(cur == m_polyhedrons_facets[f].ip0)
-                                {
-                                    m_queue_i_0.push(m_polyhedrons_facets[f].ip1);
-                                }
-                                else
-                                {
-                                    m_queue_i_0.push(m_polyhedrons_facets[f].ip0);
-                                }
+                                m_queue_i_0.push(m_polyhedrons_facets[f].ip0);
                             }
                         }
                     }
                 }
-                
-                m_vector_i_0.clear(); // store constraints that intersect top polyhedron
-                for(uint32_t j=0; j<it->second.size(); j++)
-                {
-                    uint32_t nc0 = m_constraints[3*it->second[j]+0];
-                    uint32_t nc1 = m_constraints[3*it->second[j]+1];
-                    uint32_t nc2 = m_constraints[3*it->second[j]+2];
-                    int o0(orient3d(c0,c1,c2,nc0, m_vertices.data())), o1(orient3d(c0,c1,c2,nc1, m_vertices.data())), o2(orient3d(c0,c1,c2,nc2, m_vertices.data()));
-
-                    if(1 == o0 || 1 == o1 || 1 == o2) // constraints may not improperly intersect new polyhedrons, but the slicing algorithm can handle it
-                    {
-                        m_vector_i_0.push_back(it->second[j]);
-                    }
-                    if(-1 == o0 || -1 == o1 || -1 == o2)
-                    {
-                        polyhedrons_intersect_constraints[bottom_polyhedron].push_back(it->second[j]);
-                    }
-                }
-                it->second = m_vector_i_0;
+            }
+            
+            if(UNDEFINED_VALUE != polyhedronConstraint.top)
+            {
+                polyhedrons_slice_order[p] = polyhedronConstraint.top;
+            }
+            if(UNDEFINED_VALUE != polyhedronConstraint.bot)
+            {
+                polyhedrons_slice_order[bottom_polyhedron] = polyhedronConstraint.bot;
             }
         }
     }
@@ -744,7 +733,6 @@ void BinarySpacePartitionHandle::binary_space_partition()
     }
 }
 
-#pragma mark - Internal_Helper
 
 uint32_t BinarySpacePartitionHandle::find_or_add_edge(uint32_t p0, uint32_t p1)
 {
@@ -808,11 +796,84 @@ void BinarySpacePartitionHandle::add_virtual_constraint(uint32_t e0, uint32_t e1
     throw "can't add virtual constraint";
 }
 
+uint32_t BinarySpacePartitionHandle::build_polyhedrons_slice_tree(vector<pair<uint32_t, vector<shared_ptr<genericPoint>>>>& slices)
+{
+    if(slices.empty())
+    {
+        return UNDEFINED_VALUE;
+    }
+    
+    uint32_t res = m_polyhedrons_slice_tree.size();
+    m_polyhedrons_slice_tree.push_back(PolyhedronConstraint());
+    
+    uint32_t slice = UNDEFINED_VALUE;
+    vector<uint32_t> best_top;
+    vector<uint32_t> best_bot;
+    for(uint32_t i=0; i<slices.size(); i++)
+    {
+        shared_ptr<genericPoint> c0 = m_vertices[m_constraints[3*slices[i].first+0]];
+        shared_ptr<genericPoint> c1 = m_vertices[m_constraints[3*slices[i].first+1]];
+        shared_ptr<genericPoint> c2 = m_vertices[m_constraints[3*slices[i].first+2]];
+        vector<uint32_t> top;
+        vector<uint32_t> bot;
+        for(uint32_t j=0; j<slices.size(); j++)
+        {
+            if(i==j)
+            {
+                continue;
+            }
+
+            bool has_top = false;
+            bool has_bot = false;
+            for(shared_ptr<genericPoint> p : slices[j].second)
+            {
+                if(!has_top && 1 == orient3d(c0,c1,c2,p))
+                {
+                    has_top = true;
+                    top.push_back(j);
+                    if(has_bot)
+                    {
+                        break;
+                    }
+                }
+                if(!has_bot && -1 == orient3d(c0,c1,c2,p))
+                {
+                    has_bot = true;
+                    bot.push_back(j);
+                    if(has_top)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+        if(UNDEFINED_VALUE==slice || best_top.size()+best_bot.size() > top.size()+bot.size())
+        {
+            slice = i;
+            best_top = std::move(top);
+            best_bot = std::move(bot);
+        }
+    }
+    m_polyhedrons_slice_tree[res].c = slices[slice].first;
+    vector<pair<uint32_t, vector<shared_ptr<genericPoint>>>> top_slices;
+    vector<pair<uint32_t, vector<shared_ptr<genericPoint>>>> bot_slices;
+    for(uint32_t i : best_top)
+    {
+        top_slices.push_back(slices[i]);
+    }
+    for(uint32_t i : best_bot)
+    {
+        bot_slices.push_back(slices[i]);
+    }
+    m_polyhedrons_slice_tree[res].top = build_polyhedrons_slice_tree(top_slices);
+    m_polyhedrons_slice_tree[res].bot = build_polyhedrons_slice_tree(bot_slices);
+    return res;
+}
 
 uint32_t BinarySpacePartitionHandle::add_LPI(uint32_t e0, uint32_t e1, uint32_t p0,uint32_t p1,uint32_t p2)
 {
     uint32_t res = m_vertices.size();
-    m_vertices.push_back(new implicitPoint3D_LPI(
+    m_vertices.push_back(std::make_shared<implicitPoint3D_LPI>(
         m_vertices[e0]->toExplicit3D(),m_vertices[e1]->toExplicit3D(),
         m_vertices[p0]->toExplicit3D(),m_vertices[p1]->toExplicit3D(),m_vertices[p2]->toExplicit3D()));
 
@@ -828,7 +889,7 @@ uint32_t BinarySpacePartitionHandle::add_LPI(uint32_t e0, uint32_t e1, uint32_t 
 uint32_t BinarySpacePartitionHandle::add_TPI(uint32_t p0,uint32_t p1,uint32_t p2,uint32_t p3,uint32_t p4,uint32_t p5,uint32_t p6,uint32_t p7,uint32_t p8)
 {
     uint32_t res = m_vertices.size();
-    m_vertices.push_back(new implicitPoint3D_TPI(
+    m_vertices.push_back(std::make_shared<implicitPoint3D_TPI>(
         m_vertices[p0]->toExplicit3D(),m_vertices[p1]->toExplicit3D(),m_vertices[p2]->toExplicit3D(),
         m_vertices[p3]->toExplicit3D(),m_vertices[p4]->toExplicit3D(),m_vertices[p5]->toExplicit3D(),
         m_vertices[p6]->toExplicit3D(),m_vertices[p7]->toExplicit3D(),m_vertices[p8]->toExplicit3D()));

@@ -272,14 +272,12 @@ namespace Hanzzz.Tetrahedralizer
                 EditorGUILayout.HelpBox("The target GameObject must be assigned.", MessageType.Error);
                 return false;
             }
-            MeshFilter meshFilter;
-            if(!m_settings.m_gameObject.TryGetComponent<MeshFilter>(out meshFilter) || null == meshFilter.sharedMesh)
+            if(!m_settings.m_gameObject.TryGetComponent(out MeshFilter meshFilter) || null == meshFilter.sharedMesh)
             {
                 EditorGUILayout.HelpBox("The target GameObject has no MeshFilter with a valid Mesh.", MessageType.Error);
                 return false;
             }
-            MeshRenderer meshRenderer;
-            if(!m_settings.m_gameObject.TryGetComponent<MeshRenderer>(out meshRenderer))
+            if(!m_settings.m_gameObject.TryGetComponent(out MeshRenderer meshRenderer))
             {
                 EditorGUILayout.HelpBox("The target GameObject has no MeshRenderer.", MessageType.Error);
                 return false;

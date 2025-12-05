@@ -14,8 +14,8 @@
             filePath = "TetrahedralizerLibrary/binary_space_partition.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "14"
-            endingLineNumber = "14"
+            startingLineNumber = "8"
+            endingLineNumber = "8"
             landmarkName = "BinarySpacePartitionHandle::AddInput(explicit_count, explicit_values, tetrahedrons_count, tetrahedrons, constraints_count, constraints, aggressively_add_virtual_constraints)"
             landmarkType = "7">
          </BreakpointContent>
@@ -30,8 +30,8 @@
             filePath = "TetrahedralizerLibrary/binary_space_partition.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "145"
-            endingLineNumber = "145"
+            startingLineNumber = "138"
+            endingLineNumber = "138"
             landmarkName = "BinarySpacePartitionHandle::binary_space_partition()"
             landmarkType = "7">
          </BreakpointContent>
@@ -46,24 +46,8 @@
             filePath = "TetrahedralizerLibrary/binary_space_partition.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "181"
-            endingLineNumber = "181"
-            landmarkName = "BinarySpacePartitionHandle::binary_space_partition()"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "B6B84191-738D-47C4-9AB7-3F7B9DFEBDE6"
-            shouldBeEnabled = "No"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "TetrahedralizerLibrary/binary_space_partition.cpp"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "272"
-            endingLineNumber = "272"
+            startingLineNumber = "174"
+            endingLineNumber = "174"
             landmarkName = "BinarySpacePartitionHandle::binary_space_partition()"
             landmarkType = "7">
          </BreakpointContent>
@@ -78,8 +62,8 @@
             filePath = "TetrahedralizerLibrary/binary_space_partition.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "332"
-            endingLineNumber = "332"
+            startingLineNumber = "324"
+            endingLineNumber = "324"
             landmarkName = "BinarySpacePartitionHandle::binary_space_partition()"
             landmarkType = "7">
          </BreakpointContent>
@@ -94,25 +78,9 @@
             filePath = "TetrahedralizerLibrary/binary_space_partition.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "714"
-            endingLineNumber = "714"
+            startingLineNumber = "703"
+            endingLineNumber = "703"
             landmarkName = "BinarySpacePartitionHandle::binary_space_partition()"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "0DE37875-B6F1-40F1-852B-D8B2C447770C"
-            shouldBeEnabled = "No"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "TetrahedralizerLibrary/binary_space_partition.cpp"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "9"
-            endingLineNumber = "9"
-            landmarkName = "BinarySpacePartitionHandle::Dispose()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

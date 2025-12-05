@@ -12,6 +12,7 @@
 #include <unordered_map>
 #include <cassert>
 #include <numbers>
+#include <memory>
 #include "numeric_array.h"
 #include "indirect_predicates/implicit_point.h"
 #include "graph_cut/GCoptimization.h"
@@ -43,24 +44,24 @@ struct trio_iii_hash
 
 const uint32_t UNDEFINED_VALUE = 0xFFFFFFFF;
 #define COMMON_FIELDS \
-    vector<uint32_t> m_vector_i_0; \
-    vector<uint32_t> m_vector_i_1; \
-    vector<uint32_t> m_vector_i_2; \
-    vector<uint32_t> m_vector_i_3; \
-    queue<uint32_t> m_queue_i_0; \
-    queue<uint32_t> m_queue_i_1; \
-    deque<uint32_t> m_deque_i_0; \
-    unordered_set<uint32_t> m_u_set_i_0; \
-    unordered_set<uint32_t> m_u_set_i_1; \
-    unordered_set<uint32_t> m_u_set_i_2; \
-    unordered_set<uint32_t> m_u_set_i_3; \
-    unordered_set<pair<uint32_t,uint32_t>,pair_ii_hash> m_u_set_ii_0; \
-    unordered_map<uint32_t,uint32_t> m_u_map_i_i_0; \
-    unordered_map<uint32_t,int> m_u_map_i_si_0; \
-    unordered_map<pair<uint32_t,uint32_t>,uint32_t,pair_ii_hash> m_u_map_ii_i_0; \
-    unordered_map<pair<uint32_t,uint32_t>,vector<uint32_t>,pair_ii_hash> m_u_map_ii_vector_i_0; \
-    unordered_map<tuple<uint32_t,uint32_t,uint32_t>,uint32_t,trio_iii_hash> m_u_map_iii_i_0; \
-    unordered_map<uint32_t,tuple<uint32_t,uint32_t,uint32_t>> m_u_map_i_iii_0;
+    std::vector<uint32_t> m_vector_i_0; \
+    std::vector<uint32_t> m_vector_i_1; \
+    std::vector<uint32_t> m_vector_i_2; \
+    std::vector<uint32_t> m_vector_i_3; \
+    std::queue<uint32_t> m_queue_i_0; \
+    std::queue<uint32_t> m_queue_i_1; \
+    std::deque<uint32_t> m_deque_i_0; \
+    std::unordered_set<uint32_t> m_u_set_i_0; \
+    std::unordered_set<uint32_t> m_u_set_i_1; \
+    std::unordered_set<uint32_t> m_u_set_i_2; \
+    std::unordered_set<uint32_t> m_u_set_i_3; \
+    std::unordered_set<std::pair<uint32_t,uint32_t>,pair_ii_hash> m_u_set_ii_0; \
+    std::unordered_map<uint32_t,uint32_t> m_u_map_i_i_0; \
+    std::unordered_map<uint32_t,int> m_u_map_i_si_0; \
+    std::unordered_map<std::pair<uint32_t,uint32_t>,uint32_t,pair_ii_hash> m_u_map_ii_i_0; \
+    std::unordered_map<std::pair<uint32_t,uint32_t>,std::vector<uint32_t>,pair_ii_hash> m_u_map_ii_vector_i_0; \
+    std::unordered_map<std::tuple<uint32_t,uint32_t,uint32_t>,uint32_t,trio_iii_hash> m_u_map_iii_i_0; \
+    std::unordered_map<uint32_t,std::tuple<uint32_t,uint32_t,uint32_t>> m_u_map_i_iii_0;
 
 #ifdef _WIN32
     #define LIBRARY_EXPORT __declspec(dllexport)

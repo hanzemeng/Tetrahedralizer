@@ -1,9 +1,10 @@
 #include "interior_characterization.hpp"
-
+using namespace std;
 
 void InteriorCharacterizationHandle::interior_characterization()
 {
-    Polyhedralization polyhedralization(m_polyhedrons);
+    Polyhedralization polyhedralization;
+    polyhedralization.assign_polyhedrons(m_polyhedrons);
     vector<vector<vector<uint32_t>>> facets_vertices_mapping;
     m_facets_centroids_mapping = vector<uint32_t>(m_facets.size(), UNDEFINED_VALUE);
     vector<double> facets_approximated_areas;
@@ -245,28 +246,15 @@ void InteriorCharacterizationHandle::interior_characterization()
 }
 
 
-InteriorCharacterizationHandle::InteriorCharacterizationHandle()
-{}
 void InteriorCharacterizationHandle::Dispose()
-{
-    delete_vertices(m_vertices);
-    delete_vertices(m_facets_centroids);
-}
+{}
 
 void InteriorCharacterizationHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights, uint32_t constraints_count, uint32_t* constraints, double polyhedron_in_multiplier)
 {
     m_vertices = create_vertices(explicit_count, explicit_values, implicit_count, implicit_values);
     m_polyhedrons = flat_array_to_nested_vector(polyhedrons, polyhedrons_count);
     m_facets = flat_array_to_nested_vector(facets, facets_count);
-    for(uint32_t i=0; i<facets_count; i++)
-    {
-        implicitPoint3D_BPT* p = new implicitPoint3D_BPT(m_vertices[facets_centroids[3*i+0]]->toExplicit3D(),
-                                                         m_vertices[facets_centroids[3*i+1]]->toExplicit3D(),
-                                                         m_vertices[facets_centroids[3*i+2]]->toExplicit3D(),
-                                                         facets_centroids_weights[2*i+0],
-                                                         facets_centroids_weights[2*i+1]);
-        m_facets_centroids.push_back(p);
-    }
+    m_facets_centroids = create_vertices(facets_count, facets_centroids, facets_centroids_weights, m_vertices.data());
     m_constraints = create_constraints(constraints_count, constraints, m_vertices.data(), true);
     m_polyhedron_in_multiplier = polyhedron_in_multiplier;
 }

@@ -7,10 +7,9 @@
 class DelaunayTetrahedralizationHandle
 {
 public:
-    DelaunayTetrahedralizationHandle();
     void Dispose();
-
     void AddInput(uint32_t, double*, uint32_t, uint32_t*);
+    
     void Calculate();
     
     uint32_t GetOutputTetrahedronsCount();
@@ -19,10 +18,10 @@ public:
     
 private:
     uint32_t INFINITE_VERTEX = UNDEFINED_VALUE - 1;
-    vector<genericPoint*> m_vertices;
-    vector<uint32_t> m_tetrahedrons;
-    queue<uint32_t> m_tetrahedrons_gaps;
-    vector<uint32_t> m_neighbors; // neighbors order: 0,2,1  1,0,3  0,2,3,  2,1,3
+    std::vector<std::shared_ptr<genericPoint>> m_vertices;
+    std::vector<uint32_t> m_tetrahedrons;
+    std::queue<uint32_t> m_tetrahedrons_gaps;
+    std::vector<uint32_t> m_neighbors; // neighbors order: 0,2,1  1,0,3  0,2,3,  2,1,3
     COMMON_FIELDS
     
     void delaunay_tetrahedralization();

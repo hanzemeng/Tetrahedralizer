@@ -66,6 +66,7 @@ protected:
 
 public:
 	genericPoint(const Point_Type& t) : type(t) {}
+    virtual ~genericPoint() = default;
 
 	Point_Type getType() const { return type; }
 	bool is2D() const { return type <= SSI; }
@@ -476,54 +477,53 @@ public:
 //
 //////////////////////////////////////////////////////////////////////////////////////
 
-using namespace ::std;
+std::ostream& operator<<(std::ostream& os, const genericPoint& p);
 
-ostream& operator<<(ostream& os, const genericPoint& p);
-
-inline ostream& operator<<(ostream& os, const explicitPoint2D& p)
+inline std::ostream& operator<<(std::ostream& os, const explicitPoint2D& p)
 {
-	return os << p.X() << " " << p.Y() << " 0";
+    return os << p.X() << " " << p.Y() << " 0";
 }
 
-inline ostream& operator<<(ostream& os, const implicitPoint2D_SSI& p)
+inline std::ostream& operator<<(std::ostream& os, const implicitPoint2D_SSI& p)
 {
-	explicitPoint2D e;
-	if (p.apapExplicit(e)) return os << e;
-	else return os << "UNDEF_SSI";
+    explicitPoint2D e;
+    if (p.apapExplicit(e)) return os << e;
+    else return os << "UNDEF_SSI";
 }
 
-inline ostream& operator<<(ostream& os, const explicitPoint3D& p)
+inline std::ostream& operator<<(std::ostream& os, const explicitPoint3D& p)
 {
-	return os << p.X() << " " << p.Y() << " " << p.Z();
+    return os << p.X() << " " << p.Y() << " " << p.Z();
 }
 
-inline ostream& operator<<(ostream& os, const implicitPoint3D_LPI& p)
+inline std::ostream& operator<<(std::ostream& os, const implicitPoint3D_LPI& p)
 {
-	explicitPoint3D e;
-	if (p.apapExplicit(e)) return os << e;
-	else return os << "UNDEF_LPI";
+    explicitPoint3D e;
+    if (p.apapExplicit(e)) return os << e;
+    else return os << "UNDEF_LPI";
 }
 
-inline ostream& operator<<(ostream& os, const implicitPoint3D_TPI& p)
+inline std::ostream& operator<<(std::ostream& os, const implicitPoint3D_TPI& p)
 {
-	explicitPoint3D e;
-	if (p.apapExplicit(e)) return os << e;
-	else return os << "UNDEF_TPI";
+    explicitPoint3D e;
+    if (p.apapExplicit(e)) return os << e;
+    else return os << "UNDEF_TPI";
 }
 
-inline ostream& operator<<(ostream& os, const implicitPoint3D_LNC& p)
+inline std::ostream& operator<<(std::ostream& os, const implicitPoint3D_LNC& p)
 {
-	explicitPoint3D e;
-	if (p.apapExplicit(e)) return os << e;
-	else return os << "UNDEF_LNC";
+    explicitPoint3D e;
+    if (p.apapExplicit(e)) return os << e;
+    else return os << "UNDEF_LNC";
 }
 
-inline ostream& operator<<(ostream& os, const implicitPoint3D_BPT& p)
+inline std::ostream& operator<<(std::ostream& os, const implicitPoint3D_BPT& p)
 {
-	explicitPoint3D e;
-	if (p.apapExplicit(e)) return os << e;
-	else return os << "UNDEF_BPT";
+    explicitPoint3D e;
+    if (p.apapExplicit(e)) return os << e;
+    else return os << "UNDEF_BPT";
 }
+
 
 #include "hand_optimized_predicates.hpp"
 #include "implicit_point.hpp"

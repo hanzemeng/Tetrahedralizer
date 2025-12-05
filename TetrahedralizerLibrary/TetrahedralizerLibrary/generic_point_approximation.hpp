@@ -7,18 +7,17 @@
 class GenericPointApproximationHandle
 {
 public:
-    GenericPointApproximationHandle();
     void Dispose();
-    
     void AddInput(uint32_t, double*, uint32_t, uint32_t*);
+    
     void Calculate();
     
     double* GetApproximation();
     
 private:
     void generic_point_approximation();
-    vector<genericPoint*> m_vertices;
-    vector<double> m_approximated_positions;
+    std::vector<std::shared_ptr<genericPoint>> m_vertices;
+    std::vector<double> m_approximated_positions;
 };
 
 extern "C" LIBRARY_EXPORT void* CreateGenericPointApproximationHandle();

@@ -7,10 +7,9 @@
 class PolyhedralizationTetrahedralizationHandle
 {
 public:
-    PolyhedralizationTetrahedralizationHandle();
     void Dispose();
-    
     void AddInput(uint32_t, double*, uint32_t, uint32_t*, uint32_t, uint32_t*, uint32_t, uint32_t*, uint32_t*, double*);
+    
     void Calculate();
     
     uint32_t GetInsertedFacetsCentroidsCount();
@@ -21,17 +20,17 @@ public:
     uint32_t* GetTetrahedrons(); // oriented such that the right hand curls around the first 3 points and the thumb points to the 4th point.
     
 private:
-    vector<genericPoint*> m_vertices;
-    vector<vector<uint32_t>> m_polyhedrons;
-    vector<vector<uint32_t>> m_facets;
-    vector<genericPoint*> m_facets_centroids;
+    std::vector<std::shared_ptr<genericPoint>> m_vertices;
+    std::vector<std::vector<uint32_t>> m_polyhedrons;
+    std::vector<std::vector<uint32_t>> m_facets;
+    std::vector<std::shared_ptr<genericPoint>> m_facets_centroids;
     
-    vector<vector<uint32_t>> m_triangulated_facets;
-    vector<vector<uint32_t>> m_triangulated_facets_counters;
+    std::vector<std::vector<uint32_t>> m_triangulated_facets;
+    std::vector<std::vector<uint32_t>> m_triangulated_facets_counters;
     
-    vector<uint32_t> m_inserted_facets_centroids;
-    vector<uint32_t> m_inserted_polyhedrons_centroids;
-    vector<uint32_t> m_tetrahedrons;
+    std::vector<uint32_t> m_inserted_facets_centroids;
+    std::vector<uint32_t> m_inserted_polyhedrons_centroids;
+    std::vector<uint32_t> m_tetrahedrons;
     COMMON_FIELDS
     
     void polyhedralization_tetrahedralization();
