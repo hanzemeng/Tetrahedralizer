@@ -199,7 +199,7 @@ void InteriorCharacterizationHandle::interior_characterization()
         }
         
         // neighbor cost
-        vector<bool> polyhedrons_connected_to_ghost = vector<bool>(m_polyhedrons.size(), false);
+        vector<double> polyhedrons_to_ghost_weight = vector<double>(m_polyhedrons.size(), -1.0); // total area of facets connected to the ghost polyhedron, negative means not connectd
         for(uint32_t i=0; i<m_facets.size(); i++)
         {
             if(UNDEFINED_VALUE != m_facets_centroids_mapping[i])
@@ -211,14 +211,24 @@ void InteriorCharacterizationHandle::interior_characterization()
             polyhedralization.get_polyhedron_facet_neighbors(i, n0, n1);
             if(UNDEFINED_VALUE == n1)
             {
-                if(polyhedrons_connected_to_ghost[n0])
+                if(polyhedrons_to_ghost_weight[n0] < 0.0)
                 {
-                    continue;
+                    polyhedrons_to_ghost_weight[n0] = facets_approximated_areas[i];
                 }
-                polyhedrons_connected_to_ghost[n0] = true;
-                n1 = m_polyhedrons.size();
+                else
+                {
+                    polyhedrons_to_ghost_weight[n0] += facets_approximated_areas[i];
+                }
+                continue;
             }
             gc.setNeighbors((GCoptimization::SiteID)n0, (GCoptimization::SiteID)n1, facets_approximated_areas[i]);
+        }
+        for(uint32_t i=0; i<m_polyhedrons.size(); i++)
+        {
+            if(polyhedrons_to_ghost_weight[i] > 0.0)
+            {
+                gc.setNeighbors((GCoptimization::SiteID)i, (GCoptimization::SiteID)m_polyhedrons.size(), polyhedrons_to_ghost_weight[i]);
+            }
         }
         
         gc.swap();

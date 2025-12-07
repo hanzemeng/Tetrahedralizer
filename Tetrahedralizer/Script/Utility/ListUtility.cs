@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.Collections;
 
 
 namespace Hanzzz.Tetrahedralizer
@@ -21,9 +22,10 @@ namespace Hanzzz.Tetrahedralizer
             }
         }
     
-        public static void ReplaceWith<T>(this IList<T> des, IList<T> src)
+        public static void ReplaceWith<T>(this List<T> des, IList<T> src)
         {
             des.Clear();
+            des.Capacity = src.Count;
             for(Int32 i=0; i<src.Count; i++)
             {
                 des.Add(src[i]);

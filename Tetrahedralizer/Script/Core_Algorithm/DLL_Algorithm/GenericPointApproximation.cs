@@ -52,18 +52,11 @@ namespace Hanzzz.Tetrahedralizer
     
             IntPtr handle = CreateGenericPointApproximationHandle();
             AddGenericPointApproximationInput(handle, input.m_explicitVertices.Count/3, explicitVertices, implicitCount, implicitVertices);
-    
             CalculateGenericPointApproximation(handle);
     
-            int n = input.m_explicitVertices.Count+3*implicitCount;
-            output.m_approximatePositions = new List<double>(n);
             IntPtr ptr = GetGenericPointApproximationPositions(handle);
-            for(int i=0; i<n; i++)
-            {
-                output.m_approximatePositions.Add(BitConverter.Int64BitsToDouble(Marshal.ReadInt64(ptr)));
-                ptr = IntPtr.Add(ptr, 8);
-            }
-    
+            output.m_approximatePositions = ptr.ReadDoubleRepeat(input.m_explicitVertices.Count+3*implicitCount);
+
             DisposeGenericPointApproximationHandle(handle);
     
             TetrahedralizerUtility.SwapElementsByInterval(output.m_approximatePositions, 3);

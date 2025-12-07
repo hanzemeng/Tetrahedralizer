@@ -31,7 +31,7 @@ namespace Hanzzz.Tetrahedralizer
     
             List<SubMeshDescriptor> subMeshDescriptors = Enumerable.Range(0,input.m_mesh.subMeshCount).Select(i=>input.m_mesh.GetSubMesh(i)).ToList();
     
-            MeshVertexDataMapper meshVertexDataMapper = new MeshVertexDataMapper();
+            using MeshVertexDataMapper meshVertexDataMapper = new MeshVertexDataMapper();
             meshVertexDataMapper.AssignSourceMesh(input.m_mesh);
     
             TetrahedralMesh tetrahedralMesh = ScriptableObject.CreateInstance<TetrahedralMesh>();
@@ -42,6 +42,10 @@ namespace Hanzzz.Tetrahedralizer
     
         public Task CreateAsync(TetrahedralMeshCreationInput input, TetrahedralMeshCreationOutput output, IProgress<string> progress=null)
         {
+            if(null != progress)
+            {
+                progress.Report("Starting.");
+            }
             List<Vector3> weldedVertices = input.m_mesh.vertices.ToList();
             int[] weldedTriangles = input.m_mesh.triangles;
             TetrahedralizerUtility.RemoveDuplicateVertices(weldedVertices, weldedTriangles);
@@ -307,36 +311,12 @@ namespace Hanzzz.Tetrahedralizer
                 ProcessFacet(i+2,t0,t3,t2);
                 ProcessFacet(i+3,t1,t2,t3);
             }
-    
+            
             meshVertexDataMapper.MakeTetrahedralMesh(tetrahedralMesh);
             tetrahedralMesh.SetFacetsSubmeshes(resultTrianglesSubmeshes);
             tetrahedralMesh.SetNeighbors(neighbors);
     
-            //{
-            //    for(int i=0; i<neighbors.Count; i++)
-            //    {
-            //        if(neighbors[i] < 0)
-            //        {
-            //            continue;
-            //        }
-            //        int n = neighbors[i];
-            //        Vector3 p0 = tetrahedralMesh.vertices[3*i+0];
-            //        Vector3 p1 = tetrahedralMesh.vertices[3*i+1];
-            //        Vector3 p2 = tetrahedralMesh.vertices[3*i+2];
-            //        Vector3 n0 = tetrahedralMesh.vertices[3*n+0];
-            //        Vector3 n1 = tetrahedralMesh.vertices[3*n+1];
-            //        Vector3 n2 = tetrahedralMesh.vertices[3*n+2];
-    
-            //        Sorter.SortVector3(ref p0, ref p1, ref p2);
-            //        Sorter.SortVector3(ref n0, ref n1, ref n2);
-    
-            //        if(p0!=n0 || p1!=n1 || p2!=n2)
-            //        {
-            //            throw new Exception();
-            //        }
-            //    }
-            //}
-    
+            meshVertexDataMapper.Dispose();
             if(null != progress)
             {
                 progress.Report("Finishing up.");

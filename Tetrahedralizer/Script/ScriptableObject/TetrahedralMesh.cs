@@ -41,7 +41,7 @@ namespace Hanzzz.Tetrahedralizer
             List<(Mesh, Vector3)> res = new List<(Mesh, Vector3)>();
             List<Int32> tempInt = new List<Int32>();
             List<Vector3> tempVector3s = new List<Vector3>();
-            MeshVertexDataMapper mvdm = new MeshVertexDataMapper();
+            using MeshVertexDataMapper mvdm = new MeshVertexDataMapper();
             mvdm.AssignSourceTetrahedralMesh(this);
             Int32 submeshCount = GetSubmeshesCount();
     
@@ -92,7 +92,7 @@ namespace Hanzzz.Tetrahedralizer
             bool[] exteriorFlags = GetFacetsExteriorFlags();
             int[] mappings = Enumerable.Repeat(TetrahedralizerConstant.UNDEFINED_VALUE, facetsSubmeshes.Count).ToArray();
             
-            MeshVertexDataMapper mvdm = new MeshVertexDataMapper();
+            using MeshVertexDataMapper mvdm = new MeshVertexDataMapper();
             mvdm.AssignSourceTetrahedralMesh(this);
             for(Int32 i=0; i<facetsSubmeshes.Count; i++)
             {
@@ -229,7 +229,7 @@ namespace Hanzzz.Tetrahedralizer
         {
             vertices.ReplaceWith(source);
         }
-        public void GetVertices(IList<Vector3> target)
+        public void GetVertices(List<Vector3> target)
         {
             target.ReplaceWith(vertices);
         }
@@ -237,70 +237,38 @@ namespace Hanzzz.Tetrahedralizer
         {
             colors.ReplaceWith(source);
         }
-        public void GetColors(IList<Color32> target)
+        public void GetColors(List<Color32> target)
         {
             target.ReplaceWith(colors);
         }
         public void SetUVs(Int32 c, IList<Vector4> source)
         {
-            switch(c)
-            {
-                case 0:
-                    uvs0.ReplaceWith(source);
-                break;
-                case 1:
-                    uvs1.ReplaceWith(source);
-                break;
-                case 2:
-                    uvs2.ReplaceWith(source);
-                break;
-                case 3:
-                    uvs3.ReplaceWith(source);
-                break;
-                case 4:
-                    uvs4.ReplaceWith(source);
-                break;
-                case 5:
-                    uvs5.ReplaceWith(source);
-                break;
-                case 6:
-                    uvs6.ReplaceWith(source);
-                break;
-                case 7:
-                    uvs7.ReplaceWith(source);
-                break;
-                default:
-                    throw new Exception($"UV channel {c} does not exist.");
-            }
+            GetUVs(c).ReplaceWith(source);
         }
-        public void GetUVs(Int32 c, IList<Vector4> target)
+        public void GetUVs(Int32 c, List<Vector4> target)
+        {
+            target.ReplaceWith(GetUVs(c));
+        }
+        public List<Vector4> GetUVs(Int32 c)
         {
             switch(c)
             {
                 case 0:
-                    target.ReplaceWith(uvs0);
-                break;
+                    return uvs0;
                 case 1:
-                    target.ReplaceWith(uvs1);
-                break;
+                    return uvs1;
                 case 2:
-                    target.ReplaceWith(uvs2);
-                break;
+                    return uvs2;
                 case 3:
-                    target.ReplaceWith(uvs3);
-                break;
+                    return uvs3;
                 case 4:
-                    target.ReplaceWith(uvs4);
-                break;
+                    return uvs4;
                 case 5:
-                    target.ReplaceWith(uvs5);
-                break;
+                    return uvs5;
                 case 6:
-                    target.ReplaceWith(uvs6);
-                break;
+                    return uvs6;
                 case 7:
-                    target.ReplaceWith(uvs7);
-                break;
+                    return uvs7;
                 default:
                     throw new Exception($"UV channel {c} does not exist.");
             }
@@ -309,7 +277,7 @@ namespace Hanzzz.Tetrahedralizer
         {
             facetsSubmeshes.ReplaceWith(source);
         }
-        public void GetFacetsSubmeshes(IList<Int32> target)
+        public void GetFacetsSubmeshes(List<Int32> target)
         {
             target.ReplaceWith(facetsSubmeshes);
         }
@@ -317,7 +285,7 @@ namespace Hanzzz.Tetrahedralizer
         {
             neighbors.ReplaceWith(source);
         }
-        public void GetNeighbors(IList<Int32> target)
+        public void GetNeighbors(List<Int32> target)
         {
             target.ReplaceWith(neighbors);
         }

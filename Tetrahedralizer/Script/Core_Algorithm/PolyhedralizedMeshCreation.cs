@@ -32,6 +32,10 @@ namespace Hanzzz.Tetrahedralizer
         }
         public Task CreateAsync(PolyhedralizedMeshCreationInput input, PolyhedralizedMeshCreationOutput output, IProgress<string> progress=null)
         {
+            if(null != progress)
+            {
+                progress.Report("Starting.");
+            }
             List<Vector3> weldedVertices = input.m_mesh.vertices.ToList();
             int[] weldedTriangles = input.m_mesh.triangles;
             TetrahedralizerUtility.RemoveDuplicateVertices(weldedVertices, weldedTriangles);
@@ -65,7 +69,6 @@ namespace Hanzzz.Tetrahedralizer
             BinarySpacePartition.BinarySpacePartitionInput BSPInput = new BinarySpacePartition.BinarySpacePartitionInput();
             BinarySpacePartition.BinarySpacePartitionOutput BSPOutput = new BinarySpacePartition.BinarySpacePartitionOutput();
             {
-                
                 BinarySpacePartition binarySpacePartition = new BinarySpacePartition();
                 BSPInput.m_explicitVertices = weldedVerticesUnpack;
                 BSPInput.m_tetrahedrons = DTOutput.m_tetrahedrons;
