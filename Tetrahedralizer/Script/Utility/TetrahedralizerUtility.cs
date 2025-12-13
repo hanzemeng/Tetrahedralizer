@@ -7,13 +7,13 @@ namespace Hanzzz.Tetrahedralizer
 {
     public static class TetrahedralizerUtility
     {
-        public static List<double> UnpackVector3s(IList<Vector3> input)
+        public static List<double> UnpackVector3s(IReadOnlyList<Vector3> input)
         {
             List<double> res = new List<double>();
             UnpackVector3s(input, res);
             return res;
         }
-        public static void UnpackVector3s(IList<Vector3> input, IList<double> output)
+        public static void UnpackVector3s(IReadOnlyList<Vector3> input, IList<double> output)
         {
             for(int i=0; i<input.Count; i++)
             {
@@ -22,13 +22,13 @@ namespace Hanzzz.Tetrahedralizer
                 output.Add(input[i].z);
             }
         }
-        public static List<Vector3> PackVector3s(IList<double> input)
+        public static List<Vector3> PackVector3s(IReadOnlyList<double> input)
         {
             List<Vector3> res = new List<Vector3>();
             PackVector3s(input, res);
             return res;
         }
-        public static void PackVector3s(IList<double> input, IList<Vector3> output)
+        public static void PackVector3s(IReadOnlyList<double> input, IList<Vector3> output)
         {
             for(int i=0; i<input.Count; i+=3)
             {
@@ -37,7 +37,7 @@ namespace Hanzzz.Tetrahedralizer
         }
     
         // a flat list is: number of element, element_0, element_1...
-        public static int CountFlatIListElements(IList<int> list)
+        public static int CountFlatIListElements(IReadOnlyList<int> list)
         {
             if(null == list)
             {
@@ -52,7 +52,7 @@ namespace Hanzzz.Tetrahedralizer
             return res;
         }
     
-        public static List<List<int>> FlatIListToNestedList(IList<int> list)
+        public static List<List<int>> FlatIListToNestedList(IReadOnlyList<int> list)
         {
             if(null == list)
             {
@@ -72,7 +72,7 @@ namespace Hanzzz.Tetrahedralizer
     
             return res;
         }
-        public static List<int> NestedListToFlatList(List<List<int>> nestedList)
+        public static List<int> NestedListToFlatList(IReadOnlyList<IReadOnlyList<int>> nestedList)
         {
             if(null == nestedList)
             {

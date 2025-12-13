@@ -27,7 +27,7 @@ namespace Hanzzz.Tetrahedralizer
     
         public List<Int32> facetsSubmeshes; // every 4 elements correspond to the 4 facets of a tetrahedron
         public List<Int32> neighbors; // the ith element is the ith facet's neighboring facet, UNDEFINED_VALUE if no neighbor
-        // neighbors order: 0,1,2  0,1,3  0,3,2,  1,2,3
+        // neighbors order: 0,2,1  0,1,3  0,3,2,  1,2,3
     
     
         // each element is a tetrahedron, and the center of the tetrahedron in world space

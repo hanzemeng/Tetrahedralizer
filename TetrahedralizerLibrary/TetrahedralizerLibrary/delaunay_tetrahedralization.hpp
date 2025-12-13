@@ -12,8 +12,8 @@ public:
     
     void Calculate();
     
-    uint32_t GetOutputTetrahedronsCount();
-    uint32_t* GetOutputTetrahedrons();
+    uint32_t GetTetrahedronsCount();
+    uint32_t* GetTetrahedrons();
     
     
 private:
@@ -44,7 +44,7 @@ extern "C" LIBRARY_EXPORT void AddDelaunayTetrahedralizationInput(void* handle, 
 
 extern "C" LIBRARY_EXPORT void CalculateDelaunayTetrahedralization(void* handle);
 
-extern "C" LIBRARY_EXPORT uint32_t GetOutputTetrahedronsCount(void* handle);
-extern "C" LIBRARY_EXPORT uint32_t* GetOutputTetrahedrons(void* handle);
+extern "C" LIBRARY_EXPORT uint32_t GetDelaunayTetrahedralizationTetrahedronsCount(void* handle);
+extern "C" LIBRARY_EXPORT uint32_t* GetDelaunayTetrahedralizationTetrahedrons(void* handle);
 
 #endif

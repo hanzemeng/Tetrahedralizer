@@ -1,6 +1,3 @@
-#ifndef triangle_tetrahedron_intersection_h
-#define triangle_tetrahedron_intersection_h
-
 #include "triangle_tetrahedron_intersection.hpp"
 using namespace std;
 
@@ -204,43 +201,6 @@ pair<int, vector<shared_ptr<genericPoint>>> TriangleTetrahedronIntersection::tri
     edges.push_back(Edge(c0,c1));
     edges.push_back(Edge(c1,c2));
     edges.push_back(Edge(c2,c0));
-    
-//
-//    // vertex inside
-//    if((1==oc0t012 && oc0t012==oc0t103 && oc0t012==oc0t023 && oc0t012==oc0t213) ||
-//       (1==oc1t012 && oc1t012==oc1t103 && oc1t012==oc1t023 && oc1t012==oc1t213) ||
-//       (1==oc2t012 && oc2t012==oc2t103 && oc2t012==oc2t023 && oc2t012==oc2t213))
-//    {
-//        res = 2;
-//        goto EXIT;
-//    }
-    // coplanar triangle and tetrahedron's facet
-//    if((0==oc0t012 && oc0t012==oc1t012 && oc0t012==oc2t012) ||
-//       (0==oc0t103 && oc0t103==oc1t103 && oc0t103==oc2t103) ||
-//       (0==oc0t023 && oc0t023==oc1t023 && oc0t023==oc2t023) ||
-//       (0==oc0t213 && oc0t213==oc1t213 && oc0t213==oc2t213))
-//    {
-//        res =
-//        segment_cross_triangle(t0,t1,c0,c1,c2,vertices.data()) ||
-//        segment_cross_triangle(t0,t2,c0,c1,c2,vertices.data()) ||
-//        segment_cross_triangle(t0,t3,c0,c1,c2,vertices.data()) ||
-//        segment_cross_triangle(t1,t2,c0,c1,c2,vertices.data()) ||
-//        segment_cross_triangle(t1,t3,c0,c1,c2,vertices.data()) ||
-//        segment_cross_triangle(t2,t3,c0,c1,c2,vertices.data()) ||
-//        segment_cross_triangle(c0,c1,t1,t2,t3,vertices.data()) ||
-//        segment_cross_triangle(c1,c2,t1,t2,t3,vertices.data()) ||
-//        segment_cross_triangle(c2,c0,t1,t2,t3,vertices.data()) ||
-//        segment_cross_triangle(c0,c1,t0,t2,t3,vertices.data()) ||
-//        segment_cross_triangle(c1,c2,t0,t2,t3,vertices.data()) ||
-//        segment_cross_triangle(c2,c0,t0,t2,t3,vertices.data()) ||
-//        segment_cross_triangle(c0,c1,t0,t1,t3,vertices.data()) ||
-//        segment_cross_triangle(c1,c2,t0,t1,t3,vertices.data()) ||
-//        segment_cross_triangle(c2,c0,t0,t1,t3,vertices.data()) ||
-//        segment_cross_triangle(c0,c1,t0,t1,t2,vertices.data()) ||
-//        segment_cross_triangle(c1,c2,t0,t1,t2,vertices.data()) ||
-//        segment_cross_triangle(c2,c0,t0,t1,t2,vertices.data());
-//        goto EXIT;
-//    }
 
     polygon_plane_intersection(c0,c1,c2,t0,t1,t2,vertices,edges);
     polygon_plane_intersection(c0,c1,c2,t1,t0,t3,vertices,edges);
@@ -313,4 +273,3 @@ pair<int, vector<shared_ptr<genericPoint>>> TriangleTetrahedronIntersection::tri
     return triangle_tetrahedron_intersection(vertices[c0],vertices[c1],vertices[c2],vertices[t0],vertices[t1],vertices[t2],vertices[t3]);
 }
 
-#endif

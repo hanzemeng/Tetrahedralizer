@@ -347,26 +347,20 @@ namespace Hanzzz.Tetrahedralizer
             GUILayout.Space(TetrahedralizerEditorWindowSettings.SPACE_SIZE);
             if(!m_asyncTaskIsRunning && null!=m_settings.m_polyhedralization && (GUILayout.Button($"Create Polyhedralized Mesh (A)") || CurrentKeyIsDown(KeyCode.A)))
             {
-                PolyhedralizedMeshCreation polyhedralizedMeshCreation = new PolyhedralizedMeshCreation();
-                PolyhedralizedMeshCreation.PolyhedralizedMeshCreationInput input = new PolyhedralizedMeshCreation.PolyhedralizedMeshCreationInput();
-                PolyhedralizedMeshCreation.PolyhedralizedMeshCreationOutput output = new PolyhedralizedMeshCreation.PolyhedralizedMeshCreationOutput();
-                input.m_mesh = m_mesh;
-                input.m_aggressivelyAddVirtualConstraints = m_settings.m_aggressivelyAddVirtualConstraints;
-                input.m_polyhedronInMultiplier = m_settings.m_polyhedronInMultiplier;
-    
                 m_asyncTaskIsRunning = true;
                 try
                 {
-                    await polyhedralizedMeshCreation.CreateAsync(input, output, m_asyncTaskProgress);
+                    PolyhedralizedMeshCreation polyhedralizedMeshCreation = new PolyhedralizedMeshCreation();
+                    Polyhedralization polyhedralization = await polyhedralizedMeshCreation.CreateAsync(m_mesh, m_settings.m_aggressivelyAddVirtualConstraints, m_settings.m_polyhedronInMultiplier, m_asyncTaskProgress);
+                    m_settings.m_polyhedralization.Assign(polyhedralization);
                 }
                 catch(Exception exception)
                 {
                     Debug.LogError($"Polyhedralized Mesh Creation encountered:\n{exception}");
                 }
                 m_asyncTaskIsRunning = false;
-                m_settings.m_polyhedralization.Assign(output.m_polyhedralization);
+                
                 EditorUtility.SetDirty(m_settings.m_polyhedralization);
-    
                 UpdateMesh(1, null == m_settings.m_polyhedralization ? null : m_settings.m_polyhedralization.ToMesh().mesh);
                 FocusWindow();
             }
@@ -413,29 +407,20 @@ namespace Hanzzz.Tetrahedralizer
             GUILayout.Space(TetrahedralizerEditorWindowSettings.SPACE_SIZE);
             if(!m_asyncTaskIsRunning && null!=m_settings.m_polyhedralization && null!=m_settings.m_tetrahedralMesh && (GUILayout.Button($"Create Tetrahedral Mesh (A)") || CurrentKeyIsDown(KeyCode.A)))
             {
-                TetrahedralMeshCreation tetrahedralMeshCreation = new TetrahedralMeshCreation();
-                TetrahedralMeshCreation.TetrahedralMeshCreationInput input = new TetrahedralMeshCreation.TetrahedralMeshCreationInput();
-                TetrahedralMeshCreation.TetrahedralMeshCreationOutput output = new TetrahedralMeshCreation.TetrahedralMeshCreationOutput();
-                input.m_mesh = m_mesh;
-                input.m_polyhedralization = m_settings.m_polyhedralization;
-    
+                m_asyncTaskIsRunning = true;
                 try
                 {
-                    m_asyncTaskIsRunning = true;
-                    var t = tetrahedralMeshCreation.CreateAsync(input, output, m_asyncTaskProgress);
-                    if(null != t)
-                    {
-                        await t;
-                    }
+                    TetrahedralMeshCreation tetrahedralMeshCreation = new TetrahedralMeshCreation();
+                    TetrahedralMesh tetrahedralMesh = await tetrahedralMeshCreation.CreateAsync(m_mesh, m_settings.m_polyhedralization, m_asyncTaskProgress);
+                    m_settings.m_tetrahedralMesh.Assign(tetrahedralMesh);
                 }
                 catch(Exception exception)
                 {
                     Debug.LogError($"Tetrahedral Mesh Creation encountered:\n{exception}");
                 }
                 m_asyncTaskIsRunning = false;
-                m_settings.m_tetrahedralMesh.Assign(output.m_tetrahedralMesh);
+                
                 EditorUtility.SetDirty(m_settings.m_tetrahedralMesh);
-    
                 UpdateMesh(2, null == m_settings.m_tetrahedralMesh ? null : m_settings.m_tetrahedralMesh.ToMesh().mesh);
                 FocusWindow();
             }

@@ -32,7 +32,8 @@ namespace Hanzzz.Tetrahedralizer
             }
     
             using GenericPointPredicate genericPointPredicate = new GenericPointPredicate(m_explicitVertices,m_implicitVertices);
-            List<Vector3> vertices = TetrahedralizerUtility.PackVector3s(GenericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
+            GenericPointApproximation genericPointApproximation = new GenericPointApproximation();
+            List<Vector3> vertices = TetrahedralizerUtility.PackVector3s(genericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
             List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedrons);
             List<List<int>> polyhedronsFacets = TetrahedralizerUtility.FlatIListToNestedList(m_facets);
     
@@ -96,7 +97,8 @@ namespace Hanzzz.Tetrahedralizer
                 return (null, Vector3.zero);
             }
     
-            List<Vector3> vertices = TetrahedralizerUtility.PackVector3s(GenericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
+            GenericPointApproximation genericPointApproximation = new GenericPointApproximation();
+            List<Vector3> vertices = TetrahedralizerUtility.PackVector3s(genericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
             List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedrons);
             List<List<int>> polyhedronsFacets = TetrahedralizerUtility.FlatIListToNestedList(m_facets);
             bool[] shouldDrawFacets = GetFacetsExteriorFlags();

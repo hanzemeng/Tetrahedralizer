@@ -57,7 +57,8 @@ namespace Hanzzz.Tetrahedralizer
         {
             m_sourceVertexAttributeDescriptors = sourceMesh.GetVertexAttributes();
             
-            Mesh.MeshData meshData = Mesh.AcquireReadOnlyMeshData(sourceMesh)[0];
+            Mesh.MeshDataArray meshDataArray = Mesh.AcquireReadOnlyMeshData(sourceMesh);
+            Mesh.MeshData meshData = meshDataArray[0];
             m_sourcePositions.Resize(meshData.vertexCount, Allocator.Persistent);
             meshData.GetVertices(m_sourcePositions);
             if(m_hasColor = sourceMesh.HasVertexAttribute(VertexAttribute.Color))
@@ -73,6 +74,7 @@ namespace Hanzzz.Tetrahedralizer
                     meshData.GetUVs(i,m_sourceUVs[i]);
                 }
             }
+            meshDataArray.Dispose();
 
             m_targetArrayIndex = 0;
         }

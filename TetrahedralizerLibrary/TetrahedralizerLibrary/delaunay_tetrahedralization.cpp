@@ -13,11 +13,11 @@ void DelaunayTetrahedralizationHandle::Calculate()
     delaunay_tetrahedralization();
 }
 
-uint32_t DelaunayTetrahedralizationHandle::GetOutputTetrahedronsCount()
+uint32_t DelaunayTetrahedralizationHandle::GetTetrahedronsCount()
 {
     return m_tetrahedrons.size() / 4;
 }
-uint32_t* DelaunayTetrahedralizationHandle::GetOutputTetrahedrons()
+uint32_t* DelaunayTetrahedralizationHandle::GetTetrahedrons()
 {
     return m_tetrahedrons.data();
 }
@@ -42,13 +42,13 @@ extern "C" LIBRARY_EXPORT void CalculateDelaunayTetrahedralization(void* handle)
     ((DelaunayTetrahedralizationHandle*)handle)->Calculate();
 }
 
-extern "C" LIBRARY_EXPORT uint32_t GetOutputTetrahedronsCount(void* handle)
+extern "C" LIBRARY_EXPORT uint32_t GetDelaunayTetrahedralizationTetrahedronsCount(void* handle)
 {
-    return ((DelaunayTetrahedralizationHandle*)handle)->GetOutputTetrahedronsCount();
+    return ((DelaunayTetrahedralizationHandle*)handle)->GetTetrahedronsCount();
 }
-extern "C" LIBRARY_EXPORT uint32_t* GetOutputTetrahedrons(void* handle)
+extern "C" LIBRARY_EXPORT uint32_t* GetDelaunayTetrahedralizationTetrahedrons(void* handle)
 {
-    return ((DelaunayTetrahedralizationHandle*)handle)->GetOutputTetrahedrons();
+    return ((DelaunayTetrahedralizationHandle*)handle)->GetTetrahedrons();
 }
 
 
