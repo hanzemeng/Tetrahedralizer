@@ -3,7 +3,7 @@
 
 #include "common_header.h"
 #include "common_function.h"
-#include "polyhedralization.hpp"
+#include "geometric_object/polyhedralization.hpp"
 
 class InteriorCharacterizationHandle
 {

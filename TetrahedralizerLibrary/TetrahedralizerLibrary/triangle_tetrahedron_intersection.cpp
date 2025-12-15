@@ -1,45 +1,7 @@
 #include "triangle_tetrahedron_intersection.hpp"
 using namespace std;
 
-TriangleTetrahedronIntersection::Edge::Edge()
-{
-    e0 = e1 = p0 = p1 = p2 = p3 = p4 = p5 = UNDEFINED_VALUE;
-}
-TriangleTetrahedronIntersection::Edge::Edge(uint32_t p) // not an edge, just a point
-{
-    e0 = p;
-    e1 = p0 = p1 = p2 = p3 = p4 = p5 = UNDEFINED_VALUE;
-}
-TriangleTetrahedronIntersection::Edge::Edge(uint32_t p, uint32_t q)
-{
-    e0 = p;
-    e1 = q;
-    p0 = p;
-    p1 = q;
-    p2 = p3 = p4 = p5 = UNDEFINED_VALUE;
-}
-TriangleTetrahedronIntersection::Edge::Edge(uint32_t ie0, uint32_t ie1, uint32_t ip0, uint32_t ip1, uint32_t ip2, uint32_t ip3, uint32_t ip4, uint32_t ip5)
-{
-    e0 = ie0;
-    e1 = ie1;
-    p0 = ip0;
-    p1 = ip1;
-    p2 = ip2;
-    p3 = ip3;
-    p4 = ip4;
-    p5 = ip5;
-}
-TriangleTetrahedronIntersection::Edge::Edge(const Edge& other)
-{
-    e0 = other.e0;
-    e1 = other.e1;
-    p0 = other.p0;
-    p1 = other.p1;
-    p2 = other.p2;
-    p3 = other.p3;
-    p4 = other.p4;
-    p5 = other.p5;
-}
+
 
 void TriangleTetrahedronIntersection::polygon_plane_intersection_helper(uint32_t& i0,uint32_t& i1,uint32_t e)
 {
@@ -53,7 +15,7 @@ void TriangleTetrahedronIntersection::polygon_plane_intersection_helper(uint32_t
     }
 }
 // slice edges, will insert vertices at intersections, will keep edges that are on or above the plane.
-void TriangleTetrahedronIntersection::polygon_plane_intersection(uint32_t c0,uint32_t c1,uint32_t c2,uint32_t t0,uint32_t t1,uint32_t t2, vector<shared_ptr<genericPoint>>& vertices, vector<Edge>& edges)
+void TriangleTetrahedronIntersection::polygon_plane_intersection(uint32_t c0,uint32_t c1,uint32_t c2,uint32_t t0,uint32_t t1,uint32_t t2, vector<shared_ptr<genericPoint>>& vertices, vector<Segment>& edges)
 {
     if(0 == edges.size())
     {
@@ -69,144 +31,28 @@ void TriangleTetrahedronIntersection::polygon_plane_intersection(uint32_t c0,uin
         return;
     }
     
-    uint32_t i0(UNDEFINED_VALUE),i1(UNDEFINED_VALUE); // store new edge
-    vector<Edge> new_edges;
-    for(uint32_t i=0; i<edges.size(); i++)
-    {
-        uint32_t e0 = edges[i].e0;
-        uint32_t e1 = edges[i].e1;
-        int o0 = orient3d(t0,t1,t2, e0, vertices.data());
-        int o1 = orient3d(t0,t1,t2, e1, vertices.data());
-        
-        if(0 == o0)
-        {
-            polygon_plane_intersection_helper(i0,i1,e0);
-            if(0 == o1)
-            {
-                polygon_plane_intersection_helper(i0,i1,e1);
-                new_edges.push_back(edges[i]);
-            }
-            else if(1 == o1)
-            {
-                new_edges.push_back(edges[i]);
-            }
-        }
-        else if(1 == o0)
-        {
-            if(0 == o1)
-            {
-                polygon_plane_intersection_helper(i0,i1,e1);
-                new_edges.push_back(edges[i]);
-            }
-            else if(1 == o1)
-            {
-                new_edges.push_back(edges[i]);
-            }
-            else
-            {
-                uint32_t new_i = vertices.size();
-                if(UNDEFINED_VALUE == edges[i].p2)
-                {
-                    vertices.push_back(make_shared<implicitPoint3D_LPI>(
-                                                                             vertices[edges[i].p0]->toExplicit3D(),vertices[edges[i].p1]->toExplicit3D(),
-                                                                             vertices[t0]->toExplicit3D(),vertices[t1]->toExplicit3D(),vertices[t2]->toExplicit3D()));
-                }
-                else
-                {
-                    vertices.push_back(make_shared<implicitPoint3D_TPI>(
-                                                                             vertices[t0]->toExplicit3D(),vertices[t1]->toExplicit3D(),vertices[t2]->toExplicit3D(),
-                                                                             vertices[edges[i].p0]->toExplicit3D(),vertices[edges[i].p1]->toExplicit3D(),vertices[edges[i].p2]->toExplicit3D(),
-                                                                             vertices[edges[i].p3]->toExplicit3D(),vertices[edges[i].p4]->toExplicit3D(),vertices[edges[i].p5]->toExplicit3D()));
-                }
-                
-                polygon_plane_intersection_helper(i0,i1,new_i);
-                Edge new_edge(edges[i]);
-                new_edge.e0 = e0;
-                new_edge.e1 = new_i;
-                new_edges.push_back(new_edge);
-            }
-        }
-        else
-        {
-            if(0 == o1)
-            {
-                polygon_plane_intersection_helper(i0,i1,e1);
-            }
-            else if(1 == o1)
-            {
-                uint32_t new_i = vertices.size();
-                if(UNDEFINED_VALUE == edges[i].p2)
-                {
-                    vertices.push_back(make_shared<implicitPoint3D_LPI>(
-                                                                             vertices[edges[i].p0]->toExplicit3D(),vertices[edges[i].p1]->toExplicit3D(),
-                                                                             vertices[t0]->toExplicit3D(),vertices[t1]->toExplicit3D(),vertices[t2]->toExplicit3D()));
-                }
-                else
-                {
-                    vertices.push_back(make_shared<implicitPoint3D_TPI>(
-                                                                             vertices[t0]->toExplicit3D(),vertices[t1]->toExplicit3D(),vertices[t2]->toExplicit3D(),
-                                                                             vertices[edges[i].p0]->toExplicit3D(),vertices[edges[i].p1]->toExplicit3D(),vertices[edges[i].p2]->toExplicit3D(),
-                                                                             vertices[edges[i].p3]->toExplicit3D(),vertices[edges[i].p4]->toExplicit3D(),vertices[edges[i].p5]->toExplicit3D()));
-                }
-                polygon_plane_intersection_helper(i0,i1,new_i);
-                Edge new_edge(edges[i]);
-                new_edge.e0 = e1;
-                new_edge.e1 = new_i;
-                new_edges.push_back(new_edge);
-            }
-        }
-    }
+    auto [vertex, top_segments, bot_segments] = Segment::slice_segments_with_plane(edges, c0, c1, c2, t0, t1, t2, vertices);
     
-    if(UNDEFINED_VALUE == i1)
+    edges = top_segments;
+    if(0 == top_segments.size() && UNDEFINED_VALUE != vertex)
     {
-        if(UNDEFINED_VALUE != i0 && 0 == new_edges.size())
-        {
-            new_edges.push_back(Edge(i0));
-        }
+        edges.push_back(Segment(vertex)); // just add a point
     }
-    else
-    {
-        bool should_add = true;
-        for(uint32_t i=0; i<new_edges.size(); i++)
-        {
-            if((i0 == new_edges[i].e0 || i0 == new_edges[i].e1) && (i1 == new_edges[i].e0 || i1 == new_edges[i].e1))
-            {
-                should_add = false;
-                break;
-            }
-        }
-        
-        if(should_add)
-        {
-            new_edges.push_back(Edge(i0,i1,c0,c1,c2,t0,t1,t2));
-        }
-    }
-    
-    edges = new_edges;
 }
 
-pair<int, vector<shared_ptr<genericPoint>>> TriangleTetrahedronIntersection::triangle_tetrahedron_intersection(shared_ptr<genericPoint> pc0, shared_ptr<genericPoint> pc1,shared_ptr<genericPoint> pc2,shared_ptr<genericPoint> pt0,shared_ptr<genericPoint> pt1,shared_ptr<genericPoint> pt2,shared_ptr<genericPoint> pt3)
+pair<int, vector<Segment>> TriangleTetrahedronIntersection::triangle_tetrahedron_intersection(uint32_t c0,uint32_t c1,uint32_t c2,uint32_t t0,uint32_t t1,uint32_t t2,uint32_t t3, vector<shared_ptr<genericPoint>>& vertices)
 {
-    int res = 0;
-    vector<shared_ptr<genericPoint>> vertices;
-    vertices.push_back(pc0);
-    vertices.push_back(pc1);
-    vertices.push_back(pc2);
-    vertices.push_back(pt0);
-    vertices.push_back(pt1);
-    vertices.push_back(pt2);
-    vertices.push_back(pt3);
-    int c0(0),c1(1),c2(2),t0(3),t1(4),t2(5),t3(6);
-    vector<Edge> edges;
-    edges.push_back(Edge(c0,c1));
-    edges.push_back(Edge(c1,c2));
-    edges.push_back(Edge(c2,c0));
+    vector<Segment> edges;
+    edges.push_back(Segment(c0,c1));
+    edges.push_back(Segment(c1,c2));
+    edges.push_back(Segment(c2,c0));
 
     polygon_plane_intersection(c0,c1,c2,t0,t1,t2,vertices,edges);
     polygon_plane_intersection(c0,c1,c2,t1,t0,t3,vertices,edges);
     polygon_plane_intersection(c0,c1,c2,t0,t2,t3,vertices,edges);
     polygon_plane_intersection(c0,c1,c2,t2,t1,t3,vertices,edges);
 
+    int res = 0;
     if(0 == edges.size())
     {
         res = 0;
@@ -242,34 +88,6 @@ pair<int, vector<shared_ptr<genericPoint>>> TriangleTetrahedronIntersection::tri
             res = 2;
         }
     }
-    vector<bool> keep_vertices = vector<bool>(vertices.size(), false);
-    for(uint32_t i=0; i<edges.size(); i++)
-    {
-        keep_vertices[edges[i].e0] = true;
-        if(UNDEFINED_VALUE != edges[i].e1)
-        {
-            keep_vertices[edges[i].e1] = true;
-        }
-    }
-    for(uint32_t i=0; i<vertices.size(); i++)
-    {
-        if(keep_vertices[i])
-        {
-            continue;
-        }
-        
-        uint32_t j = vertices.size()-1;
-        swap(vertices[i],vertices[j]);
-        swap(keep_vertices[i],keep_vertices[j]);
-        vertices.pop_back();
-        keep_vertices.pop_back();
-        i--;
-    }
-    return make_pair(res, vertices);
-}
-
-pair<int, vector<shared_ptr<genericPoint>>> TriangleTetrahedronIntersection::triangle_tetrahedron_intersection(uint32_t c0,uint32_t c1,uint32_t c2,uint32_t t0,uint32_t t1,uint32_t t2,uint32_t t3, shared_ptr<genericPoint>* vertices)
-{
-    return triangle_tetrahedron_intersection(vertices[c0],vertices[c1],vertices[c2],vertices[t0],vertices[t1],vertices[t2],vertices[t3]);
+    return make_pair(res, edges);
 }
 

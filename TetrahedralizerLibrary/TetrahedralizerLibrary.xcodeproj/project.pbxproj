@@ -37,6 +37,12 @@
 				generic_point_approximation.hpp,
 				generic_point_predicate.cpp,
 				generic_point_predicate.hpp,
+				geometric_object/double3.h,
+				geometric_object/polyhedralization.cpp,
+				geometric_object/polyhedralization.hpp,
+				geometric_object/segment.h,
+				geometric_object/tetrahedralization.cpp,
+				geometric_object/tetrahedralization.hpp,
 				graph_cut/block.h,
 				graph_cut/energy.h,
 				graph_cut/GCoptimization.cpp,
@@ -54,13 +60,8 @@
 				indirect_predicates/numerics.h,
 				interior_characterization.cpp,
 				interior_characterization.hpp,
-				numeric_array.h,
 				polyhedralization_tetrahedralization.cpp,
 				polyhedralization_tetrahedralization.hpp,
-				polyhedralization.cpp,
-				polyhedralization.hpp,
-				tetrahedralization.cpp,
-				tetrahedralization.hpp,
 				triangle_tetrahedron_intersection.cpp,
 				triangle_tetrahedron_intersection.hpp,
 				unused/main.cpp,
@@ -283,6 +284,7 @@
 					"DEBUG=1",
 					"$(inherited)",
 				);
+				GCC_VERSION = "";
 				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;
@@ -344,6 +346,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_VERSION = "";
 				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;

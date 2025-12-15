@@ -180,7 +180,7 @@ inline double3 approximate_point(std::shared_ptr<genericPoint> m_vertices)
     m_vertices->getApproxXYZCoordinates(res.x, res.y, res.z, true);
     return res;
 }
-inline double3 approximate_facet_centroid(const std::deque<uint32_t>& vertices, std::shared_ptr<genericPoint>* vertices_positions)
+inline double3 approximate_facet_centroid(const std::vector<uint32_t>& vertices, std::shared_ptr<genericPoint>* vertices_positions)
 {
     double3 res;
     for(uint32_t v : vertices)

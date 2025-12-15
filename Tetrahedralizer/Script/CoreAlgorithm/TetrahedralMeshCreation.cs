@@ -278,17 +278,36 @@ namespace Hanzzz.Tetrahedralizer
                 }
             }
     
+            using GenericPointPredicate genericPointPredicate = new GenericPointPredicate(null,null);
+            int removeI = 0;
+            HashSet<Vector3> uniqueVertices = new HashSet<Vector3>();
             for(int i=0; i<tetrahedrons.Count; i+=4)
             {
                 int t0 = tetrahedrons[i+0];
                 int t1 = tetrahedrons[i+1];
                 int t2 = tetrahedrons[i+2];
                 int t3 = tetrahedrons[i+3];
+                //if(0 != genericPointPredicate.Orient3d(approximatedVertices[t0],approximatedVertices[t1],approximatedVertices[t2],approximatedVertices[t3]))
+                //{
+                //    removeI += 4;
+                //    continue;
+                //}
+
+                //uniqueVertices.Clear();
+                //uniqueVertices.Add(approximatedVertices[t0]);
+                //uniqueVertices.Add(approximatedVertices[t1]);
+                //uniqueVertices.Add(approximatedVertices[t2]);
+                //uniqueVertices.Add(approximatedVertices[t3]);
+                //if(4 != uniqueVertices.Count)
+                //{
+                //    removeI += 4;
+                //    continue;
+                //}
     
-                ProcessFacet(i+0,t0,t2,t1);
-                ProcessFacet(i+1,t0,t1,t3);
-                ProcessFacet(i+2,t0,t3,t2);
-                ProcessFacet(i+3,t1,t2,t3);
+                ProcessFacet(i-removeI+0,t0,t2,t1);
+                ProcessFacet(i-removeI+1,t0,t1,t3);
+                ProcessFacet(i-removeI+2,t0,t3,t2);
+                ProcessFacet(i-removeI+3,t1,t2,t3);
             }
             
             meshVertexDataMapper.MakeTetrahedralMesh(tetrahedralMesh);

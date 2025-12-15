@@ -30,8 +30,8 @@
             filePath = "TetrahedralizerLibrary/binary_space_partition.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "138"
-            endingLineNumber = "138"
+            startingLineNumber = "125"
+            endingLineNumber = "125"
             landmarkName = "BinarySpacePartitionHandle::binary_space_partition()"
             landmarkType = "7">
          </BreakpointContent>
@@ -46,8 +46,8 @@
             filePath = "TetrahedralizerLibrary/binary_space_partition.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "174"
-            endingLineNumber = "174"
+            startingLineNumber = "161"
+            endingLineNumber = "161"
             landmarkName = "BinarySpacePartitionHandle::binary_space_partition()"
             landmarkType = "7">
          </BreakpointContent>
@@ -62,8 +62,8 @@
             filePath = "TetrahedralizerLibrary/binary_space_partition.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "324"
-            endingLineNumber = "324"
+            startingLineNumber = "314"
+            endingLineNumber = "314"
             landmarkName = "BinarySpacePartitionHandle::binary_space_partition()"
             landmarkType = "7">
          </BreakpointContent>
@@ -78,8 +78,40 @@
             filePath = "TetrahedralizerLibrary/binary_space_partition.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "703"
-            endingLineNumber = "703"
+            startingLineNumber = "693"
+            endingLineNumber = "693"
+            landmarkName = "BinarySpacePartitionHandle::binary_space_partition()"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "F91CF8EE-8679-4AD7-9BFC-51C4B999ED55"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "TetrahedralizerLibrary/binary_space_partition.cpp"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "311"
+            endingLineNumber = "311"
+            landmarkName = "BinarySpacePartitionHandle::binary_space_partition()"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "ADAF9BA3-1C67-4F8B-9EFD-A5ACDF6ED1FE"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "TetrahedralizerLibrary/binary_space_partition.cpp"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "304"
+            endingLineNumber = "304"
             landmarkName = "BinarySpacePartitionHandle::binary_space_partition()"
             landmarkType = "7">
          </BreakpointContent>

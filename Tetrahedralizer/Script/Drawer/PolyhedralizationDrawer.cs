@@ -46,9 +46,11 @@ namespace Hanzzz.Tetrahedralizer
         }
         private void DrawAsIndividual(Polyhedralization polyhedralization)
         {
+            int index = 0;
             foreach((Mesh mesh, Vector3 center) in polyhedralization.ToMeshes())
             {
-                TetrahedralizerUtility.CreateGameObject(mesh, new List<Material>{m_polyhedronsMaterial} , m_polyhedronsParent, center);
+                TetrahedralizerUtility.CreateGameObject(mesh, new List<Material>{m_polyhedronsMaterial} , m_polyhedronsParent, center).name = index.ToString();
+                index++;
             }
         }
         private void DrawAsWhole(Polyhedralization polyhedralization)

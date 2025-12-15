@@ -13,7 +13,7 @@
 #include <cassert>
 #include <numbers>
 #include <memory>
-#include "numeric_array.h"
+#include "geometric_object/double3.h"
 #include "indirect_predicates/implicit_point.h"
 #include "graph_cut/GCoptimization.h"
 

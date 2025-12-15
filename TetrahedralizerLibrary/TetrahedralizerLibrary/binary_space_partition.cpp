@@ -106,19 +106,6 @@ extern "C" LIBRARY_EXPORT double* GetBinarySpacePartitionFacetsCentroidsWeights(
 }
 
 
-BinarySpacePartitionHandle::PolyhedronEdge::PolyhedronEdge(){}
-BinarySpacePartitionHandle::PolyhedronEdge::PolyhedronEdge(const PolyhedronEdge& other)
-{
-    this->e0 = other.e0;
-    this->e1 = other.e1;
-    this->p0 = other.p0;
-    this->p1 = other.p1;
-    this->p2 = other.p2;
-    this->p3 = other.p3;
-    this->p4 = other.p4;
-    this->p5 = other.p5;
-}
-
 BinarySpacePartitionHandle::PolyhedronFacet::PolyhedronFacet(){}
 BinarySpacePartitionHandle::PolyhedronFacet::PolyhedronFacet(const PolyhedronFacet& other)
 {
@@ -263,9 +250,9 @@ void BinarySpacePartitionHandle::binary_space_partition()
     }
 
     // for every polyhedron, find the constraints that intersect it
-    map<uint32_t,uint32_t> polyhedrons_slice_order; // key is polyhedron, value is the root node of its slice tree
+    queue<pair<uint32_t,uint32_t>> polyhedrons_slice_order; // first is polyhedron, second is the root node of its slice tree
     {
-        map<uint32_t, vector<pair<uint32_t, vector<shared_ptr<genericPoint>>>>> polyhedrons_intersect_constraints;
+        map<uint32_t, vector<tuple<uint32_t, vector<Segment>, vector<shared_ptr<genericPoint>>>>> polyhedrons_intersect_constraints;
         for(uint32_t i=0; i<m_constraints.size()/3; i++)
         {
             uint32_t c0 = m_constraints[3*i+0];
@@ -288,20 +275,23 @@ void BinarySpacePartitionHandle::binary_space_partition()
                     continue;
                 }
                 m_u_set_i_0.insert(t);
-
-                auto [int_type,clip_vertices] = TriangleTetrahedronIntersection::triangle_tetrahedron_intersection(c0, c1, c2,
-                                                                 m_tetrahedralization.get_tetrahedron_vertex(t,0),
-                                                                 m_tetrahedralization.get_tetrahedron_vertex(t,1),
-                                                                 m_tetrahedralization.get_tetrahedron_vertex(t,2),
-                                                                 m_tetrahedralization.get_tetrahedron_vertex(t,3),
-                                                                 m_vertices.data());
+                
+                vector<shared_ptr<genericPoint>> vertices;
+                vertices.push_back(m_vertices[c0]);
+                vertices.push_back(m_vertices[c1]);
+                vertices.push_back(m_vertices[c2]);
+                vertices.push_back(m_vertices[m_tetrahedralization.get_tetrahedron_vertex(t,0)]);
+                vertices.push_back(m_vertices[m_tetrahedralization.get_tetrahedron_vertex(t,1)]);
+                vertices.push_back(m_vertices[m_tetrahedralization.get_tetrahedron_vertex(t,2)]);
+                vertices.push_back(m_vertices[m_tetrahedralization.get_tetrahedron_vertex(t,3)]);
+                auto [int_type, edges] = TriangleTetrahedronIntersection::triangle_tetrahedron_intersection(0,1,2,3,4,5,6, vertices);
                 if(0 == int_type)
                 {
                     continue;
                 }
                 if(2 == int_type)
                 {
-                    polyhedrons_intersect_constraints[t].push_back(make_pair(i,clip_vertices));
+                    polyhedrons_intersect_constraints[t].push_back(make_tuple(i, edges, vertices));
                 }
                 
                 for(uint32_t f=0; f<4; f++)
@@ -313,7 +303,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
         
         for(auto& [p, slices] : polyhedrons_intersect_constraints)
         {
-            polyhedrons_slice_order[p] = build_polyhedrons_slice_tree(slices);
+            polyhedrons_slice_order.push(make_pair(p, build_polyhedrons_slice_tree(slices)));
         }
     }
     
@@ -323,9 +313,9 @@ void BinarySpacePartitionHandle::binary_space_partition()
     {
         while(!polyhedrons_slice_order.empty())
         {
-            uint32_t p = polyhedrons_slice_order.begin()->first;
-            PolyhedronConstraint& polyhedronConstraint = m_polyhedrons_slice_tree[polyhedrons_slice_order.begin()->second];
-            polyhedrons_slice_order.erase(polyhedrons_slice_order.begin());
+            uint32_t p = polyhedrons_slice_order.front().first;
+            PolyhedronConstraint& polyhedronConstraint = m_polyhedrons_slice_tree[polyhedrons_slice_order.front().second];
+            polyhedrons_slice_order.pop();
             uint32_t c = polyhedronConstraint.c;
             uint32_t c0 = m_constraints[3*c+0];
             uint32_t c1 = m_constraints[3*c+1];
@@ -446,7 +436,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
                             m_polyhedrons_edges[e].e1 = new_i;
                             m_vector_i_2.push_back(e);
                             uint32_t bottom_e = m_polyhedrons_edges.size();
-                            m_polyhedrons_edges.push_back(PolyhedronEdge(m_polyhedrons_edges[e]));
+                            m_polyhedrons_edges.push_back(Segment(m_polyhedrons_edges[e]));
                             m_polyhedrons_edges[bottom_e].e0 = new_i;
                             m_polyhedrons_edges[bottom_e].e1 = e1;
                             m_vector_i_3.push_back(bottom_e);
@@ -495,7 +485,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
                             m_polyhedrons_edges[e].e1 = new_i;
                             m_vector_i_2.push_back(e);
                             uint32_t bottom_e = m_polyhedrons_edges.size();
-                            m_polyhedrons_edges.push_back(PolyhedronEdge(m_polyhedrons_edges[e]));
+                            m_polyhedrons_edges.push_back(Segment(m_polyhedrons_edges[e]));
                             m_polyhedrons_edges[bottom_e].e0 = new_i;
                             m_polyhedrons_edges[bottom_e].e1 = e0;
                             m_vector_i_3.push_back(bottom_e);
@@ -532,7 +522,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
                 else
                 {
                     uint32_t i_e = m_polyhedrons_edges.size();
-                    m_polyhedrons_edges.push_back(PolyhedronEdge());
+                    m_polyhedrons_edges.push_back(Segment());
                     m_polyhedrons_edges[i_e].e0 = i0;
                     m_polyhedrons_edges[i_e].e1 = i1;
                     m_polyhedrons_edges[i_e].p0 = m_polyhedrons_facets[f].p0;
@@ -560,11 +550,11 @@ void BinarySpacePartitionHandle::binary_space_partition()
             {
                 if(0 != m_vector_i_0.size() && UNDEFINED_VALUE != polyhedronConstraint.top)
                 {
-                    polyhedrons_slice_order[p] = polyhedronConstraint.top;
+                    polyhedrons_slice_order.push(make_pair(p, polyhedronConstraint.top));
                 }
                 if(0 != m_vector_i_1.size() && UNDEFINED_VALUE != polyhedronConstraint.bot)
                 {
-                    polyhedrons_slice_order[p] = polyhedronConstraint.bot;
+                    polyhedrons_slice_order.push(make_pair(p, polyhedronConstraint.bot));
                 }
                 continue;
             }
@@ -689,11 +679,11 @@ void BinarySpacePartitionHandle::binary_space_partition()
             
             if(UNDEFINED_VALUE != polyhedronConstraint.top)
             {
-                polyhedrons_slice_order[p] = polyhedronConstraint.top;
+                polyhedrons_slice_order.push(make_pair(p, polyhedronConstraint.top));
             }
             if(UNDEFINED_VALUE != polyhedronConstraint.bot)
             {
-                polyhedrons_slice_order[bottom_polyhedron] = polyhedronConstraint.bot;
+                polyhedrons_slice_order.push(make_pair(bottom_polyhedron, polyhedronConstraint.bot));
             }
         }
     }
@@ -713,15 +703,14 @@ void BinarySpacePartitionHandle::binary_space_partition()
         m_output_facets_count = m_polyhedrons_facets.size();
         for(uint32_t i=0; i<m_polyhedrons_facets.size(); i++)
         {
-            sort_polyhedron_facet(i);
-            get_polyhedron_facet_vertices(i, m_deque_i_0);
-            m_output_facets.push_back(m_deque_i_0.size());
-            for(uint32_t j=0; j<m_deque_i_0.size(); j++)
+            vector<uint32_t> vs = get_polyhedron_facet_vertices(i);
+            m_output_facets.push_back(vs.size());
+            for(uint32_t j=0; j<vs.size(); j++)
             {
-                m_output_facets.push_back(m_deque_i_0[j]);
+                m_output_facets.push_back(vs[j]);
             }
             
-            double3 centroid = approximate_facet_centroid(m_deque_i_0, m_vertices.data());
+            double3 centroid = approximate_facet_centroid(vs, m_vertices.data());
             double3 weight;
             barycentric_weight(m_polyhedrons_facets[i].p0,m_polyhedrons_facets[i].p1,m_polyhedrons_facets[i].p2,centroid,m_vertices.data(), weight);
             m_output_facets_centroids.push_back(m_polyhedrons_facets[i].p0);
@@ -745,7 +734,7 @@ uint32_t BinarySpacePartitionHandle::find_or_add_edge(uint32_t p0, uint32_t p1)
     m_u_map_ii_i_0[make_pair(p0,p1)] = m_polyhedrons_edges.size();
 
     uint32_t e = m_polyhedrons_edges.size();
-    m_polyhedrons_edges.push_back(PolyhedronEdge());
+    m_polyhedrons_edges.push_back(Segment());
     m_polyhedrons_edges[e].e0 = p0;
     m_polyhedrons_edges[e].e1 = p1;
     m_polyhedrons_edges[e].p0 = p0;
@@ -796,7 +785,7 @@ void BinarySpacePartitionHandle::add_virtual_constraint(uint32_t e0, uint32_t e1
     throw "can't add virtual constraint";
 }
 
-uint32_t BinarySpacePartitionHandle::build_polyhedrons_slice_tree(vector<pair<uint32_t, vector<shared_ptr<genericPoint>>>>& slices)
+uint32_t BinarySpacePartitionHandle::build_polyhedrons_slice_tree(vector<tuple<uint32_t,vector<Segment>,vector<shared_ptr<genericPoint>>>>& slices)
 {
     if(slices.empty())
     {
@@ -809,54 +798,62 @@ uint32_t BinarySpacePartitionHandle::build_polyhedrons_slice_tree(vector<pair<ui
     uint32_t slice = UNDEFINED_VALUE;
     vector<uint32_t> best_top;
     vector<uint32_t> best_bot;
+    vector<uint32_t> best_both;
     for(uint32_t i=0; i<slices.size(); i++)
     {
-        shared_ptr<genericPoint> c0 = m_vertices[m_constraints[3*slices[i].first+0]];
-        shared_ptr<genericPoint> c1 = m_vertices[m_constraints[3*slices[i].first+1]];
-        shared_ptr<genericPoint> c2 = m_vertices[m_constraints[3*slices[i].first+2]];
+        uint32_t c = get<0>(slices[i]);
+        shared_ptr<genericPoint> c0 = m_vertices[m_constraints[3*c+0]];
+        shared_ptr<genericPoint> c1 = m_vertices[m_constraints[3*c+1]];
+        shared_ptr<genericPoint> c2 = m_vertices[m_constraints[3*c+2]];
+        
         vector<uint32_t> top;
         vector<uint32_t> bot;
+        vector<uint32_t> both;
         for(uint32_t j=0; j<slices.size(); j++)
         {
             if(i==j)
             {
                 continue;
             }
-
+            const vector<Segment>& segments = get<1>(slices[j]);
+            const vector<shared_ptr<genericPoint>>& vertices = get<2>(slices[j]);
             bool has_top = false;
             bool has_bot = false;
-            for(shared_ptr<genericPoint> p : slices[j].second)
+            for(const Segment& segment : segments)
             {
-                if(!has_top && 1 == orient3d(c0,c1,c2,p))
+                int o0 = orient3d(c0,c1,c2,vertices[segment.e0]);
+                int o1 = orient3d(c0,c1,c2,vertices[segment.e1]);
+                has_top |= 1==o0 || 1==o1;
+                has_bot |= -1==o0 || -1==o1;
+                if(has_top && has_bot)
                 {
-                    has_top = true;
-                    top.push_back(j);
-                    if(has_bot)
-                    {
-                        break;
-                    }
-                }
-                if(!has_bot && -1 == orient3d(c0,c1,c2,p))
-                {
-                    has_bot = true;
-                    bot.push_back(j);
-                    if(has_top)
-                    {
-                        break;
-                    }
+                    break;
                 }
             }
+            if(has_top && has_bot)
+            {
+                both.push_back(j);
+            }
+            else if(has_top && !has_bot)
+            {
+                top.push_back(j);
+            }
+            else if(!has_top && has_bot)
+            {
+                bot.push_back(j);
+            }
         }
-        if(UNDEFINED_VALUE==slice || best_top.size()+best_bot.size() > top.size()+bot.size())
+        if(UNDEFINED_VALUE==slice || best_both.size() > both.size())
         {
             slice = i;
             best_top = std::move(top);
             best_bot = std::move(bot);
+            best_both = std::move(both);
         }
     }
-    m_polyhedrons_slice_tree[res].c = slices[slice].first;
-    vector<pair<uint32_t, vector<shared_ptr<genericPoint>>>> top_slices;
-    vector<pair<uint32_t, vector<shared_ptr<genericPoint>>>> bot_slices;
+    m_polyhedrons_slice_tree[res].c = get<0>(slices[slice]);
+    vector<tuple<uint32_t,vector<Segment>,vector<shared_ptr<genericPoint>>>> top_slices;
+    vector<tuple<uint32_t,vector<Segment>,vector<shared_ptr<genericPoint>>>> bot_slices;
     for(uint32_t i : best_top)
     {
         top_slices.push_back(slices[i]);
@@ -864,6 +861,22 @@ uint32_t BinarySpacePartitionHandle::build_polyhedrons_slice_tree(vector<pair<ui
     for(uint32_t i : best_bot)
     {
         bot_slices.push_back(slices[i]);
+    }
+    for(uint32_t i : best_both)
+    {
+        uint32_t c = get<0>(slices[slice]);
+        const vector<Segment>& segments = get<1>(slices[i]);
+        vector<shared_ptr<genericPoint>> vertices = get<2>(slices[i]);
+        vertices.push_back(m_vertices[m_constraints[3*c+0]]);
+        vertices.push_back(m_vertices[m_constraints[3*c+1]]);
+        vertices.push_back(m_vertices[m_constraints[3*c+2]]);
+        auto [vertex, top_segments, bot_segments] = Segment::slice_segments_with_plane(segments, 0, 1, 2, vertices.size()-3, vertices.size()-2, vertices.size()-1, vertices);
+        
+        top_slices.push_back(make_tuple(get<0>(slices[i]),top_segments,vertices));
+        bot_slices.push_back(make_tuple(get<0>(slices[i]),bot_segments,vertices));
+        
+//        top_slices.push_back(slices[i]);
+//        bot_slices.push_back(slices[i]);
     }
     m_polyhedrons_slice_tree[res].top = build_polyhedrons_slice_tree(top_slices);
     m_polyhedrons_slice_tree[res].bot = build_polyhedrons_slice_tree(bot_slices);
@@ -909,90 +922,25 @@ uint32_t BinarySpacePartitionHandle::add_TPI(uint32_t p0,uint32_t p1,uint32_t p2
 }
 
 
-void BinarySpacePartitionHandle::sort_polyhedron_facet(uint32_t facet)
+vector<uint32_t> BinarySpacePartitionHandle:: get_polyhedron_facet_vertices(uint32_t facet)
 {
-    vector<uint32_t>& edges = m_polyhedrons_facets[facet].edges;
-    for(uint32_t i=1; i<edges.size(); i++)
+    vector<Segment> segments;
+    for(uint32_t e : m_polyhedrons_facets[facet].edges)
     {
-        uint32_t last = edges[i-1];
-        for(uint32_t j=i; j<edges.size(); j++)
-        {
-            uint32_t next = edges[j];
-            if(m_polyhedrons_edges[last].e0 == m_polyhedrons_edges[next].e0 ||
-               m_polyhedrons_edges[last].e0 == m_polyhedrons_edges[next].e1 ||
-               m_polyhedrons_edges[last].e1 == m_polyhedrons_edges[next].e0 ||
-               m_polyhedrons_edges[last].e1 == m_polyhedrons_edges[next].e1)
-            {
-                swap(edges[i],edges[j]);
-                break;
-            }
-        }
+        segments.push_back(m_polyhedrons_edges[e]);
     }
-}
-
-void BinarySpacePartitionHandle::get_polyhedron_facet_vertices(uint32_t facet, deque<uint32_t>& res)
-{
-    res.clear();
-    for(uint32_t i=0; i<m_polyhedrons_facets[facet].edges.size()-1; i++)
-    {
-        uint32_t e0 = m_polyhedrons_edges[m_polyhedrons_facets[facet].edges[i]].e0;
-        uint32_t e1 = m_polyhedrons_edges[m_polyhedrons_facets[facet].edges[i]].e1;
-        if(0 == i)
-        {
-            res.push_back(e0);
-            res.push_back(e1);
-            continue;
-        }
-        uint32_t be0 = res.front();
-        uint32_t be1 = res.back();
-     
-        if(be0 == e0)
-        {
-            res.push_front(e1);
-        }
-        else if(be0 == e1)
-        {
-            res.push_front(e0);
-        }
-        else if(be1 == e0)
-        {
-            res.push_back(e1);
-        }
-        else if(be1 == e1)
-        {
-            res.push_back(e0);
-        }
-        else
-        {
-            throw "something is wrong";
-        }
-    }
+    Segment::sort_segments(segments);
+    vector<uint32_t> res = Segment::get_segments_vertices(segments);
+    
     
     // make the first 3 points not collinear to help with future computation
     uint32_t n = res.size();
     while(n-->0 && is_collinear(res[0], res[1], res[2], m_vertices.data()))
     {
         uint32_t front = res[0];
-        res.pop_front();
+        res.erase(res.begin());
         res.push_back(front);
     }
-//    if(n<0)
-//    {
-//        throw "something is wrong";
-//    }
     
-//    if(res.size() < 3)
-//    {
-//        throw "something is wrong";
-//    }
-//    for(uint32_t i=0; i<res.size(); i++)
-//    {
-//        for(uint32_t j=i+1; j<res.size(); j++)
-//        {
-//            if(res[i] == res[j])
-//            {
-//                throw "something is wrong";
-//            }
-//        }
-//    }
+    return res;
 }
