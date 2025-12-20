@@ -3,14 +3,9 @@ using namespace std;
 
 void InteriorCharacterizationHandle::interior_characterization()
 {
-    Polyhedralization polyhedralization;
-    polyhedralization.assign_polyhedrons(m_polyhedrons);
     vector<vector<vector<uint32_t>>> facets_vertices_mapping;
     m_facets_centroids_mapping = vector<uint32_t>(m_facets.size(), UNDEFINED_VALUE);
     vector<double> facets_approximated_areas;
-    unordered_map<pair<uint32_t,uint32_t>,vector<uint32_t>,pair_ii_hash> edges_incident_facets;
-    vector<vector<pair<uint32_t,uint32_t>>> vertices_incident_edges = vector<vector<pair<uint32_t,uint32_t>>>(m_vertices.size());
-    
     
     // calculate some data
     {
@@ -22,14 +17,13 @@ void InteriorCharacterizationHandle::interior_characterization()
         double total_area = 0.0;
         for(uint32_t i=0; i<m_facets.size(); i++)
         {
-            facets_vertices_mapping.push_back(vector<vector<uint32_t>>(m_facets[i].size()));
-            
+            vector<uint32_t> vs = m_facets[i].get_sorted_vertices(m_segments);
             double area = 0.0;
-            double3 p0 = vertices_approximated_positions[m_facets[i][0]];
-            for(uint32_t j=1; j<m_facets[i].size()-1; j++)
+            double3 p0 = vertices_approximated_positions[vs[0]];
+            for(uint32_t j=1; j<vs.size()-1; j++)
             {
-                double3 p1 = vertices_approximated_positions[m_facets[i][j]];
-                double3 p2 = vertices_approximated_positions[m_facets[i][j+1]];
+                double3 p1 = vertices_approximated_positions[vs[j]];
+                double3 p2 = vertices_approximated_positions[vs[j+1]];
                 area += (p1-p0).cross(p2-p0).length();
             }
             facets_approximated_areas.push_back(area);
@@ -39,98 +33,47 @@ void InteriorCharacterizationHandle::interior_characterization()
         {
             facets_approximated_areas[i] /= total_area;
         }
-        
-        for(uint32_t i=0; i<m_facets.size(); i++)
-        {
-            for(uint32_t j=0; j<m_facets[i].size(); j++)
-            {
-                uint32_t e0 = m_facets[i][j];
-                uint32_t e1 = m_facets[i][(j+1)%m_facets[i].size()];
-                sort_ints(e0, e1);
-                edges_incident_facets[make_pair(e0, e1)].push_back(i);
-                vertices_incident_edges[e0].push_back(make_pair(e0, e1));
-                vertices_incident_edges[e1].push_back(make_pair(e0, e1));
-            }
-        }
     }
-
-    // associate constraints to facets vertices
-    for(uint32_t i=0; i<m_constraints.size()/3; i++)
+    
+    for(uint32_t i=0; i<m_facets.size(); i++)
     {
-        uint32_t c0 = m_constraints[3*i+0];
-        uint32_t c1 = m_constraints[3*i+1];
-        uint32_t c2 = m_constraints[3*i+2];
-        if(UNDEFINED_VALUE == c0)
-        {
-            continue;
-        }
+        shared_ptr<genericPoint> centroid = make_shared<implicitPoint3D_BPT>
+        (m_vertices[m_facets[i].p0]->toExplicit3D(), m_vertices[m_facets[i].p1]->toExplicit3D(), m_vertices[m_facets[i].p2]->toExplicit3D(),
+         m_facets[i].w0, m_facets[i].w1);
         
-        clear_queue(m_queue_i_0); // facets to be visited
-        for(pair<uint32_t,uint32_t> e : vertices_incident_edges[c0])
-        {
-            for(uint32_t f : edges_incident_facets[e])
-            {
-                m_queue_i_0.push(f);
-            }
-        }
-        for(pair<uint32_t,uint32_t> e : vertices_incident_edges[c1])
-        {
-            for(uint32_t f : edges_incident_facets[e])
-            {
-                m_queue_i_0.push(f);
-            }
-        }
-        for(pair<uint32_t,uint32_t> e : vertices_incident_edges[c2])
-        {
-            for(uint32_t f : edges_incident_facets[e])
-            {
-                m_queue_i_0.push(f);
-            }
-        }
-        m_u_set_i_0.clear(); // visited facets
+//        for(uint32_t j=0; j<m_constraints.size(); j+=3)
+//        {
+//            uint32_t c0 = m_constraints[j+0];
+//            uint32_t c1 = m_constraints[j+1];
+//            uint32_t c2 = m_constraints[j+2];
+//            if(UNDEFINED_VALUE == c0)
+//            {
+//                continue;
+//            }
+//            if(!m_facets[i].is_coplanar_constraint(c0, c1, c2, m_vertices))
+//            {
+//                continue;
+//            }
+//            if(genericPoint::pointInTriangle(*centroid,*m_vertices[c0],*m_vertices[c1],*m_vertices[c2]))
+//            {
+//                m_facets_centroids_mapping[i] = j/3;
+//                break;
+//            }
+//        }
         
-        while(!m_queue_i_0.empty())
+        for(uint32_t c : m_facets[i].constrains)
         {
-            uint32_t f = m_queue_i_0.front();
-            m_queue_i_0.pop();
-            if(m_u_set_i_0.end() != m_u_set_i_0.find(f))
+            if(3*c >= m_constraints.size())
             {
                 continue;
             }
-            m_u_set_i_0.insert(f);
-            
-            bool search_neighbor = true;
-            uint32_t f0 = m_facets[f][0];
-            uint32_t f1 = m_facets[f][1];
-            uint32_t f2 = m_facets[f][2];
-            bool is_coplanar = 0 == orient3d(c0,c1,c2,f0,m_vertices.data()) && 0 == orient3d(c0,c1,c2,f1,m_vertices.data()) && 0 == orient3d(c0,c1,c2,f2,m_vertices.data());
-            if(is_coplanar)
+            uint32_t c0 = m_constraints[3*c+0];
+            uint32_t c1 = m_constraints[3*c+1];
+            uint32_t c2 = m_constraints[3*c+2];
+            if(genericPoint::pointInTriangle(*centroid,*m_vertices[c0],*m_vertices[c1],*m_vertices[c2]))
             {
-                search_neighbor = true;
-                for(uint32_t j=0; j<m_facets[f].size(); j++)
-                {
-                    if(vertex_in_triangle(m_facets[f][j], c0, c1, c2, m_vertices.data()))
-                    {
-                        facets_vertices_mapping[f][j].push_back(i);
-                    }
-                }
-                if(UNDEFINED_VALUE == m_facets_centroids_mapping[f] && genericPoint::pointInTriangle(*m_facets_centroids[f],*m_vertices[c0],*m_vertices[c1],*m_vertices[c2]))
-                {
-                    m_facets_centroids_mapping[f] = i;
-                }
-            }
-            if(is_coplanar)
-            {
-                for(uint32_t j=0; j<m_facets[f].size(); j++)
-                {
-                    uint32_t e0 = m_facets[f][j];
-                    uint32_t e1 = m_facets[f][(j+1)%m_facets[f].size()];
-                    sort_ints(e0, e1);
-                    for(uint32_t nf : edges_incident_facets[make_pair(e0, e1)])
-                    {
-                        m_queue_i_0.push(nf);
-                    }
-                }
+                m_facets_centroids_mapping[i] = c;
+                break;
             }
         }
     }
@@ -165,20 +108,12 @@ void InteriorCharacterizationHandle::interior_characterization()
                         continue;
                     }
                     uint32_t nf = m_polyhedrons[i][k];
-                    uint32_t f0 = m_facets[nf][0];
-                    uint32_t f1 = m_facets[nf][1];
-                    uint32_t f2 = m_facets[nf][2];
-                    if(0 != (orient=orient3d(t0,t1,t2,f0, m_vertices.data())))
+                    for(uint32_t v : m_facets[nf].get_sorted_vertices(m_segments))
                     {
-                        break;
-                    }
-                    if(0 != (orient=orient3d(t0,t1,t2,f1, m_vertices.data())))
-                    {
-                        break;
-                    }
-                    if(0 != (orient=orient3d(t0,t1,t2,f2, m_vertices.data())))
-                    {
-                        break;
+                        if(0 != (orient=orient3d(t0,t1,t2,v, m_vertices.data())))
+                        {
+                            break;
+                        }
                     }
                 }
                 if(orient > 0)
@@ -207,8 +142,13 @@ void InteriorCharacterizationHandle::interior_characterization()
                 continue;
             }
 
-            uint32_t n0,n1;
-            polyhedralization.get_polyhedron_facet_neighbors(i, n0, n1);
+            uint32_t n0 = m_facets[i].ip0;
+            uint32_t n1 = m_facets[i].ip1;
+            if(n0 == UNDEFINED_VALUE)
+            {
+                swap(n0,n1);
+            }
+
             if(UNDEFINED_VALUE == n1)
             {
                 if(polyhedrons_to_ghost_weight[n0] < 0.0)
@@ -259,12 +199,18 @@ void InteriorCharacterizationHandle::interior_characterization()
 void InteriorCharacterizationHandle::Dispose()
 {}
 
-void InteriorCharacterizationHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights, uint32_t constraints_count, uint32_t* constraints, double polyhedron_in_multiplier)
+void InteriorCharacterizationHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, FacetInteropData* facets, uint32_t segments_count, SegmentInteropData* segments, uint32_t constraints_count, uint32_t* constraints, double polyhedron_in_multiplier)
 {
     m_vertices = create_vertices(explicit_count, explicit_values, implicit_count, implicit_values);
     m_polyhedrons = flat_array_to_nested_vector(polyhedrons, polyhedrons_count);
-    m_facets = flat_array_to_nested_vector(facets, facets_count);
-    m_facets_centroids = create_vertices(facets_count, facets_centroids, facets_centroids_weights, m_vertices.data());
+    for(uint32_t i=0; i<facets_count; i++)
+    {
+        m_facets.push_back(facets[i].to_facet());
+    }
+    for(uint32_t i=0; i<segments_count; i++)
+    {
+        m_segments.push_back(segments[i].to_segment());
+    }
     m_constraints = create_constraints(constraints_count, constraints, m_vertices.data(), true);
     m_polyhedron_in_multiplier = polyhedron_in_multiplier;
 }
@@ -298,9 +244,9 @@ extern "C" LIBRARY_EXPORT void DisposeInteriorCharacterizationHandle(void* handl
     delete (InteriorCharacterizationHandle*)handle;
 }
 
-extern "C" LIBRARY_EXPORT void AddInteriorCharacterizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights, uint32_t constraints_count, uint32_t* constraints, double polyhedron_in_multiplier)
+extern "C" LIBRARY_EXPORT void AddInteriorCharacterizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, FacetInteropData* facets, uint32_t segments_count, SegmentInteropData* segments, uint32_t constraints_count, uint32_t* constraints, double polyhedron_in_multiplier)
 {
-    ((InteriorCharacterizationHandle*)handle)->AddInput(explicit_count, explicit_values, implicit_count, implicit_values, polyhedrons_count, polyhedrons, facets_count, facets, facets_centroids, facets_centroids_weights, constraints_count, constraints, polyhedron_in_multiplier);
+    ((InteriorCharacterizationHandle*)handle)->AddInput(explicit_count, explicit_values, implicit_count, implicit_values, polyhedrons_count, polyhedrons, facets_count, facets, segments_count, segments, constraints_count, constraints, polyhedron_in_multiplier);
 }
 
 extern "C" LIBRARY_EXPORT void CalculateInteriorCharacterization(void* handle)

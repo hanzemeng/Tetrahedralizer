@@ -14,11 +14,12 @@ namespace Hanzzz.Tetrahedralizer
     {
         public List<double> m_explicitVertices; // Every 3 doubles are x,y,z of a point. Assuming left hand coordinate.
         public List<int> m_implicitVertices; // 5/9 followed by indexes of m_explicitVertices.
+        
         public List<int> m_polyhedrons; // # of polyhedron facets, followed by facets indexes.
         
-        public List<int> m_facets; // # of facets vertices, followed by vertices indexes ordered in cw or ccw.
-        public List<int> m_facetsCentroids; // every facet centroid is defined by 3 coplanar explicit vertices
-        public List<double> m_facetsCentroidsWeights; // and the weight of the explicit vertices, note the 3 weight is ignored
+        public List<Facet> m_facets;
+        public List<Segment> m_segments;
+
         public List<int> m_facetsVerticesMapping; // for every vertex in every facet, record # of incident constraints followed by indexes of the constraints
         public List<int> m_facetsCentroidsMapping; // for every facet centroid, record an incident constraint, UNDEFINED_VALUE if no such constraint
         public List<bool> m_facetsPointOut; // only defined for exterior facets, true if the facet points out of its polyhedron
@@ -35,8 +36,8 @@ namespace Hanzzz.Tetrahedralizer
             GenericPointApproximation genericPointApproximation = new GenericPointApproximation();
             List<Vector3> vertices = TetrahedralizerUtility.PackVector3s(genericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
             List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedrons);
-            List<List<int>> polyhedronsFacets = TetrahedralizerUtility.FlatIListToNestedList(m_facets);
-    
+            List<List<int>> polyhedronsFacets = GetFacetsVertices();
+
             List<(Mesh, Vector3)> res = new List<(Mesh, Vector3)>();
     
             List<Vector3> polyVertices = new List<Vector3>();
@@ -100,7 +101,7 @@ namespace Hanzzz.Tetrahedralizer
             GenericPointApproximation genericPointApproximation = new GenericPointApproximation();
             List<Vector3> vertices = TetrahedralizerUtility.PackVector3s(genericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
             List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedrons);
-            List<List<int>> polyhedronsFacets = TetrahedralizerUtility.FlatIListToNestedList(m_facets);
+            List<List<int>> polyhedronsFacets = GetFacetsVertices();
             bool[] shouldDrawFacets = GetFacetsExteriorFlags();
     
             List<Vector3> meshVertices = new List<Vector3>();
@@ -189,7 +190,7 @@ namespace Hanzzz.Tetrahedralizer
         {
             using GenericPointPredicate genericPointPredicate = new GenericPointPredicate(m_explicitVertices, m_implicitVertices);
             List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedrons);
-            List<List<int>> polyhedronsFacets = TetrahedralizerUtility.FlatIListToNestedList(m_facets);
+            List<List<int>> polyhedronsFacets = GetFacetsVertices();
             m_facetsPointOut = Enumerable.Repeat(false,polyhedronsFacets.Count).ToList();
             bool[] isExteriorFacets = GetFacetsExteriorFlags();
     
@@ -222,13 +223,28 @@ namespace Hanzzz.Tetrahedralizer
             m_implicitVertices = polyhedralization.m_implicitVertices;
             m_polyhedrons = polyhedralization.m_polyhedrons;
             m_facets = polyhedralization.m_facets;
-            m_facetsCentroids = polyhedralization.m_facetsCentroids;
-            m_facetsCentroidsWeights = polyhedralization.m_facetsCentroidsWeights;
+            m_segments = polyhedralization.m_segments;
             m_facetsVerticesMapping = polyhedralization.m_facetsVerticesMapping;
             m_facetsCentroidsMapping = polyhedralization.m_facetsCentroidsMapping;
             m_facetsPointOut = polyhedralization.m_facetsPointOut;
         }
     
+        private List<List<int>> GetFacetsVertices()
+        {
+            List<List<int>> res = new List<List<int>>();
+            List<Segment> segments = new List<Segment>();
+            foreach(Facet facet in m_facets)
+            {
+                segments.Clear();
+                foreach(int s in facet.segments)
+                {
+                    segments.Add(m_segments[s]);
+                }
+                Segment.SortSegments(segments);
+                res.Add(Segment.GetSegmentsVertices(segments));
+            }
+            return res;
+        }
         private bool FacetPointsOut(int facet, int polyhedron, List<List<int>> polyhedronsFacets, List<List<int>> polyhedrons, GenericPointPredicate genericPointPredicate)
         {
             List<int> facetVertices = polyhedronsFacets[facet];
@@ -306,7 +322,7 @@ namespace Hanzzz.Tetrahedralizer
     
             EditorGUILayout.LabelField($"Vertices Count: {m_so.m_explicitVertices.Count/3 + TetrahedralizerUtility.CountFlatIListElements(m_so.m_implicitVertices)}");
             EditorGUILayout.LabelField($"Polyhedrons Count: {TetrahedralizerUtility.CountFlatIListElements(m_so.m_polyhedrons)}");
-            EditorGUILayout.LabelField($"Facets Count: {TetrahedralizerUtility.CountFlatIListElements(m_so.m_facets)}");
+            EditorGUILayout.LabelField($"Facets Count: {m_so.m_facets.Count}");
         }
     }
     #endif

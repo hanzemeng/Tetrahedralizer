@@ -5,6 +5,7 @@
 #include "common_function.h"
 #include "geometric_object/tetrahedralization.hpp"
 #include "geometric_object/segment.h"
+#include "geometric_object/facet.h"
 #include "triangle_tetrahedron_intersection.hpp"
 
 class BinarySpacePartitionHandle
@@ -14,33 +15,22 @@ public:
     void AddInput(uint32_t, double*, uint32_t, uint32_t*, uint32_t, uint32_t*, bool);
     
     void Calculate();
-
+    
     uint32_t GetInsertedVerticesCount();
     uint32_t* GetInsertedVertices();
-
+    
     uint32_t GetPolyhedronsCount();
     uint32_t* GetPolyhedrons();
-
     uint32_t GetFacetsCount();
-    uint32_t* GetFacets();
-    uint32_t* GetFacetsCentroids();
-    double* GetFacetsCentroidsWeights();
+    void GetFacets(FacetInteropData* outArray);
+    uint32_t GetSegmentsCount();
+    void GetSegments(SegmentInteropData* outArray);
     
     
 private:
-    class PolyhedronFacet
-    {
-        public:
-        std::vector<uint32_t> edges; // bounding edges, sorted clockwise or counter clockwise
-        uint32_t p0,p1,p2; // three points that define the plane
-        uint32_t ip0, ip1; // two incident polyhedrons
-
-        PolyhedronFacet();
-        PolyhedronFacet(const PolyhedronFacet& other);
-    };
     class PolyhedronConstraint
     {
-        public:
+    public:
         uint32_t c; // constraint
         uint32_t top; // top constraint node
         uint32_t bot; // bottom constraint node
@@ -53,28 +43,20 @@ private:
     
     std::vector<PolyhedronConstraint> m_polyhedrons_slice_tree;
     std::vector<std::vector<uint32_t>> m_polyhedrons;
-    std::vector<PolyhedronFacet> m_polyhedrons_facets;
-    std::vector<Segment> m_polyhedrons_edges;
+    std::vector<Facet> m_facets;
+    std::vector<Segment> m_segments;
     
     std::vector<uint32_t> m_inserted_vertices;
     uint32_t m_inserted_vertices_count;
     std::vector<uint32_t> m_output_polyhedrons;
     uint32_t m_output_polyhedrons_count;
-    std::vector<uint32_t> m_output_facets;
-    std::vector<uint32_t> m_output_facets_centroids;
-    std::vector<double> m_output_facets_centroids_weights;
-    uint32_t m_output_facets_count;
     COMMON_FIELDS
-
+    
     void binary_space_partition();
     uint32_t find_or_add_edge(uint32_t p0, uint32_t p1);
     uint32_t find_or_add_facet(uint32_t e0, uint32_t e1, uint32_t e2, uint32_t p0, uint32_t p1,  uint32_t p2);
     void add_virtual_constraint(uint32_t e0, uint32_t e1, uint32_t c); // e0 and e1 incident the constraint c
     uint32_t build_polyhedrons_slice_tree(std::vector<std::tuple<uint32_t,std::vector<Segment>, std::vector<std::shared_ptr<genericPoint>>>>& slices);
-    uint32_t add_LPI(uint32_t e0, uint32_t e1, uint32_t p0,uint32_t p1,uint32_t p2); // LPI: line plane intersection
-    uint32_t add_TPI(uint32_t p0,uint32_t p1,uint32_t p2,uint32_t p3,uint32_t p4,uint32_t p5,uint32_t p6,uint32_t p7,uint32_t p8); // TPI: three planes intersection
-    std::vector<uint32_t> get_polyhedron_facet_vertices(uint32_t facet);
-    
 };
 
 extern "C" LIBRARY_EXPORT void* CreateBinarySpacePartitionHandle();
@@ -89,8 +71,8 @@ extern "C" LIBRARY_EXPORT uint32_t* GetBinarySpacePartitionInsertedVertices(void
 extern "C" LIBRARY_EXPORT uint32_t GetBinarySpacePartitionPolyhedronsCount(void* handle);
 extern "C" LIBRARY_EXPORT uint32_t* GetBinarySpacePartitionPolyhedrons(void* handle);
 extern "C" LIBRARY_EXPORT uint32_t GetBinarySpacePartitionFacetsCount(void* handle);
-extern "C" LIBRARY_EXPORT uint32_t* GetBinarySpacePartitionFacets(void* handle);
-extern "C" LIBRARY_EXPORT uint32_t* GetBinarySpacePartitionFacetsCentroids(void* handle);
-extern "C" LIBRARY_EXPORT double* GetBinarySpacePartitionFacetsCentroidsWeights(void* handle);
+extern "C" LIBRARY_EXPORT void GetBinarySpacePartitionFacets(void* handle, FacetInteropData* outArray);
+extern "C" LIBRARY_EXPORT uint32_t GetBinarySpacePartitionSegmentsCount(void* handle);
+extern "C" LIBRARY_EXPORT void GetBinarySpacePartitionSegments(void* handle, SegmentInteropData* outArray);
 
 #endif

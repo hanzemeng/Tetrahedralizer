@@ -9,6 +9,7 @@ namespace Hanzzz.Tetrahedralizer
     {
         public MeshFilter m_meshFiler;
         public Transform m_p0,m_p1,m_p2;
+        public Transform m_plane;
     
     
         private void Update()
@@ -20,6 +21,8 @@ namespace Hanzzz.Tetrahedralizer
             mesh.RecalculateNormals();
             mesh.RecalculateTangents();
             m_meshFiler.mesh = mesh;
+
+            m_plane.up = Vector3.Cross((m_p1.position-m_p0.position).normalized, (m_p2.position-m_p0.position).normalized);
         }
     }
     

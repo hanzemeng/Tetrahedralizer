@@ -1,0 +1,113 @@
+#ifndef facet_h
+#define facet_h
+
+#include "common_header.h"
+#include "segment.h"
+
+class Facet
+{
+    public:
+    std::vector<uint32_t> segments; // segments forming the facet
+    uint32_t p0,p1,p2; // three explicit vetices that define the facet
+    double w0,w1; // w0+w1+w2==1 and w0*p0+w1*p1+w2*p2 is the facet centroid
+    uint32_t ip0, ip1; // two incident polyhedrons
+    std::vector<uint32_t> constrains; // coplanar constraints that may intersect the facet
+
+    Facet()
+    {
+        p0=p1=p2=ip0=ip1=UNDEFINED_VALUE;
+        w0=w1=1.0/3.0;
+    }
+    
+    Facet(const Facet& other)
+    {
+        this->segments = other.segments;
+        this->p0 = other.p0;
+        this->p1 = other.p1;
+        this->p2 = other.p2;
+        this->w0 = other.w0;
+        this->w1 = other.w1;
+        this->ip0 = other.ip0;
+        this->ip1 = other.ip1;
+        this->constrains = other.constrains;
+    }
+    
+    bool contains_segment(uint32_t segment)
+    {
+        return segments.end() != std::find(segments.begin(), segments.end(), segment);
+    }
+    bool is_coplanar_constraint(uint32_t c0,uint32_t c1,uint32_t c2, std::vector<std::shared_ptr<genericPoint>>& vertices)
+    {
+        return 0==orient3d(p0,p1,p2,c0,vertices.data()) && 0==orient3d(p0,p1,p2,c1,vertices.data()) && 0==orient3d(p0,p1,p2,c2,vertices.data());
+    }
+    
+    std::vector<uint32_t> get_sorted_vertices(std::vector<Segment>& all_segments)
+    {
+        std::vector<Segment> res;
+        for(uint32_t s : segments)
+        {
+            res.push_back(all_segments[s]);
+        }
+        Segment::sort_segments(res);
+        return Segment::get_segments_vertices(res);
+    }
+    
+    std::vector<uint32_t> get_vertices(std::vector<Segment>& all_segments)
+    {
+        std::unordered_set<uint32_t> res;
+        for(uint32_t s : segments)
+        {
+            res.insert(all_segments[s].e0);
+            res.insert(all_segments[s].e1);
+        }
+        return std::vector<uint32_t>(res.begin(),res.end());
+    }
+};
+
+extern "C"
+{
+    struct FacetInteropData
+    {
+        public:
+        const uint32_t* segments;
+        uint32_t segments_count;
+        uint32_t p0, p1, p2;
+        double w0, w1;
+        uint32_t ip0, ip1;
+        const uint32_t* constrains;
+        uint32_t constrains_count;
+            
+        FacetInteropData& operator=(const Facet& other)
+        {
+            this->segments = other.segments.data();
+            segments_count = other.segments.size();
+            this->p0 = other.p0;
+            this->p1 = other.p1;
+            this->p2 = other.p2;
+            this->w0 = other.w0;
+            this->w1 = other.w1;
+            this->ip0 = other.ip0;
+            this->ip1 = other.ip1;
+            this->constrains = other.constrains.data();
+            constrains_count = other.constrains.size();
+            return *this;
+        }
+        
+        Facet to_facet()
+        {
+            Facet res;
+            res.segments = std::vector<uint32_t>(segments,segments+segments_count);
+            res.p0 = p0;
+            res.p1 = p1;
+            res.p2 = p2;
+            res.w0 = w0;
+            res.w1 = w1;
+            res.ip0 = ip0;
+            res.ip1 = ip1;
+            res.constrains = std::vector<uint32_t>(constrains,constrains+constrains_count);
+            return res;
+        }
+    };
+}
+
+#endif

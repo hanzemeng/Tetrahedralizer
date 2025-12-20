@@ -3,13 +3,14 @@
 
 #include "common_header.h"
 #include "common_function.h"
-#include "geometric_object/polyhedralization.hpp"
+#include "geometric_object/facet.h"
+#include "geometric_object/segment.h"
 
 class InteriorCharacterizationHandle
 {
 public:
     void Dispose();
-    void AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights, uint32_t constraints_count, uint32_t* constraints, double polyhedron_in_multiplier);
+    void AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, FacetInteropData* facets, uint32_t segments_count, SegmentInteropData* segments, uint32_t constraints_count, uint32_t* constraints, double polyhedron_in_multiplier);
     
     void Calculate();
     
@@ -20,8 +21,8 @@ public:
 private:
     std::vector<std::shared_ptr<genericPoint>> m_vertices;
     std::vector<std::vector<uint32_t>> m_polyhedrons;
-    std::vector<std::vector<uint32_t>> m_facets;
-    std::vector<std::shared_ptr<genericPoint>> m_facets_centroids;
+    std::vector<Facet> m_facets;
+    std::vector<Segment> m_segments;
     std::vector<uint32_t> m_constraints;
     double m_polyhedron_in_multiplier; // multiply this to the cost labeling a polyhedron to be in
     
@@ -36,7 +37,7 @@ private:
 extern "C" LIBRARY_EXPORT void* CreateInteriorCharacterizationHandle();
 extern "C" LIBRARY_EXPORT void DisposeInteriorCharacterizationHandle(void* handle);
 
-extern "C" LIBRARY_EXPORT void AddInteriorCharacterizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights, uint32_t constraints_count, uint32_t* constraints, double polyhedron_in_multiplier);
+extern "C" LIBRARY_EXPORT void AddInteriorCharacterizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, FacetInteropData* facets, uint32_t segments_count, SegmentInteropData* segments, uint32_t constraints_count, uint32_t* constraints, double polyhedron_in_multiplier);
 
 extern "C" LIBRARY_EXPORT void CalculateInteriorCharacterization(void* handle);
 

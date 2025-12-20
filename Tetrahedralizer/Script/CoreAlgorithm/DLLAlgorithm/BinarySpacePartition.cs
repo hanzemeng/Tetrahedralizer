@@ -8,6 +8,7 @@ namespace Hanzzz.Tetrahedralizer
 {
     public class BinarySpacePartition
     {
+        // todo
         /// <summary>
         /// Slices the tetrahedrons with intersecting constraints. Resulting in multiple polyhedrons.
         /// </summary>
@@ -24,7 +25,7 @@ namespace Hanzzz.Tetrahedralizer
         /// <para><c>facetsCentroids</c>(v0,v1,v2). v0,v1,v2 are indexes to 3 explicit vertices.</para>
         /// <para><c>facetsCentroidsWeights</c>(w0,w1). w0,w1,1-w0-w1 are weights of the 3 explicit vertices defined above.</para>
         /// </returns>
-        public (List<int> insertedVertices, List<int> polyhedrons, List<int> facets, List<int> facetsCentroids, List<double> facetsCentroidsWeights)
+        public (List<int> insertedVertices, List<int> polyhedrons, List<Facet> facets, List<Segment> segments)
         CalculateBinarySpacePartition(IReadOnlyList<double> explicitVertices, IReadOnlyList<int> tetrahedrons, IReadOnlyList<int> constraints, bool aggressivelyAddVirtualConstraints, bool removeCollinearSegments)
         {
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
@@ -46,11 +47,11 @@ namespace Hanzzz.Tetrahedralizer
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern int GetBinarySpacePartitionFacetsCount(IntPtr handle);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-            static extern IntPtr GetBinarySpacePartitionFacets(IntPtr handle);
+            static extern void GetBinarySpacePartitionFacets(IntPtr handle, [Out] FacetInteropData[] facetInteropData);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-            static extern IntPtr GetBinarySpacePartitionFacetsCentroids(IntPtr handle);
+            static extern int GetBinarySpacePartitionSegmentsCount(IntPtr handle);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-            static extern IntPtr GetBinarySpacePartitionFacetsCentroidsWeights(IntPtr handle);
+            static extern void GetBinarySpacePartitionSegments(IntPtr handle, [Out] SegmentInteropData[] segmentInteropData);
     
             double[] explicitVerticesArray = explicitVertices.ToArray();
             TetrahedralizerUtility.SwapElementsByInterval(explicitVerticesArray, 3);
@@ -65,40 +66,42 @@ namespace Hanzzz.Tetrahedralizer
             List<int> insertedVertices = ptr.ReadInt32NestedRepeat(GetBinarySpacePartitionInsertedVerticesCount(handle));
             ptr = GetBinarySpacePartitionPolyhedrons(handle);
             List<int> polyhedrons = ptr.ReadInt32NestedRepeat(GetBinarySpacePartitionPolyhedronsCount(handle));
-            ptr = GetBinarySpacePartitionFacets(handle);
-            List<int> facets = ptr.ReadInt32NestedRepeat(GetBinarySpacePartitionFacetsCount(handle));
-            ptr = GetBinarySpacePartitionFacetsCentroids(handle);
-            List<int> facetsCentroids = ptr.ReadInt32Repeat(3*GetBinarySpacePartitionFacetsCount(handle));
-            ptr = GetBinarySpacePartitionFacetsCentroidsWeights(handle);
-            List<double> facetsCentroidsWeights = ptr.ReadDoubleRepeat(2*GetBinarySpacePartitionFacetsCount(handle));
             
+            FacetInteropData[] facetInteropData = new FacetInteropData[GetBinarySpacePartitionFacetsCount(handle)];
+            GetBinarySpacePartitionFacets(handle, facetInteropData);
+            List<Facet> facets = facetInteropData.Select(i=>new Facet(i)).ToList();
+
+            SegmentInteropData[] segmentInteropData = new SegmentInteropData[GetBinarySpacePartitionSegmentsCount(handle)];
+            GetBinarySpacePartitionSegments(handle, segmentInteropData);
+            List<Segment> segments = segmentInteropData.Select(i=>new Segment(i)).ToList();
+
             if(removeCollinearSegments)
             {
-                List<List<int>> facetsNested = TetrahedralizerUtility.FlatIListToNestedList(facets);
-                List<List<int>> newFacetsNested = new List<List<int>>();
-                using GenericPointPredicate genericPointPredicate = new GenericPointPredicate(explicitVertices, insertedVertices);
+                //List<List<int>> facetsNested = TetrahedralizerUtility.FlatIListToNestedList(facets);
+                //List<List<int>> newFacetsNested = new List<List<int>>();
+                //using GenericPointPredicate genericPointPredicate = new GenericPointPredicate(explicitVertices, insertedVertices);
     
-                foreach(List<int> facet in facetsNested)
-                {
-                    List<int> newFacet = new List<int>();
-                    for(int i=0; i<facet.Count; i++)
-                    {
-                        int p = 0==i ? facet.Count-1:i-1;
-                        int n = facet.Count-1==i ? 0:i+1;
+                //foreach(List<int> facet in facetsNested)
+                //{
+                //    List<int> newFacet = new List<int>();
+                //    for(int i=0; i<facet.Count; i++)
+                //    {
+                //        int p = 0==i ? facet.Count-1:i-1;
+                //        int n = facet.Count-1==i ? 0:i+1;
     
-                        if(!genericPointPredicate.IsCollinear(facet[p],facet[i],facet[n]))
-                        {
-                            newFacet.Add(facet[i]);
-                        }
-                    }
-                    newFacetsNested.Add(newFacet);
-                }
+                //        if(!genericPointPredicate.IsCollinear(facet[p],facet[i],facet[n]))
+                //        {
+                //            newFacet.Add(facet[i]);
+                //        }
+                //    }
+                //    newFacetsNested.Add(newFacet);
+                //}
     
-                facets = TetrahedralizerUtility.NestedListToFlatList(newFacetsNested);
+                //facets = TetrahedralizerUtility.NestedListToFlatList(newFacetsNested);
             }
     
             DisposeBinarySpacePartitionHandle(handle);
-            return (insertedVertices, polyhedrons, facets, facetsCentroids, facetsCentroidsWeights);
+            return (insertedVertices, polyhedrons, facets, segments);
     
             // sanity checks: every facet should not be a line, and every polyhedron should not be a plane
             //{
