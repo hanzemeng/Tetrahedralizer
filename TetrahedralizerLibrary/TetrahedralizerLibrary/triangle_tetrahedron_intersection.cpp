@@ -2,92 +2,96 @@
 using namespace std;
 
 
-
-void TriangleTetrahedronIntersection::polygon_plane_intersection_helper(uint32_t& i0,uint32_t& i1,uint32_t e)
+int TriangleTetrahedronIntersection::triangle_tetrahedron_intersection(vector<shared_ptr<genericPoint>>& vertices, vector<Segment>& segments, vector<Facet>& facets)
 {
-    if(UNDEFINED_VALUE == i0 || e == i0)
+    vector<uint32_t> top_segments = facets[0].segments;
+    uint32_t top_vertex = UNDEFINED_VALUE;
+    
+    for(uint32_t i=1; i<5; i++)
     {
-        i0 = e;
-    }
-    else if(UNDEFINED_VALUE == i1 || e == i1)
-    {
-        i1 = e;
-    }
-}
-// slice edges, will insert vertices at intersections, will keep edges that are on or above the plane.
-void TriangleTetrahedronIntersection::polygon_plane_intersection(uint32_t c0,uint32_t c1,uint32_t c2,uint32_t t0,uint32_t t1,uint32_t t2, vector<shared_ptr<genericPoint>>& vertices, vector<Segment>& edges)
-{
-    if(0 == edges.size())
-    {
-        return;
-    }
-    // just a point
-    if(1 == edges.size() && UNDEFINED_VALUE == edges[0].e1)
-    {
-        if(-1 == orient3d(t0,t1,t2, edges[0].e0, vertices.data()))
+        uint32_t c0 = facets[i].p0;
+        uint32_t c1 = facets[i].p1;
+        uint32_t c2 = facets[i].p2;
+        
+        if(top_vertex != UNDEFINED_VALUE)
         {
-            edges.pop_back();
+            if(-1 == orient3d(c0,c1,c2,top_vertex,vertices.data()))
+            {
+                return 0;
+            }
+            continue;
         }
-        return;
-    }
-    
-    auto [vertex, top_segments, bot_segments] = Segment::slice_segments_with_plane(edges, c0, c1, c2, t0, t1, t2, vertices);
-    
-    edges = top_segments;
-    if(0 == top_segments.size() && UNDEFINED_VALUE != vertex)
-    {
-        edges.push_back(Segment(vertex)); // just add a point
-    }
-}
-
-pair<int, vector<Segment>> TriangleTetrahedronIntersection::triangle_tetrahedron_intersection(uint32_t c0,uint32_t c1,uint32_t c2,uint32_t t0,uint32_t t1,uint32_t t2,uint32_t t3, vector<shared_ptr<genericPoint>>& vertices)
-{
-    vector<Segment> edges;
-    edges.push_back(Segment(c0,c1));
-    edges.push_back(Segment(c1,c2));
-    edges.push_back(Segment(c2,c0));
-
-    polygon_plane_intersection(c0,c1,c2,t0,t1,t2,vertices,edges);
-    polygon_plane_intersection(c0,c1,c2,t1,t0,t3,vertices,edges);
-    polygon_plane_intersection(c0,c1,c2,t0,t2,t3,vertices,edges);
-    polygon_plane_intersection(c0,c1,c2,t2,t1,t3,vertices,edges);
-
-    int res = 0;
-    if(0 == edges.size())
-    {
-        res = 0;
-    }
-    else if(edges.size() < 3)
-    {
-        res = 1;
-    }
-    else
-    {
-        // check if the triangle is coplanar with a tetrahedron facet
-        int oc0t012 = orient3d(t0, t1, t2, c0, vertices.data());
-        int oc1t012 = orient3d(t0, t1, t2, c1, vertices.data());
-        int oc2t012 = orient3d(t0, t1, t2, c2, vertices.data());
-        int oc0t103 = orient3d(t1, t0, t3, c0, vertices.data());
-        int oc1t103 = orient3d(t1, t0, t3, c1, vertices.data());
-        int oc2t103 = orient3d(t1, t0, t3, c2, vertices.data());
-        int oc0t023 = orient3d(t0, t2, t3, c0, vertices.data());
-        int oc1t023 = orient3d(t0, t2, t3, c1, vertices.data());
-        int oc2t023 = orient3d(t0, t2, t3, c2, vertices.data());
-        int oc0t213 = orient3d(t2, t1, t3, c0, vertices.data());
-        int oc1t213 = orient3d(t2, t1, t3, c1, vertices.data());
-        int oc2t213 = orient3d(t2, t1, t3, c2, vertices.data());
-        if((0==oc0t012 && oc0t012==oc1t012 && oc0t012==oc2t012) ||
-           (0==oc0t103 && oc0t103==oc1t103 && oc0t103==oc2t103) ||
-           (0==oc0t023 && oc0t023==oc1t023 && oc0t023==oc2t023) ||
-           (0==oc0t213 && oc0t213==oc1t213 && oc0t213==oc2t213))
+        
+        unordered_map<uint32_t, int> orientation_cache;
+        bool has_coplanar_segment = false;
+        uint32_t i0(UNDEFINED_VALUE), i1(UNDEFINED_VALUE);
+        vector<uint32_t> new_top_segments;
+        for(uint32_t s : top_segments)
         {
-            res = 1;
+            auto [i_p, top_s, bot_s, vs] = Segment::slice_segment_with_plane(s, c0, c1, c2, vertices, segments, orientation_cache);
+            
+            if(UNDEFINED_VALUE == i_p && top_s == UNDEFINED_VALUE && bot_s == UNDEFINED_VALUE)
+            {
+                has_coplanar_segment = true;
+                new_top_segments.push_back(s);
+                continue;
+            }
+            
+            if(UNDEFINED_VALUE != i_p)
+            {
+                if(UNDEFINED_VALUE == i0 || i_p == i0)
+                {
+                    i0 = i_p;
+                }
+                else
+                {
+                    i1 = i_p;
+                }
+            }
+            if(UNDEFINED_VALUE != top_s)
+            {
+                new_top_segments.push_back(top_s);
+            }
+        }
+        
+        if(!has_coplanar_segment && i1 != UNDEFINED_VALUE)
+        {
+            uint32_t i_e = segments.size();
+            segments.push_back(Segment(i0,i1,facets[0].p0,facets[0].p1,facets[0].p2,c0,c1,c2));
+            new_top_segments.push_back(i_e);
         }
         else
         {
-            res = 2;
+            if(0 == new_top_segments.size())
+            {
+                top_vertex = i0;
+            }
+        }
+        top_segments = new_top_segments;
+    }
+    
+    if(UNDEFINED_VALUE != top_vertex)
+    {
+        return 1;
+    }
+    if(0 == top_segments.size())
+    {
+        return 0;
+    }
+    else if(top_segments.size() < 3)
+    {
+        return 1;
+    }
+    
+    // check if the triangle is coplanar with a tetrahedron facet
+    for(uint32_t i=1; i<5; i++)
+    {
+        if(facets[0].ip0 == facets[i].ip0)
+        {
+            return 1;
         }
     }
-    return make_pair(res, edges);
+    facets[0].segments = top_segments;
+    return 2;
 }
 

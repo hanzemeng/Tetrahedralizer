@@ -61,6 +61,26 @@ class Segment
         return *this;
     }
     
+    void increase_vertices_indexes(uint32_t n)
+    {
+        auto increase = [&](uint32_t o) -> uint32_t
+        {
+            if(UNDEFINED_VALUE == o)
+            {
+                return UNDEFINED_VALUE;
+            }
+            return o+n;
+        };
+        e0 = increase(e0);
+        e1 = increase(e1);
+        p0 = increase(p0);
+        p1 = increase(p1);
+        p2 = increase(p2);
+        p3 = increase(p3);
+        p4 = increase(p4);
+        p5 = increase(p5);
+    }
+    
     static void sort_segments(std::vector<Segment>& segments)
     {
         for(uint32_t i=0; i<segments.size(); i++)
@@ -132,7 +152,7 @@ class Segment
         uint32_t e1 = segments[s].e1;
         if(orientation_cache.end() == orientation_cache.find(e0))
         {
-            orientation_cache[e0] = orient3d(c0,c1,c2, e0, vertices.data());
+            orientation_cache[e0] = orient3d(c0,c1,c2,e0,vertices.data());
         }
         if(orientation_cache.end() == orientation_cache.find(e1))
         {
@@ -140,6 +160,14 @@ class Segment
         }
         int o0 = orientation_cache[e0];
         int o1 = orientation_cache[e1];
+//        if(o0 !=  orient3d(c0,c1,c2,e0,vertices.data()))
+//        {
+//            throw "something is wrong";
+//        }
+//        if(o1 !=  orient3d(c0,c1,c2,e1,vertices.data()))
+//        {
+//            throw "something is wrong";
+//        }
         
         if(0 == o0)
         {
@@ -272,145 +300,6 @@ class Segment
             {
                 return std::make_tuple(UNDEFINED_VALUE,UNDEFINED_VALUE,s,std::vector<uint32_t>());
             }
-        }
-    }
-    
-    // the vertex on the plane, the segments on and above plane, the segments on and below plane
-    // s0,s1,s2 is the plane defining the segments, c0,c1,c2 is the slicing plane
-    static std::tuple<uint32_t, std::vector<Segment>, std::vector<Segment>> slice_segments_with_plane(const std::vector<Segment>& segments, uint32_t s0,uint32_t s1,uint32_t s2, uint32_t c0,uint32_t c1,uint32_t c2, std::vector<std::shared_ptr<genericPoint>>& vertices)
-    {
-        bool has_coplanar_segment = false;
-        uint32_t i0(UNDEFINED_VALUE),i1(UNDEFINED_VALUE);
-        std::vector<Segment> top_segments;
-        std::vector<Segment> bot_segments;
-        for(uint32_t i=0; i<segments.size(); i++)
-        {
-            uint32_t e0 = segments[i].e0;
-            uint32_t e1 = segments[i].e1;
-            int o0 = orient3d(c0,c1,c2, e0, vertices.data());
-            int o1 = orient3d(c0,c1,c2, e1, vertices.data());
-            
-            if(0 == o0)
-            {
-                slice_segments_with_plane_helper(i0,i1,e0);
-                if(0 == o1)
-                {
-                    has_coplanar_segment = true;
-                    slice_segments_with_plane_helper(i0,i1,e1);
-                    top_segments.push_back(segments[i]);
-                    bot_segments.push_back(segments[i]);
-                }
-                else if(1 == o1)
-                {
-                    top_segments.push_back(segments[i]);
-                }
-                else
-                {
-                    bot_segments.push_back(segments[i]);
-                }
-            }
-            else if(1 == o0)
-            {
-                if(0 == o1)
-                {
-                    slice_segments_with_plane_helper(i0,i1,e1);
-                    top_segments.push_back(segments[i]);
-                }
-                else if(1 == o1)
-                {
-                    top_segments.push_back(segments[i]);
-                }
-                else
-                {
-                    uint32_t new_i = vertices.size();
-                    if(UNDEFINED_VALUE == segments[i].p2)
-                    {
-                        vertices.push_back(std::make_shared<implicitPoint3D_LPI>(
-                                                                                 vertices[segments[i].p0]->toExplicit3D(),vertices[segments[i].p1]->toExplicit3D(),
-                                                                                 vertices[c0]->toExplicit3D(),vertices[c1]->toExplicit3D(),vertices[c2]->toExplicit3D()));
-                    }
-                    else
-                    {
-                        vertices.push_back(std::make_shared<implicitPoint3D_TPI>(
-                                                                                 vertices[c0]->toExplicit3D(),vertices[c1]->toExplicit3D(),vertices[c2]->toExplicit3D(),
-                                                                                 vertices[segments[i].p0]->toExplicit3D(),vertices[segments[i].p1]->toExplicit3D(),vertices[segments[i].p2]->toExplicit3D(),
-                                                                                 vertices[segments[i].p3]->toExplicit3D(),vertices[segments[i].p4]->toExplicit3D(),vertices[segments[i].p5]->toExplicit3D()));
-                    }
-                    
-                    slice_segments_with_plane_helper(i0,i1,new_i);
-                    Segment top_segment(segments[i]);
-                    top_segment.e0 = e0;
-                    top_segment.e1 = new_i;
-                    top_segments.push_back(top_segment);
-                    Segment bot_segment(segments[i]);
-                    bot_segment.e0 = new_i;
-                    bot_segment.e1 = e1;
-                    bot_segments.push_back(bot_segment);
-                }
-            }
-            else
-            {
-                if(0 == o1)
-                {
-                    slice_segments_with_plane_helper(i0,i1,e1);
-                }
-                else if(1 == o1)
-                {
-                    uint32_t new_i = vertices.size();
-                    if(UNDEFINED_VALUE == segments[i].p2)
-                    {
-                        vertices.push_back(std::make_shared<implicitPoint3D_LPI>(
-                                                                                 vertices[segments[i].p0]->toExplicit3D(),vertices[segments[i].p1]->toExplicit3D(),
-                                                                                 vertices[c0]->toExplicit3D(),vertices[c1]->toExplicit3D(),vertices[c2]->toExplicit3D()));
-                    }
-                    else
-                    {
-                        vertices.push_back(std::make_shared<implicitPoint3D_TPI>(
-                                                                                 vertices[c0]->toExplicit3D(),vertices[c1]->toExplicit3D(),vertices[c2]->toExplicit3D(),
-                                                                                 vertices[segments[i].p0]->toExplicit3D(),vertices[segments[i].p1]->toExplicit3D(),vertices[segments[i].p2]->toExplicit3D(),
-                                                                                 vertices[segments[i].p3]->toExplicit3D(),vertices[segments[i].p4]->toExplicit3D(),vertices[segments[i].p5]->toExplicit3D()));
-                    }
-                    slice_segments_with_plane_helper(i0,i1,new_i);
-                    Segment top_segment(segments[i]);
-                    top_segment.e0 = e1;
-                    top_segment.e1 = new_i;
-                    top_segments.push_back(top_segment);
-                    Segment bot_segment(segments[i]);
-                    bot_segment.e0 = new_i;
-                    bot_segment.e1 = e0;
-                    bot_segments.push_back(bot_segment);
-                }
-                else
-                {
-                    bot_segments.push_back(segments[i]);
-                }
-            }
-        }
-        
-        uint32_t plane_vertex = UNDEFINED_VALUE;
-        if(UNDEFINED_VALUE == i1)
-        {
-            plane_vertex = i0; // may still be UNDEFINED_VALUE
-        }
-        else
-        {
-            if(!has_coplanar_segment)
-            {
-                top_segments.push_back(Segment(i0,i1,c0,c1,c2,s0,s1,s2));
-                bot_segments.push_back(Segment(i0,i1,c0,c1,c2,s0,s1,s2));
-            }
-        }
-        return std::make_tuple(plane_vertex,top_segments,bot_segments);
-    }
-    static void slice_segments_with_plane_helper(uint32_t& i0,uint32_t& i1,uint32_t e)
-    {
-        if(UNDEFINED_VALUE == i0 || e == i0)
-        {
-            i0 = e;
-        }
-        else if(UNDEFINED_VALUE == i1 || e == i1)
-        {
-            i1 = e;
         }
     }
 };

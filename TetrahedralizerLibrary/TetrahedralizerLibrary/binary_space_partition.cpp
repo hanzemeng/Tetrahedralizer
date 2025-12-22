@@ -6,9 +6,9 @@ void BinarySpacePartitionHandle::Dispose()
 void BinarySpacePartitionHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t tetrahedrons_count, uint32_t* tetrahedrons, uint32_t constraints_count, uint32_t* constraints, bool aggressively_add_virtual_constraints)
 {
     m_vertices = create_vertices(explicit_count, explicit_values, 0, nullptr);
+    m_polyhedralization.m_vertices = m_vertices;
     m_tetrahedralization.assign_tetrahedrons(tetrahedrons, tetrahedrons_count);
     m_constraints = create_constraints(constraints_count, constraints, m_vertices.data(), true);
-    m_aggressively_add_virtual_constraints = aggressively_add_virtual_constraints;
 }
 void BinarySpacePartitionHandle::Calculate()
 {
@@ -17,42 +17,44 @@ void BinarySpacePartitionHandle::Calculate()
 
 uint32_t BinarySpacePartitionHandle::GetInsertedVerticesCount()
 {
-    return m_inserted_vertices_count;
+    return m_polyhedralization.m_inserted_vertices.size();
 }
 uint32_t* BinarySpacePartitionHandle::GetInsertedVertices()
 {
-    return m_inserted_vertices.data();
+    m_temp_output = nested_vector_to_flat_vector(m_polyhedralization.m_inserted_vertices);
+    return m_temp_output.data();
 }
 
 uint32_t BinarySpacePartitionHandle::GetPolyhedronsCount()
 {
-    return m_output_polyhedrons_count;
+    return m_polyhedralization.m_polyhedrons.size();
 }
 uint32_t* BinarySpacePartitionHandle::GetPolyhedrons()
 {
-    return m_output_polyhedrons.data();
+    m_temp_output = nested_vector_to_flat_vector(m_polyhedralization.m_polyhedrons);
+    return m_temp_output.data();
 }
 
 uint32_t BinarySpacePartitionHandle::GetFacetsCount()
 {
-    return m_facets.size();
+    return m_polyhedralization.m_facets.size();
 }
 void BinarySpacePartitionHandle::GetFacets(FacetInteropData* outArray)
 {
-    for(uint32_t i=0; i<m_facets.size(); i++)
+    for(uint32_t i=0; i<m_polyhedralization.m_facets.size(); i++)
     {
-        outArray[i] = m_facets[i];
+        outArray[i] = m_polyhedralization.m_facets[i];
     }
 }
 uint32_t BinarySpacePartitionHandle::GetSegmentsCount()
 {
-    return m_segments.size();
+    return m_polyhedralization.m_segments.size();
 }
 void BinarySpacePartitionHandle::GetSegments(SegmentInteropData* outArray)
 {
-    for(uint32_t i=0; i<m_segments.size(); i++)
+    for(uint32_t i=0; i<m_polyhedralization.m_segments.size(); i++)
     {
-        outArray[i] = m_segments[i];
+        outArray[i] = m_polyhedralization.m_segments[i];
     }
 }
 
@@ -114,44 +116,149 @@ extern "C" LIBRARY_EXPORT void GetBinarySpacePartitionSegments(void* handle, Seg
 
 void BinarySpacePartitionHandle::binary_space_partition()
 {
-    // convert tetrahedrons to polyhedrons
+    uint32_t original_constraints_count = m_constraints.size()/3;
+    // find a triangle to represent all coplanar triangles
+    unordered_map<tuple<uint32_t, uint32_t, uint32_t>, uint32_t, trio_iii_hash> triangles_coplanar_groups;
+    vector<uint32_t> coplanar_groups_triangles;
+    vector<vector<uint32_t>> coplanar_groups;
+    auto get_coplanar_group = [&](uint32_t p0,uint32_t p1,uint32_t p2) -> uint32_t
     {
-        m_u_map_ii_i_0.clear();
-        m_u_map_iii_i_0.clear();
+        sort_ints(p0,p1,p2);
+        if(triangles_coplanar_groups.end() == triangles_coplanar_groups.find(make_tuple(p0,p1,p2)))
+        {
+            return UNDEFINED_VALUE;
+        }
+        return triangles_coplanar_groups[make_tuple(p0,p1,p2)];
+    };
+    auto get_coplanar_group_triangle = [&](uint32_t p0,uint32_t p1,uint32_t p2) -> tuple<uint32_t, uint32_t, uint32_t>
+    {
+        uint32_t c = get_coplanar_group(p0,p1,p2);
+        return make_tuple(coplanar_groups_triangles[3*c+0],coplanar_groups_triangles[3*c+1],coplanar_groups_triangles[3*c+2]);
+    };
+    
+    vector<uint32_t> triangles = m_constraints;
+    // calculate coplanar groups
+    {
         for(uint32_t i=0; i<m_tetrahedralization.get_tetrahedrons_count(); i++)
         {
-            uint32_t p = m_polyhedrons.size();
-            m_polyhedrons.push_back(vector<uint32_t>());
+            for(uint32_t j=0; j<4; j++)
+            {
+                auto [p0,p1,p2] = m_tetrahedralization.get_tetrahedron_facet(i, j);
+                triangles.push_back(p0);
+                triangles.push_back(p1);
+                triangles.push_back(p2);
+            }
+        }
+        coplanar_groups = group_coplanar_triangles(triangles, m_vertices);
+        for(uint32_t i=0; i<coplanar_groups.size(); i++)
+        {
+            uint32_t c0 = triangles[3*coplanar_groups[i][0]+0];
+            uint32_t c1 = triangles[3*coplanar_groups[i][0]+1];
+            uint32_t c2 = triangles[3*coplanar_groups[i][0]+2];
+            uint32_t cg = coplanar_groups_triangles.size()/3;
+            coplanar_groups_triangles.push_back(c0);
+            coplanar_groups_triangles.push_back(c1);
+            coplanar_groups_triangles.push_back(c2);
+            for(uint32_t j=0; j<coplanar_groups[i].size(); j++)
+            {
+                uint32_t nc0 = triangles[3*coplanar_groups[i][j]+0];
+                uint32_t nc1 = triangles[3*coplanar_groups[i][j]+1];
+                uint32_t nc2 = triangles[3*coplanar_groups[i][j]+2];
+                sort_ints(nc0, nc1, nc2);
+                triangles_coplanar_groups[make_tuple(nc0,nc1,nc2)] = cg;
+            }
+        }
+    }
+    // convert tetrahedrons to polyhedrons
+    {
+        unordered_map<pair<uint32_t, uint32_t>, uint32_t, pair_ii_hash> segments_cache;
+        unordered_map<tuple<uint32_t, uint32_t, uint32_t>, uint32_t, trio_iii_hash> facets_cache;
+        for(uint32_t i=0; i<m_tetrahedralization.get_tetrahedrons_count(); i++)
+        {
+            uint32_t p = m_polyhedralization.m_polyhedrons.size();
+            m_polyhedralization.m_polyhedrons.push_back(vector<uint32_t>());
             
             for(uint32_t j=0; j<4; j++)
             {
-                uint32_t p0,p1,p2;
-                uint32_t e0,e1,e2;
-                uint32_t f;
-                m_tetrahedralization.get_tetrahedron_facet(i,j,p0,p1,p2);
-                
-                e0 = find_or_add_edge(p0,p1);
-                e1 = find_or_add_edge(p1,p2);
-                e2 = find_or_add_edge(p2,p0);
-                f = find_or_add_facet(e0,e1,e2,p0,p1,p2);
-                if(UNDEFINED_VALUE == m_facets[f].ip0)
+                auto find_segment = [&](uint32_t p0, uint32_t p1) -> uint32_t
                 {
-                    m_facets[f].ip0 = p;
+                    sort_ints(p0,p1);
+                    if(segments_cache.end() == segments_cache.find(make_pair(p0,p1)))
+                    {
+                        uint32_t s = m_polyhedralization.m_segments.size();
+                        segments_cache[make_pair(p0,p1)] = s;
+                        m_polyhedralization.m_segments.push_back(Segment(p0,p1));
+                    }
+                    return segments_cache[make_pair(p0,p1)];
+                };
+                
+                auto [p0,p1,p2] = m_tetrahedralization.get_tetrahedron_facet(i,j);
+                sort_ints(p0,p1,p2);
+                uint32_t s0 = find_segment(p0, p1);
+                uint32_t s1 = find_segment(p1, p2);
+                uint32_t s2 = find_segment(p2, p0);
+                
+                if(facets_cache.end() == facets_cache.find(make_tuple(p0,p1,p2)))
+                {
+                    auto [cp0,cp1,cp2] = get_coplanar_group_triangle(p0,p1,p2);
+                    uint32_t f = m_polyhedralization.m_facets.size();
+                    m_polyhedralization.m_facets.push_back(Facet(s0,s1,s2,cp0,cp1,cp2,UNDEFINED_VALUE,UNDEFINED_VALUE));
+                    uint32_t cg = get_coplanar_group(p0,p1,p2);
+                    for(uint32_t c : coplanar_groups[cg])
+                    {
+                        if(c >= original_constraints_count)
+                        {
+                            continue;
+                        }
+                        m_polyhedralization.m_facets[f].constrains.push_back(c);
+                    }
+                    facets_cache[make_tuple(p0,p1,p2)] = f;
+                }
+                uint32_t f = facets_cache[make_tuple(p0,p1,p2)];
+                if(UNDEFINED_VALUE == m_polyhedralization.m_facets[f].ip0)
+                {
+                    m_polyhedralization.m_facets[f].ip0 = p;
                 }
                 else
                 {
-                    m_facets[f].ip1 = p;
+                    m_polyhedralization.m_facets[f].ip1 = p;
                 }
-                m_polyhedrons[p].push_back(f);
+                m_polyhedralization.m_polyhedrons[p].push_back(f);
             }
         }
     }
     
     // create virtual constraints
     {
-        uint32_t input_constraints_count = m_constraints.size()/3;
-        m_u_map_ii_vector_i_0.clear(); // key is an edge, value is the edge's incident constraints
-        for(uint32_t i=0; i<input_constraints_count; i++)
+        vector<uint32_t> virtual_constraints;
+        auto add_virtual_constraint = [&](uint32_t s0, uint32_t s1, uint32_t c) // e0 and e1 incident the constraint c
+        {
+            uint32_t t = m_tetrahedralization.get_vertex_incident_tetrahedron(s0);
+            uint32_t c0 = m_constraints[3*c+0];
+            uint32_t c1 = m_constraints[3*c+1];
+            uint32_t c2 = m_constraints[3*c+2];
+            auto [cg0,cg1,cg2] = get_coplanar_group_triangle(c0, c1, c2);
+            for(uint64_t i=0; i<4; i++)
+            {
+                uint32_t v = m_tetrahedralization.get_tetrahedron_vertex(t, i);
+                if(c0 == v || c1 == v || c2 == v || 0 == orient3d(cg0,cg1,cg2,v,m_vertices.data()))
+                {
+                    continue;
+                }
+                if(UNDEFINED_VALUE != get_coplanar_group(s0, s1, v)) // the virtual constraints is already a constraint or tetrahedron facet
+                {
+                    return;
+                }
+                virtual_constraints.push_back(s0);
+                virtual_constraints.push_back(s1);
+                virtual_constraints.push_back(v);
+                return;
+            }
+            throw "can't add virtual constraint";
+        };
+        
+        unordered_map<pair<uint32_t,uint32_t>, vector<uint32_t>, pair_ii_hash> segments_incident_constraints;
+        for(uint32_t i=0; i<m_constraints.size()/3; i++)
         {
             uint32_t c0 = m_constraints[3*i+0];
             uint32_t c1 = m_constraints[3*i+1];
@@ -160,48 +267,40 @@ void BinarySpacePartitionHandle::binary_space_partition()
             {
                 continue;
             }
-
-            uint32_t t0 = c0;
-            uint32_t t1 = c1;
-            sort_ints(t0,t1);
-            m_u_map_ii_vector_i_0[make_pair(t0,t1)].push_back(i);
-            t0 = c1;
-            t1 = c2;
-            sort_ints(t0,t1);
-            m_u_map_ii_vector_i_0[make_pair(t0,t1)].push_back(i);
-            t0 = c2;
-            t1 = c0;
-            sort_ints(t0,t1);
-            m_u_map_ii_vector_i_0[make_pair(t0,t1)].push_back(i);
+            
+            auto associate_segments_incident_constraints = [&](uint32_t p0, uint32_t p1)
+            {
+                sort_ints(p0,p1);
+                segments_incident_constraints[make_pair(p0,p1)].push_back(i);
+            };
+            associate_segments_incident_constraints(c0,c1);
+            associate_segments_incident_constraints(c1,c2);
+            associate_segments_incident_constraints(c2,c0);
         }
         
-        for(auto& it : m_u_map_ii_vector_i_0)
+        for(auto& [k, constraints] : segments_incident_constraints)
         {
-            uint32_t e0 = it.first.first;
-            uint32_t e1 = it.first.second;
-
-            if(1 == it.second.size())
+            auto [s0, s1] = k;
+            if(1 == constraints.size())
             {
-                add_virtual_constraint(e0,e1, it.second[0]);
+                add_virtual_constraint(s0, s1, constraints[0]);
                 continue;
             }
             
-            m_u_set_i_0.clear(); // stores the other vertex on every incident constraint
-            for(uint32_t c : it.second)
-            {
-                m_u_set_i_0.insert(m_constraints[3*c+0]);
-                m_u_set_i_0.insert(m_constraints[3*c+1]);
-                m_u_set_i_0.insert(m_constraints[3*c+2]);
-            }
-            m_u_set_i_0.erase(e0);
-            m_u_set_i_0.erase(e1);
-
-            uint32_t e2 = *m_u_set_i_0.begin();
-            m_u_set_i_0.erase(m_u_set_i_0.begin());
+            uint32_t c = constraints[0];
+            uint32_t c0 = m_constraints[3*c+0];
+            uint32_t c1 = m_constraints[3*c+1];
+            uint32_t c2 = m_constraints[3*c+2];
+            uint32_t cg = get_coplanar_group(c0, c1, c2);
             bool constrains_are_coplanar = true;
-            for(uint32_t e3 : m_u_set_i_0)
+            for(uint32_t i=1; i<constraints.size(); i++)
             {
-                if(0 != orient3d(e3,e0,e1,e2, m_vertices.data()))
+                uint32_t nc = constraints[i];
+                uint32_t nc0 = m_constraints[3*nc+0];
+                uint32_t nc1 = m_constraints[3*nc+1];
+                uint32_t nc2 = m_constraints[3*nc+2];
+                uint32_t ncg = get_coplanar_group(nc0, nc1, nc2);
+                if(cg != ncg)
                 {
                     constrains_are_coplanar = false;
                     break;
@@ -212,42 +311,105 @@ void BinarySpacePartitionHandle::binary_space_partition()
                 continue;
             }
             
-            if(m_aggressively_add_virtual_constraints)
+            unordered_set<uint32_t> vertices; // stores the vertices on incident constraints
+            for(uint32_t c : constraints)
             {
-                add_virtual_constraint(e0,e1, it.second[0]);
-                continue;
+                vertices.insert(m_constraints[3*c+0]);
+                vertices.insert(m_constraints[3*c+1]);
+                vertices.insert(m_constraints[3*c+2]);
             }
-            int ignore_axis = max_component_in_triangle_normal(e0,e1,e2, m_vertices.data());
-            int oe2 = orient3d_ignore_axis(e0,e1,e2,ignore_axis, m_vertices.data());
-            bool should_add_virtual_constraint = true;
-            for(uint32_t e3 : m_u_set_i_0)
+            vertices.erase(s0);
+            vertices.erase(s1);
+            uint32_t s2 = *vertices.begin();
+            vertices.erase(vertices.begin());
+            
+            auto [cc0,cc1,cc2] = get_coplanar_group_triangle(c0,c1,c2);
+            int ignore_axis = max_component_in_triangle_normal(cc0,cc1,cc2, m_vertices.data());
+            int os2 = orient3d_ignore_axis(s0,s1,s2,ignore_axis, m_vertices.data());
+            bool all_vertices_on_same_side = true;
+            for(uint32_t s3 : vertices)
             {
-                int oe3 = orient3d_ignore_axis(e0,e1,e3,ignore_axis, m_vertices.data());
-                if(0 == oe3)
+                int os3 = orient3d_ignore_axis(s0,s1,s3,ignore_axis, m_vertices.data());
+                if(0 == os3)
                 {
                     continue;
                 }
-                if(0 == oe2)
+                if(0 == os2)
                 {
-                    oe2 = oe3;
+                    os2 = os3;
                 }
-                if(oe2 != oe3)
+                if(os2 != os3)
                 {
-                    should_add_virtual_constraint = false;
+                    all_vertices_on_same_side = false;
                     break;
                 }
             }
-            if(0 != oe2 && should_add_virtual_constraint)
+            if(0 != os2 && all_vertices_on_same_side)
             {
-                add_virtual_constraint(e0,e1, it.second[0]);
+                add_virtual_constraint(s0,s1, constraints[0]);
             }
         }
+        
+        // combine coplanar group
+        vector<vector<uint32_t>> virtual_constraints_coplanar_group = group_coplanar_triangles(virtual_constraints, m_vertices);
+        for(uint32_t i=0; i<virtual_constraints_coplanar_group.size(); i++)
+        {
+            uint32_t vcg = UNDEFINED_VALUE;
+            for(uint32_t j=0; j<virtual_constraints_coplanar_group[i].size(); j++)
+            {
+                uint32_t vc = virtual_constraints_coplanar_group[i][j];
+                uint32_t vc0 = virtual_constraints[3*vc+0];
+                uint32_t vc1 = virtual_constraints[3*vc+1];
+                uint32_t vc2 = virtual_constraints[3*vc+2];
+                for(uint32_t k=0; k<triangles.size()/3; k++)
+                {
+                    uint32_t c0 = triangles[3*k+0];
+                    uint32_t c1 = triangles[3*k+1];
+                    uint32_t c2 = triangles[3*k+2];
+                    if(UNDEFINED_VALUE == c0)
+                    {
+                        continue;
+                    }
+                    if(0==orient3d(vc0,vc1,vc2,c0,m_vertices.data()) && 0==orient3d(vc0,vc1,vc2,c1,m_vertices.data()) && 0==orient3d(vc0,vc1,vc2,c2,m_vertices.data()))
+                    {
+                        vcg = get_coplanar_group(c0, c1, c2);
+                        break;
+                    }
+                }
+                if(UNDEFINED_VALUE != vcg)
+                {
+                    break;
+                }
+            }
+            if(UNDEFINED_VALUE == vcg)
+            {
+                uint32_t vc = virtual_constraints_coplanar_group[i][0];
+                uint32_t vc0 = virtual_constraints[3*vc+0];
+                uint32_t vc1 = virtual_constraints[3*vc+1];
+                uint32_t vc2 = virtual_constraints[3*vc+2];
+                vcg = coplanar_groups_triangles.size()/3;
+                coplanar_groups_triangles.push_back(vc0);
+                coplanar_groups_triangles.push_back(vc1);
+                coplanar_groups_triangles.push_back(vc2);
+            }
+            for(uint32_t j=0; j<virtual_constraints_coplanar_group[i].size(); j++)
+            {
+                uint32_t vc = virtual_constraints_coplanar_group[i][j];
+                uint32_t vc0 = virtual_constraints[3*vc+0];
+                uint32_t vc1 = virtual_constraints[3*vc+1];
+                uint32_t vc2 = virtual_constraints[3*vc+2];
+                sort_ints(vc0, vc1, vc2);
+                triangles_coplanar_groups[make_tuple(vc0, vc1, vc2)] = vcg;
+            }
+        }
+        
+        m_constraints.insert(m_constraints.end(), virtual_constraints.begin(), virtual_constraints.end());
     }
 
     // for every polyhedron, find the constraints that intersect it
-    queue<pair<uint32_t,uint32_t>> polyhedrons_slice_order; // first is polyhedron, second is the root node of its slice tree
+    unordered_map<uint32_t, pair<vector<FacetOrder>, vector<uint32_t>>> polyhedrons_slice_order; // first is polyhedron, second is slice order and coplanar group
     {
-        map<uint32_t, vector<tuple<uint32_t, vector<Segment>, vector<shared_ptr<genericPoint>>>>> polyhedrons_intersect_constraints;
+        unordered_map<uint32_t, vector<tuple<vector<shared_ptr<genericPoint>>, vector<Segment>, vector<Facet>>>> polyhedrons_intersect_constraints;
         for(uint32_t i=0; i<m_constraints.size()/3; i++)
         {
             uint32_t c0 = m_constraints[3*i+0];
@@ -257,557 +419,166 @@ void BinarySpacePartitionHandle::binary_space_partition()
             {
                 continue;
             }
+            
+            unordered_set<uint32_t> visited_tetrahedrons;
+            visited_tetrahedrons.insert(UNDEFINED_VALUE);
+            queue<uint32_t> visit_tetrahedrons;
+            visit_tetrahedrons.push(m_tetrahedralization.get_vertex_incident_tetrahedron(c0));
+            visit_tetrahedrons.push(m_tetrahedralization.get_vertex_incident_tetrahedron(c1));
+            visit_tetrahedrons.push(m_tetrahedralization.get_vertex_incident_tetrahedron(c2));
 
-            m_u_set_i_0.clear(); // stores visited polyhedrons
-            m_u_set_i_0.insert(UNDEFINED_VALUE);
-            clear_queue(m_queue_i_0); // stores tetrahedrons to be visited
-            m_queue_i_0.push(m_tetrahedralization.get_vertex_incident_tetrahedron(c0));
-            m_queue_i_0.push(m_tetrahedralization.get_vertex_incident_tetrahedron(c1));
-            m_queue_i_0.push(m_tetrahedralization.get_vertex_incident_tetrahedron(c2));
-
-            while(!m_queue_i_0.empty())
+            while(!visit_tetrahedrons.empty())
             {
-                uint32_t t = m_queue_i_0.front();
-                m_queue_i_0.pop();
-                if(m_u_set_i_0.end() != m_u_set_i_0.find(t))
+                uint32_t t = visit_tetrahedrons.front();
+                visit_tetrahedrons.pop();
+                if(visited_tetrahedrons.end() != visited_tetrahedrons.find(t))
                 {
                     continue;
                 }
-                m_u_set_i_0.insert(t);
+                visited_tetrahedrons.insert(t);
+                
+                uint32_t t0 = m_tetrahedralization.get_tetrahedron_vertex(t,0);
+                uint32_t t1 = m_tetrahedralization.get_tetrahedron_vertex(t,1);
+                uint32_t t2 = m_tetrahedralization.get_tetrahedron_vertex(t,2);
+                uint32_t t3 = m_tetrahedralization.get_tetrahedron_vertex(t,3);
                 
                 vector<shared_ptr<genericPoint>> vertices;
-                vertices.push_back(m_vertices[c0]);
-                vertices.push_back(m_vertices[c1]);
-                vertices.push_back(m_vertices[c2]);
-                vertices.push_back(m_vertices[m_tetrahedralization.get_tetrahedron_vertex(t,0)]);
-                vertices.push_back(m_vertices[m_tetrahedralization.get_tetrahedron_vertex(t,1)]);
-                vertices.push_back(m_vertices[m_tetrahedralization.get_tetrahedron_vertex(t,2)]);
-                vertices.push_back(m_vertices[m_tetrahedralization.get_tetrahedron_vertex(t,3)]);
-                auto [int_type, edges] = TriangleTetrahedronIntersection::triangle_tetrahedron_intersection(0,1,2,3,4,5,6, vertices);
+                vector<Segment> segments;
+                vector<Facet> facets;
+                auto add_facet = [&](uint32_t p0,uint32_t p1,uint32_t p2,uint32_t p3) // p3 is the oppsite vertex of a tetrahedron facet
+                {
+                    uint32_t vn = vertices.size();
+                    auto [cp0, cp1, cp2] = get_coplanar_group_triangle(p0, p1, p2);
+                    vertices.push_back(m_vertices[p0]);
+                    vertices.push_back(m_vertices[p1]);
+                    vertices.push_back(m_vertices[p2]);
+                    if(UNDEFINED_VALUE != p3 && -1 == orient3d(cp0,cp1,cp2,p3,m_vertices.data()))
+                    {
+                        vertices.push_back(m_vertices[cp0]);
+                        vertices.push_back(m_vertices[cp2]);
+                        vertices.push_back(m_vertices[cp1]);
+                    }
+                    else
+                    {
+                        vertices.push_back(m_vertices[cp0]);
+                        vertices.push_back(m_vertices[cp1]);
+                        vertices.push_back(m_vertices[cp2]);
+                    }
+                    
+                    uint32_t sn = segments.size();
+                    segments.push_back(Segment(vn+0,vn+1));
+                    segments.push_back(Segment(vn+1,vn+2));
+                    segments.push_back(Segment(vn+2,vn+0));
+                    
+                    facets.push_back(Facet(sn+0,sn+1,sn+2,vn+3,vn+4,vn+5,get_coplanar_group(p0, p1, p2)));
+                };
+                add_facet(c0,c1,c2,UNDEFINED_VALUE);
+                add_facet(t0,t1,t2,t3);
+                add_facet(t1,t0,t3,t2);
+                add_facet(t0,t2,t3,t1);
+                add_facet(t2,t1,t3,t0);
+
+                int int_type = TriangleTetrahedronIntersection::triangle_tetrahedron_intersection(vertices, segments, facets);
                 if(0 == int_type)
                 {
                     continue;
                 }
                 if(2 == int_type)
                 {
-                    polyhedrons_intersect_constraints[t].push_back(make_tuple(i, edges, vertices));
+                    polyhedrons_intersect_constraints[t].push_back(make_tuple(vertices, segments, facets));
                 }
                 
                 for(uint32_t f=0; f<4; f++)
                 {
-                    m_queue_i_0.push(m_tetrahedralization.get_tetrahedron_neighbor(t, f));
+                    visit_tetrahedrons.push(m_tetrahedralization.get_tetrahedron_neighbor(t, f));
                 }
             }
         }
         
         for(auto& [p, slices] : polyhedrons_intersect_constraints)
         {
-            polyhedrons_slice_order.push(make_pair(p, build_polyhedrons_slice_tree(slices)));
+            vector<shared_ptr<genericPoint>> all_vertices;
+            vector<Segment> all_segments;
+            vector<Facet> all_facets;
+            for(auto& [vertices, segments, facets] : slices)
+            {
+                uint32_t vn = all_vertices.size();
+                uint32_t sn = all_segments.size();
+                
+                all_vertices.insert(all_vertices.end(), vertices.begin(), vertices.end());
+                for(uint32_t i=0; i<segments.size(); i++)
+                {
+                    segments[i].increase_vertices_indexes(vn);
+                }
+                all_segments.insert(all_segments.end(), segments.begin(), segments.end());
+                facets[0].increase_segments_indexes(sn);
+                facets[0].p0 += vn;
+                facets[0].p1 += vn;
+                facets[0].p2 += vn;
+                all_facets.push_back(facets[0]);
+            }
+            
+            vector<FacetOrder> facets_order = order_facets(all_vertices,all_segments,all_facets);
+            vector<uint32_t> facets_coplanar_groups;
+            for(uint32_t i=0; i<all_facets.size(); i++)
+            {
+                facets_coplanar_groups.push_back(all_facets[i].ip0);
+            }
+            polyhedrons_slice_order[p] = make_pair(facets_order, facets_coplanar_groups);
         }
     }
     
-
-    m_inserted_vertices_count = 0;
-    // slice each polyhedron with its list of improper constraints.
-    while(!polyhedrons_slice_order.empty())
+    // slice polyhedrons
+    for(auto& [k, v] : polyhedrons_slice_order)
     {
-        uint32_t p = polyhedrons_slice_order.front().first;
-        PolyhedronConstraint& polyhedronConstraint = m_polyhedrons_slice_tree[polyhedrons_slice_order.front().second];
-        polyhedrons_slice_order.pop();
-        uint32_t c = polyhedronConstraint.c;
-        uint32_t c0 = m_constraints[3*c+0];
-        uint32_t c1 = m_constraints[3*c+1];
-        uint32_t c2 = m_constraints[3*c+2];
+        auto& [facets_order, facets_coplanar_groups] = v;
+        queue<pair<uint32_t, uint32_t>> slice_order; // polyhedron, facets_order index
+        slice_order.push(make_pair(k, 0));
         
-        m_vector_i_0.clear(); // top polyhedron's facets
-        m_vector_i_1.clear(); // bottom polyhedron's facets
-        m_u_set_i_0.clear(); // edges on the constraint
-        m_u_map_i_iii_0.clear(); // keys are processed edges, values are (intersection vertex, top edge, bottom edge)
-        m_u_map_i_si_0.clear(); // orientation cache
-        for(uint32_t f : m_polyhedrons[p])
+        while(!slice_order.empty())
         {
-            m_vector_i_2.clear(); // edges on top of the constraint
-            m_vector_i_3.clear(); // edges on bottom of the constraint
-            bool has_edge_on_constraint = false;
-            uint32_t i0(UNDEFINED_VALUE), i1(UNDEFINED_VALUE);
-            for(uint32_t e : m_facets[f].segments)
+            auto [p, o] = slice_order.front();
+            slice_order.pop();
+            if(UNDEFINED_VALUE == o)
             {
-                if(m_u_map_i_iii_0.end() == m_u_map_i_iii_0.find(e))
-                {
-                    auto [i_p,top_e,bot_e,vs] = Segment::slice_segment_with_plane(e, c0, c1, c2, m_vertices, m_segments, m_u_map_i_si_0);
-                    m_u_map_i_iii_0[e] = make_tuple(i_p,top_e,bot_e);
-                    if(0 != vs.size())
-                    {
-                        m_inserted_vertices_count++;
-                        m_inserted_vertices.push_back(vs.size());
-                        for(uint32_t i=0; i<vs.size(); i++)
-                        {
-                            m_inserted_vertices.push_back(vs[i]);
-                        }
-                    }
-                }
-                
-                auto [i_p,top_e,bottom_e] = m_u_map_i_iii_0[e];
-                if(UNDEFINED_VALUE == i_p && top_e == UNDEFINED_VALUE && bottom_e == UNDEFINED_VALUE)
-                {
-                    m_u_set_i_0.insert(e); // e is on the constraint
-                    has_edge_on_constraint = true;
-                    continue;
-                }
-                
-                if(UNDEFINED_VALUE != i_p)
-                {
-                    if(UNDEFINED_VALUE == i0 || i_p == i0)
-                    {
-                        i0 = i_p;
-                    }
-                    else
-                    {
-                        i1 = i_p;
-                    }
-                }
-                if(UNDEFINED_VALUE != top_e)
-                {
-                    m_vector_i_2.push_back(top_e);
-                }
-                if(UNDEFINED_VALUE != bottom_e)
-                {
-                    m_vector_i_3.push_back(bottom_e);
-                }
+                continue;
             }
+            FacetOrder facet_order = facets_order[o];
             
-            if(has_edge_on_constraint || i1 == UNDEFINED_VALUE) // constraint intersects on one or more edges of the facet or does not intersect the facet
+            uint32_t cg = facets_coplanar_groups[facet_order.f];
+            uint32_t c0 = coplanar_groups_triangles[3*cg+0];
+            uint32_t c1 = coplanar_groups_triangles[3*cg+1];
+            uint32_t c2 = coplanar_groups_triangles[3*cg+2];
+            
+            int slice_res = m_polyhedralization.slice_polyhedron_with_plane(p, c0, c1, c2);
+            if(1 == slice_res)
             {
-                if(!m_vector_i_2.empty())
-                {
-                    m_vector_i_0.push_back(f);
-                }
-                else if(!m_vector_i_3.empty())
-                {
-                    m_vector_i_1.push_back(f);
-                }
+                slice_order.push(make_pair(p, facet_order.top));
+            }
+            else if(-1 == slice_res)
+            {
+                slice_order.push(make_pair(p, facet_order.bot));
             }
             else
             {
-                uint32_t i_e = m_segments.size();
-                m_segments.push_back(Segment());
-                m_segments[i_e].e0 = i0;
-                m_segments[i_e].e1 = i1;
-                m_segments[i_e].p0 = m_facets[f].p0;
-                m_segments[i_e].p1 = m_facets[f].p1;
-                m_segments[i_e].p2 = m_facets[f].p2;
-                m_segments[i_e].p3 = c0;
-                m_segments[i_e].p4 = c1;
-                m_segments[i_e].p5 = c2;
-                m_u_set_i_0.insert(i_e);
+                slice_order.push(make_pair(p, facet_order.top));
+                slice_order.push(make_pair(m_polyhedralization.m_polyhedrons.size()-1, facet_order.bot));
                 
-                m_facets[f].segments.clear();
-                uint32_t bottom_f = m_facets.size();
-                m_facets.push_back(Facet(m_facets[f]));
-                m_facets[f].segments = m_vector_i_2;
-                m_facets[f].segments.push_back(i_e);
-                m_facets[bottom_f].segments = m_vector_i_3;
-                m_facets[bottom_f].segments.push_back(i_e);
-                m_vector_i_0.push_back(f);
-                m_vector_i_1.push_back(bottom_f);
-            }
-        }
-        
-        // constraint does not slice the polyhedron
-        if(0 == m_vector_i_0.size() || 0 == m_vector_i_1.size())
-        {
-            if(0 != m_vector_i_0.size() && UNDEFINED_VALUE != polyhedronConstraint.top)
-            {
-                polyhedrons_slice_order.push(make_pair(p, polyhedronConstraint.top));
-            }
-            if(0 != m_vector_i_1.size() && UNDEFINED_VALUE != polyhedronConstraint.bot)
-            {
-                polyhedrons_slice_order.push(make_pair(p, polyhedronConstraint.bot));
-            }
-            continue;
-        }
-//        if(m_vector_i_0.size()<3 || m_vector_i_1.size()<3 || m_u_set_i_0.size()<3)
-//        {
-//            throw "wtf";
-//        }
-        
-        uint32_t bottom_polyhedron = m_polyhedrons.size();
-        m_polyhedrons.push_back(vector<uint32_t>());
-        
-        uint32_t common_facet = m_facets.size();
-        m_facets.push_back(Facet());
-        m_facets[common_facet].p0 = c0;
-        m_facets[common_facet].p1 = c1;
-        m_facets[common_facet].p2 = c2;
-        m_facets[common_facet].ip0 = p;
-        m_facets[common_facet].ip1 = bottom_polyhedron;
-        for(uint32_t e : m_u_set_i_0)
-        {
-            m_facets[common_facet].segments.push_back(e);
-        }
-        
-        m_polyhedrons[p] = m_vector_i_0;
-        m_polyhedrons[p].push_back(common_facet);
-        m_polyhedrons[bottom_polyhedron] = m_vector_i_1;
-        m_polyhedrons[bottom_polyhedron].push_back(common_facet);
-        
-        for(uint32_t f : m_polyhedrons[bottom_polyhedron])
-        {
-            if(f == common_facet)
-            {
-                continue;
-            }
-            uint32_t n;
-            if(p == m_facets[f].ip0)
-            {
-                m_facets[f].ip0 = bottom_polyhedron;
-                n = m_facets[f].ip1;
-            }
-            else
-            {
-                m_facets[f].ip1 = bottom_polyhedron;
-                n = m_facets[f].ip0;
-            }
-            if(n != UNDEFINED_VALUE)
-            {
-                if(m_polyhedrons[n].end() == find(m_polyhedrons[n].begin(), m_polyhedrons[n].end(), f))
+                if(cg < coplanar_groups.size()) // associate not virtual constrains to sliced facet
                 {
-                    m_polyhedrons[n].push_back(f);
-                }
-            }
-        }
-        
-        for(auto [k, v] : m_u_map_i_iii_0)
-        {
-            uint32_t original_e = k;
-            uint32_t i_e = get<0>(v);
-            uint32_t top_e = get<1>(v);
-            uint32_t bottom_e = get<2>(v);
-            
-            if(UNDEFINED_VALUE == i_e || UNDEFINED_VALUE == top_e || UNDEFINED_VALUE == bottom_e)
-            {
-                continue;
-            }
-            
-            if(original_e == bottom_e)
-            {
-                swap(top_e,bottom_e);
-            }
-            m_u_set_i_0.clear(); // visited polyhedrons
-            m_u_set_i_0.insert(UNDEFINED_VALUE);
-            clear_queue(m_queue_i_0); // polyhedrons to be visited
-            m_queue_i_0.push(p);
-            while(!m_queue_i_0.empty())
-            {
-                uint32_t cur = m_queue_i_0.front();
-                m_queue_i_0.pop();
-                if(m_u_set_i_0.end() != m_u_set_i_0.find(cur))
-                {
-                    continue;
-                }
-                m_u_set_i_0.insert(cur);
-                
-                bool search_neighbor = false;
-                for(uint32_t f : m_polyhedrons[cur])
-                {
-                    if(m_facets[f].contains_segment(original_e))
+                    for(uint32_t i=0; i<coplanar_groups[cg].size(); i++)
                     {
-                        search_neighbor = true;
-                        if(m_polyhedrons[p].end() != find(m_polyhedrons[p].begin(), m_polyhedrons[p].end(), f))
+                        uint32_t c = coplanar_groups[cg][i];
+                        if(c >= original_constraints_count)
                         {
                             continue;
                         }
-                        if(m_polyhedrons[bottom_polyhedron].end() != find(m_polyhedrons[bottom_polyhedron].begin(), m_polyhedrons[bottom_polyhedron].end(), f))
-                        {
-                            continue;
-                        }
-                        if(!m_facets[f].contains_segment(bottom_e))
-                        {
-                            m_facets[f].segments.push_back(bottom_e);
-                        }
-                    }
-                }
-                
-                if(search_neighbor)
-                {
-                    for(uint32_t f : m_polyhedrons[cur])
-                    {
-                        if(cur == m_facets[f].ip0)
-                        {
-                            m_queue_i_0.push(m_facets[f].ip1);
-                        }
-                        else
-                        {
-                            m_queue_i_0.push(m_facets[f].ip0);
-                        }
-                    }
-                }
-            }
-        }
-        
-        if(UNDEFINED_VALUE != polyhedronConstraint.top)
-        {
-            polyhedrons_slice_order.push(make_pair(p, polyhedronConstraint.top));
-        }
-        if(UNDEFINED_VALUE != polyhedronConstraint.bot)
-        {
-            polyhedrons_slice_order.push(make_pair(bottom_polyhedron, polyhedronConstraint.bot));
-        }
-    }
-    
-    // prepare output and calculate more facet info
-    {
-        m_output_polyhedrons_count = m_polyhedrons.size();
-        for(uint32_t i=0; i<m_polyhedrons.size(); i++)
-        {
-            m_output_polyhedrons.push_back(m_polyhedrons[i].size());
-            for(uint32_t j=0; j<m_polyhedrons[i].size(); j++)
-            {
-                m_output_polyhedrons.push_back(m_polyhedrons[i][j]);
-            }
-        }
-        for(uint32_t i=0; i<m_facets.size(); i++)
-        {
-            vector<uint32_t> vs = m_facets[i].get_sorted_vertices(m_segments);
-            double3 centroid = approximate_facet_centroid(vs, m_vertices.data());
-            double3 weight;
-            barycentric_weight(m_facets[i].p0,m_facets[i].p1,m_facets[i].p2,centroid,m_vertices.data(), weight);
-            m_facets[i].w0 = weight.x;
-            m_facets[i].w1 = weight.y;
-        }
-        
-        vector<vector<uint32_t>> segments_incident_facets = vector<vector<uint32_t>>(m_segments.size());
-        vector<vector<uint32_t>> vertices_incident_segments = vector<vector<uint32_t>>(m_vertices.size());
-        for(uint32_t i=0; i<m_facets.size(); i++)
-        {
-            for(uint32_t j=0; j<m_facets[i].segments.size(); j++)
-            {
-                segments_incident_facets[m_facets[i].segments[j]].push_back(i);
-            }
-        }
-        for(uint32_t i=0; i<m_segments.size(); i++)
-        {
-            uint32_t v0 = m_segments[i].e0;
-            uint32_t v1 = m_segments[i].e1;
-            vertices_incident_segments[v0].push_back(i);
-            vertices_incident_segments[v1].push_back(i);
-        }
-        for(uint32_t i=0; i<m_constraints.size()/3; i++)
-        {
-            uint32_t c0 = m_constraints[3*i+0];
-            uint32_t c1 = m_constraints[3*i+1];
-            uint32_t c2 = m_constraints[3*i+2];
-            if(UNDEFINED_VALUE == c0)
-            {
-                continue;
-            }
-            
-            clear_queue(m_queue_i_0); // facets to be visited
-            for(uint32_t s : vertices_incident_segments[c0])
-            {
-                for(uint32_t f : segments_incident_facets[s])
-                {
-                    m_queue_i_0.push(f);
-                }
-            }
-            for(uint32_t s : vertices_incident_segments[c1])
-            {
-                for(uint32_t f : segments_incident_facets[s])
-                {
-                    m_queue_i_0.push(f);
-                }
-            }
-            for(uint32_t s : vertices_incident_segments[c2])
-            {
-                for(uint32_t f : segments_incident_facets[s])
-                {
-                    m_queue_i_0.push(f);
-                }
-            }
-            m_u_set_i_0.clear(); // visited facets
-            
-            while(!m_queue_i_0.empty())
-            {
-                uint32_t f = m_queue_i_0.front();
-                m_queue_i_0.pop();
-                if(m_u_set_i_0.end() != m_u_set_i_0.find(f))
-                {
-                    continue;
-                }
-                m_u_set_i_0.insert(f);
-                if(!m_facets[f].is_coplanar_constraint(c0, c1, c2, m_vertices))
-                {
-                    continue;
-                }
-                m_facets[f].constrains.push_back(i);
-                
-                for(uint32_t j=0; j<m_facets[f].segments.size(); j++)
-                {
-                    for(uint32_t nf : segments_incident_facets[m_facets[f].segments[j]])
-                    {
-                        m_queue_i_0.push(nf);
+                        m_polyhedralization.m_facets.back().constrains.push_back(c);
                     }
                 }
             }
         }
     }
     
-}
-
-
-uint32_t BinarySpacePartitionHandle::find_or_add_edge(uint32_t p0, uint32_t p1)
-{
-    sort_ints(p0,p1);
-    if(m_u_map_ii_i_0.end() != m_u_map_ii_i_0.find(make_pair(p0,p1)))
-    {
-        return m_u_map_ii_i_0[make_pair(p0,p1)];
-    }
-
-    m_u_map_ii_i_0[make_pair(p0,p1)] = m_segments.size();
-
-    uint32_t e = m_segments.size();
-    m_segments.push_back(Segment());
-    m_segments[e].e0 = p0;
-    m_segments[e].e1 = p1;
-    m_segments[e].p0 = p0;
-    m_segments[e].p1 = p1;
-    m_segments[e].p2 = m_segments[e].p3 = m_segments[e].p4 = m_segments[e].p5 = UNDEFINED_VALUE;
-    return e;
-}
-uint32_t BinarySpacePartitionHandle::find_or_add_facet(uint32_t e0, uint32_t e1, uint32_t e2, uint32_t p0, uint32_t p1,  uint32_t p2)
-{
-    sort_ints(e0,e1,e2);
-    if(m_u_map_iii_i_0.end() != m_u_map_iii_i_0.find(make_tuple(e0,e1,e2)))
-    {
-        return m_u_map_iii_i_0[make_tuple(e0,e1,e2)];
-    }
-    m_u_map_iii_i_0[make_tuple(e0,e1,e2)] = m_facets.size();
-
-    uint32_t f = m_facets.size();
-    m_facets.push_back(Facet());
-    m_facets[f].segments.push_back(e0);
-    m_facets[f].segments.push_back(e1);
-    m_facets[f].segments.push_back(e2);
-    m_facets[f].p0 = p0;
-    m_facets[f].p1 = p1;
-    m_facets[f].p2 = p2;
-    m_facets[f].ip0 = UNDEFINED_VALUE;
-    m_facets[f].ip1 = UNDEFINED_VALUE;
-    return f;
-}
-
-void BinarySpacePartitionHandle::add_virtual_constraint(uint32_t e0, uint32_t e1, uint32_t c) // e0 and e1 incident the constraint c
-{
-    uint32_t t = m_tetrahedralization.get_vertex_incident_tetrahedron(e0);
-    uint32_t c0 = m_constraints[3*c+0];
-    uint32_t c1 = m_constraints[3*c+1];
-    uint32_t c2 = m_constraints[3*c+2];
-    for(uint64_t i=0; i<4; i++)
-    {
-        uint32_t v = m_tetrahedralization.get_tetrahedron_vertex(t, i);
-        if(c0 == v || c1 == v || c2 == v || 0 == orient3d(v,c0,c1,c2, m_vertices.data()))
-        {
-            continue;
-        }
-        m_constraints.push_back(e0);
-        m_constraints.push_back(e1);
-        m_constraints.push_back(v);
-        return;
-    }
-    throw "can't add virtual constraint";
-}
-
-uint32_t BinarySpacePartitionHandle::build_polyhedrons_slice_tree(vector<tuple<uint32_t,vector<Segment>,vector<shared_ptr<genericPoint>>>>& slices)
-{
-    if(slices.empty())
-    {
-        return UNDEFINED_VALUE;
-    }
-    
-    uint32_t res = m_polyhedrons_slice_tree.size();
-    m_polyhedrons_slice_tree.push_back(PolyhedronConstraint());
-    
-    uint32_t slice = UNDEFINED_VALUE;
-    vector<uint32_t> best_top;
-    vector<uint32_t> best_bot;
-    vector<uint32_t> best_both;
-    for(uint32_t i=0; i<slices.size(); i++)
-    {
-        uint32_t c = get<0>(slices[i]);
-        shared_ptr<genericPoint> c0 = m_vertices[m_constraints[3*c+0]];
-        shared_ptr<genericPoint> c1 = m_vertices[m_constraints[3*c+1]];
-        shared_ptr<genericPoint> c2 = m_vertices[m_constraints[3*c+2]];
-        
-        vector<uint32_t> top;
-        vector<uint32_t> bot;
-        vector<uint32_t> both;
-        for(uint32_t j=0; j<slices.size(); j++)
-        {
-            if(i==j)
-            {
-                continue;
-            }
-            const vector<Segment>& segments = get<1>(slices[j]);
-            const vector<shared_ptr<genericPoint>>& vertices = get<2>(slices[j]);
-            bool has_top = false;
-            bool has_bot = false;
-            for(const Segment& segment : segments)
-            {
-                int o0 = orient3d(c0,c1,c2,vertices[segment.e0]);
-                int o1 = orient3d(c0,c1,c2,vertices[segment.e1]);
-                has_top |= 1==o0 || 1==o1;
-                has_bot |= -1==o0 || -1==o1;
-                if(has_top && has_bot)
-                {
-                    break;
-                }
-            }
-            if(has_top && has_bot)
-            {
-                both.push_back(j);
-            }
-            else if(has_top && !has_bot)
-            {
-                top.push_back(j);
-            }
-            else if(!has_top && has_bot)
-            {
-                bot.push_back(j);
-            }
-        }
-        if(UNDEFINED_VALUE==slice || best_both.size() > both.size())
-        {
-            slice = i;
-            best_top = std::move(top);
-            best_bot = std::move(bot);
-            best_both = std::move(both);
-        }
-    }
-    m_polyhedrons_slice_tree[res].c = get<0>(slices[slice]);
-    vector<tuple<uint32_t,vector<Segment>,vector<shared_ptr<genericPoint>>>> top_slices;
-    vector<tuple<uint32_t,vector<Segment>,vector<shared_ptr<genericPoint>>>> bot_slices;
-    for(uint32_t i : best_top)
-    {
-        top_slices.push_back(slices[i]);
-    }
-    for(uint32_t i : best_bot)
-    {
-        bot_slices.push_back(slices[i]);
-    }
-    for(uint32_t i : best_both)
-    {
-        uint32_t c = get<0>(slices[slice]);
-        const vector<Segment>& segments = get<1>(slices[i]);
-        vector<shared_ptr<genericPoint>> vertices = get<2>(slices[i]);
-        vertices.push_back(m_vertices[m_constraints[3*c+0]]);
-        vertices.push_back(m_vertices[m_constraints[3*c+1]]);
-        vertices.push_back(m_vertices[m_constraints[3*c+2]]);
-        auto [vertex, top_segments, bot_segments] = Segment::slice_segments_with_plane(segments, 0, 1, 2, vertices.size()-3, vertices.size()-2, vertices.size()-1, vertices);
-        
-        top_slices.push_back(make_tuple(get<0>(slices[i]),top_segments,vertices));
-        bot_slices.push_back(make_tuple(get<0>(slices[i]),bot_segments,vertices));
-    }
-    m_polyhedrons_slice_tree[res].top = build_polyhedrons_slice_tree(top_slices);
-    m_polyhedrons_slice_tree[res].bot = build_polyhedrons_slice_tree(bot_slices);
-    return res;
+    m_polyhedralization.calculate_facets_centroids();
 }

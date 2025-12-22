@@ -18,7 +18,27 @@ class Facet
         p0=p1=p2=ip0=ip1=UNDEFINED_VALUE;
         w0=w1=1.0/3.0;
     }
-    
+    Facet(uint32_t s0, uint32_t s1, uint32_t s2, uint32_t p0, uint32_t p1, uint32_t p2, uint32_t cg)
+    {
+        this->segments.push_back(s0);
+        this->segments.push_back(s1);
+        this->segments.push_back(s2);
+        this->p0 = p0;
+        this->p1 = p1;
+        this->p2 = p2;
+        this->ip0 = cg;
+    }
+    Facet(uint32_t s0, uint32_t s1, uint32_t s2, uint32_t p0, uint32_t p1, uint32_t p2, uint32_t ip0, uint32_t ip1)
+    {
+        this->segments.push_back(s0);
+        this->segments.push_back(s1);
+        this->segments.push_back(s2);
+        this->p0 = p0;
+        this->p1 = p1;
+        this->p2 = p2;
+        this->ip0 = ip0;
+        this->ip1 = ip1;
+    }
     Facet(const Facet& other)
     {
         this->segments = other.segments;
@@ -51,7 +71,6 @@ class Facet
         Segment::sort_segments(res);
         return Segment::get_segments_vertices(res);
     }
-    
     std::vector<uint32_t> get_vertices(std::vector<Segment>& all_segments)
     {
         std::unordered_set<uint32_t> res;
@@ -61,6 +80,14 @@ class Facet
             res.insert(all_segments[s].e1);
         }
         return std::vector<uint32_t>(res.begin(),res.end());
+    }
+    
+    void increase_segments_indexes(uint32_t n)
+    {
+        for(uint32_t i=0; i<segments.size(); i++)
+        {
+            segments[i] += n;
+        }
     }
 };
 

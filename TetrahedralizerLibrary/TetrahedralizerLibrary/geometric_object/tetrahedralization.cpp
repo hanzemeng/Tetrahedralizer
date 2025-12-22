@@ -19,25 +19,24 @@ void Tetrahedralization::assign_tetrahedrons(uint32_t* tetrahedrons, uint32_t te
     }
 
     // calculate neighbors and vertices incidents
-    m_u_map_iii_i_0.clear();
+    unordered_map<tuple<uint32_t,uint32_t,uint32_t>,uint32_t,trio_iii_hash> neighbor_cache;
     for(uint32_t i=0; i<tetrahedrons_count; i++)
     {
         for(uint32_t f=0; f<4; f++)
         {
-            uint32_t t0,t1,t2;
-            get_tetrahedron_facet(i,f,t0,t1,t2);
+            auto [t0,t1,t2] = get_tetrahedron_facet(i,f);
             sort_ints(t0,t1,t2);
-            auto it = m_u_map_iii_i_0.find(make_tuple(t0,t1,t2));
-            if(it != m_u_map_iii_i_0.end())
+            auto it = neighbor_cache.find(make_tuple(t0,t1,t2));
+            if(it != neighbor_cache.end())
             {
                 uint32_t n = it->second;
                 m_neighbors[n] = 4*i+f;
                 m_neighbors[4*i+f] = n;
-                m_u_map_iii_i_0.erase(it);
+                neighbor_cache.erase(it);
             }
             else
             {
-                m_u_map_iii_i_0[make_tuple(t0,t1,t2)] = 4*i+f;
+                neighbor_cache[make_tuple(t0,t1,t2)] = 4*i+f;
             }
         }
     }
@@ -60,30 +59,22 @@ uint32_t Tetrahedralization::get_tetrahedron_neighbor(uint32_t t, uint32_t i)
     }
     return m_neighbors[4*t+i] / 4;
 }
-void Tetrahedralization::get_tetrahedron_facet(uint32_t t, uint32_t i, uint32_t& f0,uint32_t& f1,uint32_t& f2)
+tuple<uint32_t,uint32_t,uint32_t> Tetrahedralization::get_tetrahedron_facet(uint32_t t, uint32_t i)
 {
+    uint32_t f0 = m_tetrahedrons[4*t+0];
+    uint32_t f1 = m_tetrahedrons[4*t+1];
+    uint32_t f2 = m_tetrahedrons[4*t+2];
+    uint32_t f3 = m_tetrahedrons[4*t+3];
     switch(i)
     {
         case 0:
-            f0 = m_tetrahedrons[4*t+0];
-            f1 = m_tetrahedrons[4*t+1];
-            f2 = m_tetrahedrons[4*t+2];
-            break;
+            return make_tuple(f0,f1,f2);
         case 1:
-            f0 = m_tetrahedrons[4*t+1];
-            f1 = m_tetrahedrons[4*t+0];
-            f2 = m_tetrahedrons[4*t+3];
-            break;
+            return make_tuple(f1,f0,f3);
         case 2:
-            f0 = m_tetrahedrons[4*t+0];
-            f1 = m_tetrahedrons[4*t+2];
-            f2 = m_tetrahedrons[4*t+3];
-            break;
+            return make_tuple(f0,f2,f3);
         case 3:
-            f0 = m_tetrahedrons[4*t+2];
-            f1 = m_tetrahedrons[4*t+1];
-            f2 = m_tetrahedrons[4*t+3];
-            break;
+            return make_tuple(f2,f1,f3);
         default:
             throw "wrong face index";
     }

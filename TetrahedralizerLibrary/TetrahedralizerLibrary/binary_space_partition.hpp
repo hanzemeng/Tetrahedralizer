@@ -4,9 +4,11 @@
 #include "common_header.h"
 #include "common_function.h"
 #include "geometric_object/tetrahedralization.hpp"
+#include "geometric_object/polyhedralization.hpp"
 #include "geometric_object/segment.h"
 #include "geometric_object/facet.h"
 #include "triangle_tetrahedron_intersection.hpp"
+#include "facet_order.h"
 
 class BinarySpacePartitionHandle
 {
@@ -39,24 +41,12 @@ private:
     std::vector<std::shared_ptr<genericPoint>> m_vertices;
     Tetrahedralization m_tetrahedralization;
     std::vector<uint32_t> m_constraints;
-    bool m_aggressively_add_virtual_constraints;
     
     std::vector<PolyhedronConstraint> m_polyhedrons_slice_tree;
-    std::vector<std::vector<uint32_t>> m_polyhedrons;
-    std::vector<Facet> m_facets;
-    std::vector<Segment> m_segments;
-    
-    std::vector<uint32_t> m_inserted_vertices;
-    uint32_t m_inserted_vertices_count;
-    std::vector<uint32_t> m_output_polyhedrons;
-    uint32_t m_output_polyhedrons_count;
-    COMMON_FIELDS
+    Polyhedralization m_polyhedralization;
+    std::vector<uint32_t> m_temp_output;
     
     void binary_space_partition();
-    uint32_t find_or_add_edge(uint32_t p0, uint32_t p1);
-    uint32_t find_or_add_facet(uint32_t e0, uint32_t e1, uint32_t e2, uint32_t p0, uint32_t p1,  uint32_t p2);
-    void add_virtual_constraint(uint32_t e0, uint32_t e1, uint32_t c); // e0 and e1 incident the constraint c
-    uint32_t build_polyhedrons_slice_tree(std::vector<std::tuple<uint32_t,std::vector<Segment>, std::vector<std::shared_ptr<genericPoint>>>>& slices);
 };
 
 extern "C" LIBRARY_EXPORT void* CreateBinarySpacePartitionHandle();

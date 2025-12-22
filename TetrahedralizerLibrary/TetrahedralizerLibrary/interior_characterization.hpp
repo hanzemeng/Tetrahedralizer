@@ -5,6 +5,7 @@
 #include "common_function.h"
 #include "geometric_object/facet.h"
 #include "geometric_object/segment.h"
+#include "graph_cut/GCoptimization.h"
 
 class InteriorCharacterizationHandle
 {

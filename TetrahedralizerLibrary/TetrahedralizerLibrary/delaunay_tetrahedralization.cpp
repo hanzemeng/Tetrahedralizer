@@ -54,10 +54,6 @@ extern "C" LIBRARY_EXPORT uint32_t* GetDelaunayTetrahedralizationTetrahedrons(vo
 
 void DelaunayTetrahedralizationHandle::delaunay_tetrahedralization()
 {
-    m_tetrahedrons.clear();
-    clear_queue(m_tetrahedrons_gaps);
-    m_neighbors.clear();
-
     uint32_t op2, op3;
     // find op2 and op3, and build the first tetrahedron
     {
@@ -115,6 +111,7 @@ void DelaunayTetrahedralizationHandle::delaunay_tetrahedralization()
         op3 = p3;
     }
 
+    // insert the rest of vertices
     uint32_t origin_t = 0;
     for(uint32_t i=2; i<m_vertices.size(); i++)
     {
@@ -127,11 +124,10 @@ void DelaunayTetrahedralizationHandle::delaunay_tetrahedralization()
         {
             if(INFINITE_VERTEX == m_tetrahedrons[origin_t+3])
             {
-                get_tetrahedron_neighbor(origin_t,0,origin_t);
+                origin_t = get_tetrahedron_neighbor(origin_t,0);
             }
             uint32_t f = 0;
             uint32_t last_f = 4;
-            uint32_t p0,p1,p2;
             while(f < 4)
             {
                 if(INFINITE_VERTEX == m_tetrahedrons[origin_t+3])
@@ -145,37 +141,36 @@ void DelaunayTetrahedralizationHandle::delaunay_tetrahedralization()
                     {
                         continue;
                     }
-                    get_tetrahedron_face(origin_t, f, p0, p1, p2);
+                    
+                    auto[p0,p1,p2] = get_tetrahedron_facet(origin_t, f);
                     if(orient3d(p0,p1,p2,i,m_vertices.data()) < 0)
                     {
                         last_f = m_neighbors[origin_t+f]&3;
-                        get_tetrahedron_neighbor(origin_t,f,origin_t);
+                        origin_t = get_tetrahedron_neighbor(origin_t,f);
                         break;
                     }
                 }
             }
         }
 
-        // m_u_set_i_0 a list of bounding triangles
-        // m_u_set_i_1 a list of visited tetrahedrons
-        // m_u_set_i_2 a list of tetrahedrons to be removed
-        // m_queue_i_0 a list tetrahedrons to be visited
+        // remove tetrahedrons whose circumsphere contains i
+        unordered_set<uint32_t> bounding_facets;
         {
-            m_u_set_i_0.clear();
-            m_u_set_i_1.clear();
-            m_u_set_i_1.insert(UNDEFINED_VALUE);
-            m_u_set_i_2.clear();
-            m_queue_i_0.push(origin_t);
-            while(!m_queue_i_0.empty())
+            unordered_set<uint32_t> visited_tetrahedrons;
+            visited_tetrahedrons.insert(UNDEFINED_VALUE);
+            queue<uint32_t> visit_tetrahedrons;
+            unordered_set<uint32_t> removed_tetrahedrons;
+            visit_tetrahedrons.push(origin_t);
+            while(!visit_tetrahedrons.empty())
             {
-                uint32_t t = m_queue_i_0.front();
-                m_queue_i_0.pop();
+                uint32_t t = visit_tetrahedrons.front();
+                visit_tetrahedrons.pop();
 
-                if(m_u_set_i_1.end() != m_u_set_i_1.find(t))
+                if(visited_tetrahedrons.end() != visited_tetrahedrons.find(t))
                 {
                     continue;
                 }
-                m_u_set_i_1.insert(t);
+                visited_tetrahedrons.insert(t);
 
                 if(1 != in_sphere(t,i))
                 {
@@ -184,42 +179,54 @@ void DelaunayTetrahedralizationHandle::delaunay_tetrahedralization()
 
                 for(uint32_t f=0; f<4; f++)
                 {
-                    uint32_t n;
-                    get_tetrahedron_neighbor(t,f,n);
-                    m_queue_i_0.push(n);
-                    if(m_u_set_i_0.end() != m_u_set_i_0.find(t+f))
+                    uint32_t n = get_tetrahedron_neighbor(t,f);
+                    visit_tetrahedrons.push(n);
+                    if(bounding_facets.end() != bounding_facets.find(t+f))
                     {
-                        m_u_set_i_0.erase(t+f);
+                        bounding_facets.erase(t+f);
                     }
                     else
                     {
-                        m_u_set_i_0.insert(m_neighbors[t+f]);
+                        bounding_facets.insert(m_neighbors[t+f]);
                     }
                 }
-                m_u_set_i_2.insert(t);
+                removed_tetrahedrons.insert(t);
             }
-            for(uint32_t t : m_u_set_i_2)
+            for(uint32_t t : removed_tetrahedrons)
             {
                 remove_tetrahedron(t);
             }
         }
-        
         // tetrahedralize hole
-        // m_u_map_ii_i_0 stores newly created triangles that do not have neighbors
         {
-            m_u_map_ii_i_0.clear();
-            for(uint32_t tri : m_u_set_i_0)
+            unordered_map<pair<uint32_t,uint32_t>,uint32_t,pair_ii_hash> neighbors_cache;
+            auto connect_neighbor = [&](uint32_t p0, uint32_t p1, uint32_t t)
             {
-                uint32_t f0,f1,f2;
-                get_tetrahedron_face(tri,f0,f1,f2);
+                sort_ints(p0,p1);
+                auto it = neighbors_cache.find(make_pair(p0,p1));
+                if(neighbors_cache.end() != neighbors_cache.find(make_pair(p0,p1)))
+                {
+                    uint32_t n = it->second;
+                    m_neighbors[t] = n;
+                    m_neighbors[n] = t;
+                    neighbors_cache.erase(it);
+                }
+                else
+                {
+                    neighbors_cache[make_pair(p0,p1)] = t;
+                }
+            };
+            for(uint32_t t : bounding_facets)
+            {
+                auto[f0,f1,f2] = get_tetrahedron_facet(t&0xfffffffc, t%4);
                 uint32_t nt = add_tetrahedron(i,f0,f1,f2);
                 origin_t = nt; // used for searching the next point
-                m_neighbors[nt+3] = tri;
-                m_neighbors[tri] = nt+3;
+                m_neighbors[nt+3] = t;
+                m_neighbors[t] = nt+3;
 
-                tetrahedralize_hole_helper(f0,f1,nt+0);
-                tetrahedralize_hole_helper(f0,f2,nt+1);
-                tetrahedralize_hole_helper(f1,f2,nt+2);
+                connect_neighbor(f0,f1,nt+0);
+                connect_neighbor(f0,f2,nt+1);
+                connect_neighbor(f1,f2,nt+2);
             }
         }
     }
@@ -246,71 +253,36 @@ void DelaunayTetrahedralizationHandle::delaunay_tetrahedralization()
     }
 }
 
-
-void DelaunayTetrahedralizationHandle::get_tetrahedron_opposite_vertex(uint32_t t, uint32_t& p)
-{
-    uint32_t i = t & 3;
-    t = t & 0xfffffffc;
-    switch(i)
-    {
-        case 0:
-            p = m_tetrahedrons[t+3];
-            break;
-        case 1:
-            p = m_tetrahedrons[t+2];
-            break;
-        case 2:
-            p = m_tetrahedrons[t+1];
-            break;
-        case 3:
-            p = m_tetrahedrons[t+0];
-            break;
-        default:
-            throw "wrong face index";
-    }
-}
-void DelaunayTetrahedralizationHandle::get_tetrahedron_neighbor(uint32_t t, uint32_t i, uint32_t& n)
+uint32_t DelaunayTetrahedralizationHandle::get_tetrahedron_neighbor(uint32_t t, uint32_t i)
 {
     if(UNDEFINED_VALUE == m_neighbors[t+i])
     {
-        n = UNDEFINED_VALUE;
+        return UNDEFINED_VALUE;
     }
     else
     {
-        n = m_neighbors[t+i] & 0xfffffffc;
+        return m_neighbors[t+i] & 0xfffffffc;
     }
 }
-void DelaunayTetrahedralizationHandle::get_tetrahedron_face(uint32_t t, uint32_t i, uint32_t& f0,uint32_t& f1,uint32_t& f2)
+tuple<uint32_t,uint32_t,uint32_t> DelaunayTetrahedralizationHandle::get_tetrahedron_facet(uint32_t t, uint32_t i)
 {
+    uint32_t f0 = m_tetrahedrons[t+0];
+    uint32_t f1 = m_tetrahedrons[t+1];
+    uint32_t f2 = m_tetrahedrons[t+2];
+    uint32_t f3 = m_tetrahedrons[t+3];
     switch(i)
     {
         case 0:
-            f0 = m_tetrahedrons[t+0];
-            f1 = m_tetrahedrons[t+1];
-            f2 = m_tetrahedrons[t+2];
-            break;
+            return make_tuple(f0,f1,f2);
         case 1:
-            f0 = m_tetrahedrons[t+1];
-            f1 = m_tetrahedrons[t+0];
-            f2 = m_tetrahedrons[t+3];
-            break;
+            return make_tuple(f1,f0,f3);
         case 2:
-            f0 = m_tetrahedrons[t+0];
-            f1 = m_tetrahedrons[t+2];
-            f2 = m_tetrahedrons[t+3];
-            break;
+            return make_tuple(f0,f2,f3);
         case 3:
-            f0 = m_tetrahedrons[t+2];
-            f1 = m_tetrahedrons[t+1];
-            f2 = m_tetrahedrons[t+3];
-            break;
+            return make_tuple(f2,f1,f3);
         default:
             throw "wrong face index";
     }
-}
-void DelaunayTetrahedralizationHandle::get_tetrahedron_face(uint32_t t, uint32_t& f0,uint32_t& f1,uint32_t& f2)
-{
-    get_tetrahedron_face(t&0xfffffffc,t&3,f0,f1,f2);
 }
 
 int DelaunayTetrahedralizationHandle::symbolic_perturbation(uint32_t p0,uint32_t p1,uint32_t p2,uint32_t p3,uint32_t p4)
@@ -374,8 +346,8 @@ int DelaunayTetrahedralizationHandle::in_sphere(uint32_t t,uint32_t p)
     {
         return res;
     }
-    uint32_t opposite_p;
-    get_tetrahedron_opposite_vertex(m_neighbors[t+0],opposite_p);
+    
+    uint32_t opposite_p = m_tetrahedrons[(m_neighbors[t+0]&0xfffffffc) + (3-(m_neighbors[t+0]&3))];
     
     res = ::in_sphere(m_tetrahedrons[t+0],m_tetrahedrons[t+1],m_tetrahedrons[t+2],opposite_p,p,m_vertices.data());
     if(0 != res)
@@ -435,22 +407,5 @@ void DelaunayTetrahedralizationHandle::remove_tetrahedron(uint32_t t)
         }
         m_neighbors[n] = UNDEFINED_VALUE;
         m_neighbors[t+i] = UNDEFINED_VALUE;
-    }
-}
-
-void DelaunayTetrahedralizationHandle::tetrahedralize_hole_helper(uint32_t p0, uint32_t p1, uint32_t t)
-{
-    sort_ints(p0,p1);
-    auto it = m_u_map_ii_i_0.find({p0,p1});
-    if(m_u_map_ii_i_0.end() != it)
-    {
-        uint32_t n = it->second;
-        m_neighbors[t] = n;
-        m_neighbors[n] = t;
-        m_u_map_ii_i_0.erase(it);
-    }
-    else
-    {
-        m_u_map_ii_i_0[{p0,p1}] = t;
     }
 }

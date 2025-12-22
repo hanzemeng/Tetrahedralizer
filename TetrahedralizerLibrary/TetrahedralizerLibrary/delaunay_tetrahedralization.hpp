@@ -21,19 +21,15 @@ private:
     std::vector<std::shared_ptr<genericPoint>> m_vertices;
     std::vector<uint32_t> m_tetrahedrons;
     std::queue<uint32_t> m_tetrahedrons_gaps;
-    std::vector<uint32_t> m_neighbors; // neighbors order: 0,2,1  1,0,3  0,2,3,  2,1,3
-    COMMON_FIELDS
+    std::vector<uint32_t> m_neighbors; // neighbors order: 0,1,2  1,0,3  0,2,3,  2,1,3
     
     void delaunay_tetrahedralization();
-    void get_tetrahedron_opposite_vertex(uint32_t t, uint32_t& p);
-    void get_tetrahedron_neighbor(uint32_t t, uint32_t i, uint32_t& n);
-    void get_tetrahedron_face(uint32_t t, uint32_t i, uint32_t& f0,uint32_t& f1,uint32_t& f2);
-    void get_tetrahedron_face(uint32_t t, uint32_t& f0,uint32_t& f1,uint32_t& f2);
+    uint32_t get_tetrahedron_neighbor(uint32_t t, uint32_t i);
+    std::tuple<uint32_t,uint32_t,uint32_t> get_tetrahedron_facet(uint32_t t, uint32_t i);
     int symbolic_perturbation(uint32_t p0,uint32_t p1,uint32_t p2,uint32_t p3,uint32_t p4);
     int in_sphere(uint32_t t,uint32_t p);
     uint32_t add_tetrahedron(uint32_t p0,uint32_t p1,uint32_t p2,uint32_t p3);
     void remove_tetrahedron(uint32_t t);
-    void tetrahedralize_hole_helper(uint32_t p0, uint32_t p1, uint32_t t);
 };
 
 

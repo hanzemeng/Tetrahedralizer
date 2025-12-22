@@ -3,39 +3,6 @@
 
 #include "common_header.h"
 
-inline std::vector<uint32_t> flat_array_to_vector(uint32_t* data, uint32_t count)
-{
-    std::vector<uint32_t> res;
-    uint32_t f=0;
-    for(uint32_t i=0; i<count; i++)
-    {
-        res.push_back(data[f]);
-        uint32_t n = data[f];
-        for(uint32_t j=f+1; j<f+1+n; j++)
-        {
-            res.push_back(data[j]);
-        }
-        f += n+1;
-    }
-    return res;
-}
-inline std::vector<std::vector<uint32_t>> flat_array_to_nested_vector(uint32_t* data, uint32_t count)
-{
-    std::vector<std::vector<uint32_t>> res;
-    uint32_t f=0;
-    for(uint32_t i=0; i<count; i++)
-    {
-        res.push_back(std::vector<uint32_t>());
-        uint32_t n = data[f];
-        for(uint32_t j=f+1; j<f+1+n; j++)
-        {
-            res.back().push_back(data[j]);
-        }
-        f += n+1;
-    }
-    return res;
-}
-
 inline void sort_ints(uint32_t& i0, uint32_t& i1)
 {
     if(i0 > i1)
@@ -86,7 +53,6 @@ inline int double_to_int(double d)
     }
     return 1;
 }
-
 inline int orient3d(uint32_t p0,uint32_t p1,uint32_t p2,uint32_t p3, std::shared_ptr<genericPoint>* m_vertices)
 {
     return double_to_int(genericPoint::orient3D(*m_vertices[p0],*m_vertices[p1],*m_vertices[p2],*m_vertices[p3]));
@@ -228,6 +194,45 @@ inline bool barycentric_weight(uint32_t t0, uint32_t t1, uint32_t t2, const doub
     return barycentric_weight(p0,p1,p2,p,w);
 }
 
+inline std::vector<std::vector<uint32_t>> flat_array_to_nested_vector(uint32_t* data, uint32_t count)
+{
+    std::vector<std::vector<uint32_t>> res;
+    uint32_t f=0;
+    for(uint32_t i=0; i<count; i++)
+    {
+        res.push_back(std::vector<uint32_t>());
+        uint32_t n = data[f];
+        for(uint32_t j=f+1; j<f+1+n; j++)
+        {
+            res.back().push_back(data[j]);
+        }
+        f += n+1;
+    }
+    return res;
+}
+inline std::vector<uint32_t> nested_vector_to_flat_vector(std::vector<std::vector<uint32_t>>& nested_vector)
+{
+    std::vector<uint32_t> res;
+    for(uint32_t i=0; i<nested_vector.size(); i++)
+    {
+        res.push_back(nested_vector[i].size());
+        for(uint32_t j=0; j<nested_vector[i].size(); j++)
+        {
+            res.push_back(nested_vector[i][j]);
+        }
+    }
+    return res;
+}
+inline uint32_t count_flat_vector_elements(std::vector<uint32_t>& flat_vector)
+{
+    uint32_t res = 0;
+    for(uint32_t i=0; i<flat_vector.size(); i+=flat_vector[i]+1)
+    {
+        res++;
+    }
+    return res;
+}
+
 inline std::vector<std::shared_ptr<genericPoint>> create_vertices(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values)
 {
     std::vector<std::shared_ptr<genericPoint>> vertices;
@@ -319,6 +324,69 @@ inline std::vector<uint32_t> create_constraints(uint32_t constraints_count, uint
         res.push_back(c1);
         res.push_back(c2);
     }
+    return res;
+}
+
+inline std::vector<std::vector<uint32_t>> group_coplanar_triangles(std::vector<uint32_t>& triangles, std::vector<std::shared_ptr<genericPoint>>& vertices)
+{
+    std::vector<std::vector<uint32_t>> graph = std::vector<std::vector<uint32_t>>(triangles.size()/3);
+    for(uint32_t i=0; i<triangles.size()/3; i++)
+    {
+        uint32_t t0 = triangles[3*i+0];
+        uint32_t t1 = triangles[3*i+1];
+        uint32_t t2 = triangles[3*i+2];
+        if(UNDEFINED_VALUE == t0)
+        {
+            continue;
+        }
+        for(uint32_t j=0; j<i; j++)
+        {
+            uint32_t nt0 = triangles[3*j+0];
+            uint32_t nt1 = triangles[3*j+1];
+            uint32_t nt2 = triangles[3*j+2];
+            if(UNDEFINED_VALUE == nt0)
+            {
+                continue;
+            }
+            if(0 == orient3d(t0,t1,t2,nt0,vertices.data()) &&
+               0 == orient3d(t0,t1,t2,nt1,vertices.data()) &&
+               0 == orient3d(t0,t1,t2,nt2,vertices.data()))
+            {
+                graph[i].push_back(j);
+                graph[j].push_back(i);
+            }
+        }
+    }
+    
+    std::vector<bool> visited = std::vector<bool>(triangles.size()/3, false);
+    std::queue<uint32_t> visit;
+    std::vector<std::vector<uint32_t>> res;
+    for(uint32_t i=0; i<visited.size(); i++)
+    {
+        if(visited[i] || UNDEFINED_VALUE==triangles[3*i+0])
+        {
+            continue;
+        }
+        
+        res.push_back(std::vector<uint32_t>());
+        visit.push(i);
+        while(!visit.empty())
+        {
+            uint32_t c = visit.front();
+            visit.pop();
+            if(visited[c])
+            {
+                continue;
+            }
+            visited[c] = true;
+            res.back().push_back(c);
+            for(uint32_t nc : graph[c])
+            {
+                visit.push(nc);
+            }
+        }
+    }
+    
     return res;
 }
 

@@ -15,7 +15,6 @@
 #include <memory>
 #include "geometric_object/double3.h"
 #include "indirect_predicates/implicit_point.h"
-#include "graph_cut/GCoptimization.h"
 
 struct pair_ii_hash
 {
