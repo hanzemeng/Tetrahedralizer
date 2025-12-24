@@ -29,7 +29,7 @@ namespace Hanzzz.Tetrahedralizer
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern int GetDelaunayTetrahedralizationTetrahedronsCount(IntPtr handle);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-            static extern IntPtr GetDelaunayTetrahedralizationTetrahedrons(IntPtr handle);
+            static extern void GetDelaunayTetrahedralizationTetrahedrons(IntPtr handle, [Out] int[] tetrahedrons);
 
     
             double[] explicitVerticesArray = explicitVertices.ToArray();
@@ -41,8 +41,7 @@ namespace Hanzzz.Tetrahedralizer
             AddDelaunayTetrahedralizationInput(handle, explicitVerticesArray.Length/3, explicitVerticesArray, implicitVerticesCount, implicitVerticesArray);
             CalculateDelaunayTetrahedralization(handle);
     
-            IntPtr ptr = GetDelaunayTetrahedralizationTetrahedrons(handle);
-            List<int> tetrahedrons = ptr.ReadInt32Repeat(4*GetDelaunayTetrahedralizationTetrahedronsCount(handle));
+            List<int> tetrahedrons = InteropUtility.GetList<int>(handle, GetDelaunayTetrahedralizationTetrahedronsCount, GetDelaunayTetrahedralizationTetrahedrons);
             DisposeDelaunayTetrahedralizationHandle(handle);
     
             TetrahedralizerUtility.SwapElementsByInterval(tetrahedrons, 4); // Change from right to left hand coordinate.

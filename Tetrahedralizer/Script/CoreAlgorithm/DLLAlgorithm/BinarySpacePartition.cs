@@ -25,7 +25,7 @@ namespace Hanzzz.Tetrahedralizer
         /// <para><c>facetsCentroids</c>(v0,v1,v2). v0,v1,v2 are indexes to 3 explicit vertices.</para>
         /// <para><c>facetsCentroidsWeights</c>(w0,w1). w0,w1,1-w0-w1 are weights of the 3 explicit vertices defined above.</para>
         /// </returns>
-        public (List<int> insertedVertices, List<int> polyhedrons, List<Facet> facets, List<Segment> segments)
+        public (List<int> insertedVertices, List<int> polyhedrons, List<Facet> facets, List<Segment> segments, List<int> coplanarTriangles)
         CalculateBinarySpacePartition(IReadOnlyList<double> explicitVertices, IReadOnlyList<int> tetrahedrons, IReadOnlyList<int> constraints, bool aggressivelyAddVirtualConstraints, bool removeCollinearSegments)
         {
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
@@ -39,11 +39,11 @@ namespace Hanzzz.Tetrahedralizer
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern int GetBinarySpacePartitionInsertedVerticesCount(IntPtr handle);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-            static extern IntPtr GetBinarySpacePartitionInsertedVertices(IntPtr handle);
+            static extern void GetBinarySpacePartitionInsertedVertices(IntPtr handle, [Out] int[] out_array);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern int GetBinarySpacePartitionPolyhedronsCount(IntPtr handle);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-            static extern IntPtr GetBinarySpacePartitionPolyhedrons(IntPtr handle);
+            static extern void GetBinarySpacePartitionPolyhedrons(IntPtr handle, [Out] int[] out_array);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern int GetBinarySpacePartitionFacetsCount(IntPtr handle);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
@@ -52,6 +52,10 @@ namespace Hanzzz.Tetrahedralizer
             static extern int GetBinarySpacePartitionSegmentsCount(IntPtr handle);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern void GetBinarySpacePartitionSegments(IntPtr handle, [Out] SegmentInteropData[] segmentInteropData);
+            [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+            static extern int GetBinarySpacePartitionCoplanarTrianglesCount(IntPtr handle);
+            [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+            static extern void GetBinarySpacePartitionCoplanarTriangles(IntPtr handle, [Out] int[] out_array);
     
             double[] explicitVerticesArray = explicitVertices.ToArray();
             TetrahedralizerUtility.SwapElementsByInterval(explicitVerticesArray, 3);
@@ -62,18 +66,11 @@ namespace Hanzzz.Tetrahedralizer
             AddBinarySpacePartitionInput(handle, explicitVerticesArray.Length/3, explicitVerticesArray, tetrahedronsArray.Length/4, tetrahedronsArray, constraints.Count/3, constraints.ToArray(), aggressivelyAddVirtualConstraints);
             CalculateBinarySpacePartition(handle);
     
-            IntPtr ptr = GetBinarySpacePartitionInsertedVertices(handle);
-            List<int> insertedVertices = ptr.ReadInt32NestedRepeat(GetBinarySpacePartitionInsertedVerticesCount(handle));
-            ptr = GetBinarySpacePartitionPolyhedrons(handle);
-            List<int> polyhedrons = ptr.ReadInt32NestedRepeat(GetBinarySpacePartitionPolyhedronsCount(handle));
-            
-            FacetInteropData[] facetInteropData = new FacetInteropData[GetBinarySpacePartitionFacetsCount(handle)];
-            GetBinarySpacePartitionFacets(handle, facetInteropData);
-            List<Facet> facets = facetInteropData.Select(i=>new Facet(i)).ToList();
-
-            SegmentInteropData[] segmentInteropData = new SegmentInteropData[GetBinarySpacePartitionSegmentsCount(handle)];
-            GetBinarySpacePartitionSegments(handle, segmentInteropData);
-            List<Segment> segments = segmentInteropData.Select(i=>new Segment(i)).ToList();
+            List<int> insertedVertices = InteropUtility.GetList<int>(handle, GetBinarySpacePartitionInsertedVerticesCount, GetBinarySpacePartitionInsertedVertices);
+            List<int> polyhedrons = InteropUtility.GetList<int>(handle, GetBinarySpacePartitionPolyhedronsCount, GetBinarySpacePartitionPolyhedrons);
+            List<Facet> facets = InteropUtility.GetList<FacetInteropData>(handle, GetBinarySpacePartitionFacetsCount, GetBinarySpacePartitionFacets).Select(i=>new Facet(i)).ToList();
+            List<Segment> segments = InteropUtility.GetList<SegmentInteropData>(handle, GetBinarySpacePartitionSegmentsCount, GetBinarySpacePartitionSegments).Select(i=>new Segment(i)).ToList();
+            List<int> coplanarTriangles = InteropUtility.GetList<int>(handle, GetBinarySpacePartitionCoplanarTrianglesCount, GetBinarySpacePartitionCoplanarTriangles);
 
             if(removeCollinearSegments)
             {
@@ -101,7 +98,7 @@ namespace Hanzzz.Tetrahedralizer
             }
     
             DisposeBinarySpacePartitionHandle(handle);
-            return (insertedVertices, polyhedrons, facets, segments);
+            return (insertedVertices, polyhedrons, facets, segments, coplanarTriangles);
     
             // sanity checks: every facet should not be a line, and every polyhedron should not be a plane
             //{

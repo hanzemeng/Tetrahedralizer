@@ -66,30 +66,18 @@
 				interior_characterization.hpp,
 				polyhedralization_tetrahedralization.cpp,
 				polyhedralization_tetrahedralization.hpp,
-				triangle_tetrahedron_intersection.cpp,
-				triangle_tetrahedron_intersection.hpp,
+				triangle_tetrahedron_intersection.h,
 				unused/main.cpp,
 			);
 			target = 887F387B2E0E1F1F00A37971 /* TetrahedralizerLibrary */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
-/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-		88134D922EDFDF2B00EFDE3D /* Exceptions for "TetrahedralizerLibrary" folder in "Headers" phase from "TetrahedralizerLibrary" target */ = {
-			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
-			buildPhase = 887F38782E0E1F1F00A37971 /* Headers */;
-			membershipExceptions = (
-				triangle_tetrahedron_intersection.cpp,
-			);
-		};
-/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		887F38702E0E1DE400A37971 /* TetrahedralizerLibrary */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				887F388D2E0E1F2800A37971 /* Exceptions for "TetrahedralizerLibrary" folder in "TetrahedralizerLibrary" target */,
-				88134D922EDFDF2B00EFDE3D /* Exceptions for "TetrahedralizerLibrary" folder in "Headers" phase from "TetrahedralizerLibrary" target */,
 			);
 			path = TetrahedralizerLibrary;
 			sourceTree = "<group>";

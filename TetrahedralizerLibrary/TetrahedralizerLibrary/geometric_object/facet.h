@@ -11,7 +11,6 @@ class Facet
     uint32_t p0,p1,p2; // three explicit vetices that define the facet
     double w0,w1; // w0+w1+w2==1 and w0*p0+w1*p1+w2*p2 is the facet centroid
     uint32_t ip0, ip1; // two incident polyhedrons
-    std::vector<uint32_t> constrains; // coplanar constraints that may intersect the facet
 
     Facet()
     {
@@ -49,16 +48,11 @@ class Facet
         this->w1 = other.w1;
         this->ip0 = other.ip0;
         this->ip1 = other.ip1;
-        this->constrains = other.constrains;
     }
     
     bool contains_segment(uint32_t segment)
     {
         return segments.end() != std::find(segments.begin(), segments.end(), segment);
-    }
-    bool is_coplanar_constraint(uint32_t c0,uint32_t c1,uint32_t c2, std::vector<std::shared_ptr<genericPoint>>& vertices)
-    {
-        return 0==orient3d(p0,p1,p2,c0,vertices.data()) && 0==orient3d(p0,p1,p2,c1,vertices.data()) && 0==orient3d(p0,p1,p2,c2,vertices.data());
     }
     
     std::vector<uint32_t> get_sorted_vertices(std::vector<Segment>& all_segments)
@@ -101,8 +95,6 @@ extern "C"
         uint32_t p0, p1, p2;
         double w0, w1;
         uint32_t ip0, ip1;
-        const uint32_t* constrains;
-        uint32_t constrains_count;
             
         FacetInteropData& operator=(const Facet& other)
         {
@@ -115,8 +107,6 @@ extern "C"
             this->w1 = other.w1;
             this->ip0 = other.ip0;
             this->ip1 = other.ip1;
-            this->constrains = other.constrains.data();
-            constrains_count = other.constrains.size();
             return *this;
         }
         
@@ -131,7 +121,6 @@ extern "C"
             res.w1 = w1;
             res.ip0 = ip0;
             res.ip1 = ip1;
-            res.constrains = std::vector<uint32_t>(constrains,constrains+constrains_count);
             return res;
         }
     };

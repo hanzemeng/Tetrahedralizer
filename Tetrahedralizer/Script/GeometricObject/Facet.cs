@@ -11,7 +11,6 @@ namespace Hanzzz.Tetrahedralizer
         public int p0,p1,p2; // three explicit vetices that define the facet
         public double w0,w1; // w0+w1+w2==1 and w0*p0+w1*p1+w2*p2 is the facet centroid
         public int ip0, ip1; // two incident polyhedrons
-        public List<int> constarints; // coplanar constraints that may intersect the facet
 
         public Facet(FacetInteropData facetInteropData)
         {
@@ -23,7 +22,6 @@ namespace Hanzzz.Tetrahedralizer
             w1 = facetInteropData.w1;
             ip0 = facetInteropData.ip0;
             ip1 = facetInteropData.ip1;
-            constarints = facetInteropData.constarints.ReadInt32Repeat(facetInteropData.constarintsCount);
         }
     }
 
@@ -35,11 +33,9 @@ namespace Hanzzz.Tetrahedralizer
         public int p0, p1, p2;
         public double w0, w1;
         public int ip0, ip1;
-        public IntPtr constarints;
-        public int constarintsCount;
 
 
-        public FacetInteropData(Facet facet, out GCHandle segmentsHandle, out GCHandle constarintsHandle)
+        public FacetInteropData(Facet facet, out GCHandle segmentsHandle)
         {
             segmentsHandle = GCHandle.Alloc(facet.segments.ToArray(), GCHandleType.Pinned);
             segments = segmentsHandle.AddrOfPinnedObject();
@@ -51,9 +47,6 @@ namespace Hanzzz.Tetrahedralizer
             w1 = facet.w1;
             ip0 = facet.ip0;
             ip1 = facet.ip1;
-            constarintsHandle = GCHandle.Alloc(facet.constarints.ToArray(), GCHandleType.Pinned);
-            constarints = constarintsHandle.AddrOfPinnedObject();
-            constarintsCount = facet.constarints.Count;
         }
     }
 }

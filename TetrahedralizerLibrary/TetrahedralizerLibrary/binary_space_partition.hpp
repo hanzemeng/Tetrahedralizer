@@ -7,7 +7,7 @@
 #include "geometric_object/polyhedralization.hpp"
 #include "geometric_object/segment.h"
 #include "geometric_object/facet.h"
-#include "triangle_tetrahedron_intersection.hpp"
+#include "triangle_tetrahedron_intersection.h"
 #include "facet_order.h"
 
 class BinarySpacePartitionHandle
@@ -19,33 +19,25 @@ public:
     void Calculate();
     
     uint32_t GetInsertedVerticesCount();
-    uint32_t* GetInsertedVertices();
-    
+    void GetInsertedVertices(uint32_t* out);
     uint32_t GetPolyhedronsCount();
-    uint32_t* GetPolyhedrons();
+    void GetPolyhedrons(uint32_t* out);
     uint32_t GetFacetsCount();
-    void GetFacets(FacetInteropData* outArray);
+    void GetFacets(FacetInteropData* out);
     uint32_t GetSegmentsCount();
-    void GetSegments(SegmentInteropData* outArray);
+    void GetSegments(SegmentInteropData* out);
+    uint32_t GetCoplanarTrianglesCount();
+    void GetCoplanarTriangles(uint32_t* out);
     
     
 private:
-    class PolyhedronConstraint
-    {
-    public:
-        uint32_t c; // constraint
-        uint32_t top; // top constraint node
-        uint32_t bot; // bottom constraint node
-    };
-    
     std::vector<std::shared_ptr<genericPoint>> m_vertices;
     Tetrahedralization m_tetrahedralization;
     std::vector<uint32_t> m_constraints;
     
-    std::vector<PolyhedronConstraint> m_polyhedrons_slice_tree;
+    std::vector<std::vector<uint32_t>> m_coplanar_triangles;
     Polyhedralization m_polyhedralization;
-    std::vector<uint32_t> m_temp_output;
-    
+
     void binary_space_partition();
 };
 
@@ -57,12 +49,14 @@ extern "C" LIBRARY_EXPORT void AddBinarySpacePartitionInput(void* handle, uint32
 extern "C" LIBRARY_EXPORT void CalculateBinarySpacePartition(void* handle);
 
 extern "C" LIBRARY_EXPORT uint32_t GetBinarySpacePartitionInsertedVerticesCount(void* handle);
-extern "C" LIBRARY_EXPORT uint32_t* GetBinarySpacePartitionInsertedVertices(void* handle);
+extern "C" LIBRARY_EXPORT void GetBinarySpacePartitionInsertedVertices(void* handle, uint32_t* out);
 extern "C" LIBRARY_EXPORT uint32_t GetBinarySpacePartitionPolyhedronsCount(void* handle);
-extern "C" LIBRARY_EXPORT uint32_t* GetBinarySpacePartitionPolyhedrons(void* handle);
+extern "C" LIBRARY_EXPORT void GetBinarySpacePartitionPolyhedrons(void* handle, uint32_t* out);
 extern "C" LIBRARY_EXPORT uint32_t GetBinarySpacePartitionFacetsCount(void* handle);
-extern "C" LIBRARY_EXPORT void GetBinarySpacePartitionFacets(void* handle, FacetInteropData* outArray);
+extern "C" LIBRARY_EXPORT void GetBinarySpacePartitionFacets(void* handle, FacetInteropData* out);
 extern "C" LIBRARY_EXPORT uint32_t GetBinarySpacePartitionSegmentsCount(void* handle);
-extern "C" LIBRARY_EXPORT void GetBinarySpacePartitionSegments(void* handle, SegmentInteropData* outArray);
+extern "C" LIBRARY_EXPORT void GetBinarySpacePartitionSegments(void* handle, SegmentInteropData* out);
+extern "C" LIBRARY_EXPORT uint32_t GetBinarySpacePartitionCoplanarTrianglesCount(void* handle);
+extern "C" LIBRARY_EXPORT void GetBinarySpacePartitionCoplanarTriangles(void* handle, uint32_t* out);
 
 #endif

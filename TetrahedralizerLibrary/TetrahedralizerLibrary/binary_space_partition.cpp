@@ -17,45 +17,55 @@ void BinarySpacePartitionHandle::Calculate()
 
 uint32_t BinarySpacePartitionHandle::GetInsertedVerticesCount()
 {
-    return m_polyhedralization.m_inserted_vertices.size();
+    return count_nested_vector_size(m_polyhedralization.m_inserted_vertices);
 }
-uint32_t* BinarySpacePartitionHandle::GetInsertedVertices()
+void BinarySpacePartitionHandle::GetInsertedVertices(uint32_t* out)
 {
-    m_temp_output = nested_vector_to_flat_vector(m_polyhedralization.m_inserted_vertices);
-    return m_temp_output.data();
+    vector<uint32_t> temp = nested_vector_to_flat_vector(m_polyhedralization.m_inserted_vertices);
+    write_buffer_with_vector(out, temp);
 }
 
 uint32_t BinarySpacePartitionHandle::GetPolyhedronsCount()
 {
-    return m_polyhedralization.m_polyhedrons.size();
+    return count_nested_vector_size(m_polyhedralization.m_polyhedrons);
 }
-uint32_t* BinarySpacePartitionHandle::GetPolyhedrons()
+void BinarySpacePartitionHandle::GetPolyhedrons(uint32_t* out)
 {
-    m_temp_output = nested_vector_to_flat_vector(m_polyhedralization.m_polyhedrons);
-    return m_temp_output.data();
+    vector<uint32_t> temp = nested_vector_to_flat_vector(m_polyhedralization.m_polyhedrons);
+    write_buffer_with_vector(out, temp);
 }
 
 uint32_t BinarySpacePartitionHandle::GetFacetsCount()
 {
     return m_polyhedralization.m_facets.size();
 }
-void BinarySpacePartitionHandle::GetFacets(FacetInteropData* outArray)
+void BinarySpacePartitionHandle::GetFacets(FacetInteropData* out)
 {
     for(uint32_t i=0; i<m_polyhedralization.m_facets.size(); i++)
     {
-        outArray[i] = m_polyhedralization.m_facets[i];
+        out[i] = m_polyhedralization.m_facets[i];
     }
 }
 uint32_t BinarySpacePartitionHandle::GetSegmentsCount()
 {
     return m_polyhedralization.m_segments.size();
 }
-void BinarySpacePartitionHandle::GetSegments(SegmentInteropData* outArray)
+void BinarySpacePartitionHandle::GetSegments(SegmentInteropData* out)
 {
     for(uint32_t i=0; i<m_polyhedralization.m_segments.size(); i++)
     {
-        outArray[i] = m_polyhedralization.m_segments[i];
+        out[i] = m_polyhedralization.m_segments[i];
     }
+}
+
+uint32_t BinarySpacePartitionHandle::GetCoplanarTrianglesCount()
+{
+    return count_nested_vector_size(m_coplanar_triangles);
+}
+void BinarySpacePartitionHandle::GetCoplanarTriangles(uint32_t* out)
+{
+    vector<uint32_t> temp = nested_vector_to_flat_vector(m_coplanar_triangles);
+    write_buffer_with_vector(out, temp);
 }
 
 extern "C" LIBRARY_EXPORT void* CreateBinarySpacePartitionHandle()
@@ -82,45 +92,51 @@ extern "C" LIBRARY_EXPORT uint32_t GetBinarySpacePartitionInsertedVerticesCount(
 {
     return ((BinarySpacePartitionHandle*)handle)->GetInsertedVerticesCount();
 }
-extern "C" LIBRARY_EXPORT uint32_t* GetBinarySpacePartitionInsertedVertices(void* handle)
+extern "C" LIBRARY_EXPORT void GetBinarySpacePartitionInsertedVertices(void* handle, uint32_t* out)
 {
-    return  ((BinarySpacePartitionHandle*)handle)->GetInsertedVertices();
+    return  ((BinarySpacePartitionHandle*)handle)->GetInsertedVertices(out);
 }
 
 extern "C" LIBRARY_EXPORT uint32_t GetBinarySpacePartitionPolyhedronsCount(void* handle)
 {
     return ((BinarySpacePartitionHandle*)handle)->GetPolyhedronsCount();
 }
-extern "C" LIBRARY_EXPORT uint32_t* GetBinarySpacePartitionPolyhedrons(void* handle)
+extern "C" LIBRARY_EXPORT void GetBinarySpacePartitionPolyhedrons(void* handle, uint32_t* out)
 {
-    return ((BinarySpacePartitionHandle*)handle)->GetPolyhedrons();
+    return ((BinarySpacePartitionHandle*)handle)->GetPolyhedrons(out);
 }
 
 extern "C" LIBRARY_EXPORT uint32_t GetBinarySpacePartitionFacetsCount(void* handle)
 {
     return ((BinarySpacePartitionHandle*)handle)->GetFacetsCount();
 }
-extern "C" LIBRARY_EXPORT void GetBinarySpacePartitionFacets(void* handle, FacetInteropData* outArray)
+extern "C" LIBRARY_EXPORT void GetBinarySpacePartitionFacets(void* handle, FacetInteropData* out)
 {
-    ((BinarySpacePartitionHandle*)handle)->GetFacets(outArray);
+    ((BinarySpacePartitionHandle*)handle)->GetFacets(out);
 }
 extern "C" LIBRARY_EXPORT uint32_t GetBinarySpacePartitionSegmentsCount(void* handle)
 {
     return ((BinarySpacePartitionHandle*)handle)->GetSegmentsCount();
 }
-extern "C" LIBRARY_EXPORT void GetBinarySpacePartitionSegments(void* handle, SegmentInteropData* outArray)
+extern "C" LIBRARY_EXPORT void GetBinarySpacePartitionSegments(void* handle, SegmentInteropData* out)
 {
-    ((BinarySpacePartitionHandle*)handle)->GetSegments(outArray);
+    ((BinarySpacePartitionHandle*)handle)->GetSegments(out);
+}
+extern "C" LIBRARY_EXPORT uint32_t GetBinarySpacePartitionCoplanarTrianglesCount(void* handle)
+{
+    return ((BinarySpacePartitionHandle*)handle)->GetCoplanarTrianglesCount();
+}
+extern "C" LIBRARY_EXPORT void GetBinarySpacePartitionCoplanarTriangles(void* handle, uint32_t* out)
+{
+    ((BinarySpacePartitionHandle*)handle)->GetCoplanarTriangles(out);
 }
 
 
 void BinarySpacePartitionHandle::binary_space_partition()
 {
-    uint32_t original_constraints_count = m_constraints.size()/3;
     // find a triangle to represent all coplanar triangles
     unordered_map<tuple<uint32_t, uint32_t, uint32_t>, uint32_t, trio_iii_hash> triangles_coplanar_groups;
     vector<uint32_t> coplanar_groups_triangles;
-    vector<vector<uint32_t>> coplanar_groups;
     auto get_coplanar_group = [&](uint32_t p0,uint32_t p1,uint32_t p2) -> uint32_t
     {
         sort_ints(p0,p1,p2);
@@ -136,9 +152,9 @@ void BinarySpacePartitionHandle::binary_space_partition()
         return make_tuple(coplanar_groups_triangles[3*c+0],coplanar_groups_triangles[3*c+1],coplanar_groups_triangles[3*c+2]);
     };
     
-    vector<uint32_t> triangles = m_constraints;
     // calculate coplanar groups
     {
+        vector<uint32_t> triangles = m_constraints;
         for(uint32_t i=0; i<m_tetrahedralization.get_tetrahedrons_count(); i++)
         {
             for(uint32_t j=0; j<4; j++)
@@ -149,7 +165,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
                 triangles.push_back(p2);
             }
         }
-        coplanar_groups = group_coplanar_triangles(triangles, m_vertices);
+        vector<vector<uint32_t>> coplanar_groups = group_coplanar_triangles(triangles, m_vertices);
         for(uint32_t i=0; i<coplanar_groups.size(); i++)
         {
             uint32_t c0 = triangles[3*coplanar_groups[i][0]+0];
@@ -203,15 +219,6 @@ void BinarySpacePartitionHandle::binary_space_partition()
                     auto [cp0,cp1,cp2] = get_coplanar_group_triangle(p0,p1,p2);
                     uint32_t f = m_polyhedralization.m_facets.size();
                     m_polyhedralization.m_facets.push_back(Facet(s0,s1,s2,cp0,cp1,cp2,UNDEFINED_VALUE,UNDEFINED_VALUE));
-                    uint32_t cg = get_coplanar_group(p0,p1,p2);
-                    for(uint32_t c : coplanar_groups[cg])
-                    {
-                        if(c >= original_constraints_count)
-                        {
-                            continue;
-                        }
-                        m_polyhedralization.m_facets[f].constrains.push_back(c);
-                    }
                     facets_cache[make_tuple(p0,p1,p2)] = f;
                 }
                 uint32_t f = facets_cache[make_tuple(p0,p1,p2)];
@@ -361,18 +368,13 @@ void BinarySpacePartitionHandle::binary_space_partition()
                 uint32_t vc0 = virtual_constraints[3*vc+0];
                 uint32_t vc1 = virtual_constraints[3*vc+1];
                 uint32_t vc2 = virtual_constraints[3*vc+2];
-                for(uint32_t k=0; k<triangles.size()/3; k++)
+                
+                for(auto [k,v] : triangles_coplanar_groups)
                 {
-                    uint32_t c0 = triangles[3*k+0];
-                    uint32_t c1 = triangles[3*k+1];
-                    uint32_t c2 = triangles[3*k+2];
-                    if(UNDEFINED_VALUE == c0)
-                    {
-                        continue;
-                    }
+                    auto [c0,c1,c2] = k;
                     if(0==orient3d(vc0,vc1,vc2,c0,m_vertices.data()) && 0==orient3d(vc0,vc1,vc2,c1,m_vertices.data()) && 0==orient3d(vc0,vc1,vc2,c2,m_vertices.data()))
                     {
-                        vcg = get_coplanar_group(c0, c1, c2);
+                        vcg = v;
                         break;
                     }
                 }
@@ -478,7 +480,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
                 add_facet(t0,t2,t3,t1);
                 add_facet(t2,t1,t3,t0);
 
-                int int_type = TriangleTetrahedronIntersection::triangle_tetrahedron_intersection(vertices, segments, facets);
+                int int_type = triangle_tetrahedron_intersection(vertices, segments, facets);
                 if(0 == int_type)
                 {
                     continue;
@@ -563,22 +565,21 @@ void BinarySpacePartitionHandle::binary_space_partition()
             {
                 slice_order.push(make_pair(p, facet_order.top));
                 slice_order.push(make_pair(m_polyhedralization.m_polyhedrons.size()-1, facet_order.bot));
-                
-                if(cg < coplanar_groups.size()) // associate not virtual constrains to sliced facet
-                {
-                    for(uint32_t i=0; i<coplanar_groups[cg].size(); i++)
-                    {
-                        uint32_t c = coplanar_groups[cg][i];
-                        if(c >= original_constraints_count)
-                        {
-                            continue;
-                        }
-                        m_polyhedralization.m_facets.back().constrains.push_back(c);
-                    }
-                }
             }
         }
     }
     
     m_polyhedralization.calculate_facets_centroids();
+    
+    for(auto [k,v] : triangles_coplanar_groups)
+    {
+        auto [p0,p1,p2] = k;
+        while(m_coplanar_triangles.size() <= v)
+        {
+            m_coplanar_triangles.push_back(vector<uint32_t>());
+        }
+        m_coplanar_triangles[v].push_back(p0);
+        m_coplanar_triangles[v].push_back(p1);
+        m_coplanar_triangles[v].push_back(p2);
+    }
 }

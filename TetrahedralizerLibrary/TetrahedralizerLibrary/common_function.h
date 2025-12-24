@@ -232,6 +232,22 @@ inline uint32_t count_flat_vector_elements(std::vector<uint32_t>& flat_vector)
     }
     return res;
 }
+inline uint32_t count_nested_vector_size(std::vector<std::vector<uint32_t>>& nested_vector)
+{
+    uint32_t res = nested_vector.size();
+    for(std::vector<uint32_t>& vs : nested_vector)
+    {
+        res += vs.size();
+    }
+    return res;
+}
+inline void write_buffer_with_vector(uint32_t* buffer, std::vector<uint32_t>& vector)
+{
+    for(uint32_t i=0; i<vector.size(); i++)
+    {
+        buffer[i] = vector[i];
+    }
+}
 
 inline std::vector<std::shared_ptr<genericPoint>> create_vertices(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values)
 {

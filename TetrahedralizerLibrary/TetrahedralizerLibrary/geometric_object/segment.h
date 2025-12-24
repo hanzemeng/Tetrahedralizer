@@ -2,7 +2,7 @@
 #define segment_h
 
 #include "common_header.h"
-struct SegmentInteropData;
+
 class Segment
 {
     public:

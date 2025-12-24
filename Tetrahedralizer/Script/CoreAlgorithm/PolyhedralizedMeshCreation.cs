@@ -78,8 +78,8 @@ namespace Hanzzz.Tetrahedralizer
             //return;
 
             progress?.Report("Removing outside polyhedrons.");
-            var icRes = interiorCharacterization.CalculateInteriorCharacterization(weldedVerticesUnpack, bspRes.insertedVertices, bspRes.polyhedrons, bspRes.facets, bspRes.segments, weldedTriangles, polyhedronInMultiplier);
-            polyhedralization.m_polyhedrons = TetrahedralizerUtility.NestedListToFlatList(TetrahedralizerUtility.FlatIListToNestedList(bspRes.polyhedrons).Where((i,j)=>0!=icRes.polyhedronsLabels[j]).ToList());
+            var icRes = interiorCharacterization.CalculateInteriorCharacterization(weldedVerticesUnpack, bspRes.insertedVertices, bspRes.polyhedrons, bspRes.facets, bspRes.segments, bspRes.coplanarTriangles, weldedTriangles, polyhedronInMultiplier);
+            polyhedralization.m_polyhedrons = TetrahedralizerUtility.NestedListToFlatList(TetrahedralizerUtility.FlatIListToNestedList(bspRes.polyhedrons).Where((i,j)=>0!=icRes[j]).ToList());
             List<Facet> constraintsFacets = polyhedralization.GetExteriorFacets().Select(i=>bspRes.facets[i]).Where(i=>!convexHullFacets.Contains(i)).ToList();
             
             //polyhedralization.m_explicitVertices = weldedVerticesUnpack;
@@ -90,14 +90,14 @@ namespace Hanzzz.Tetrahedralizer
             //return;
 
             progress?.Report("Cutting convex hull with constraints.");
-            var chpRes = convexHullPartition.CalculateConvexHullPartition(weldedVerticesUnpack, bspRes.insertedVertices, convexHullFacets.ToList(), constraintsFacets, bspRes.segments);
+            var chpRes = convexHullPartition.CalculateConvexHullPartition(weldedVerticesUnpack, bspRes.insertedVertices, convexHullFacets.ToList(), constraintsFacets, bspRes.segments, bspRes.coplanarTriangles);
 
             polyhedralization.m_explicitVertices = weldedVerticesUnpack;
             polyhedralization.m_implicitVertices = bspRes.insertedVertices;
             polyhedralization.m_implicitVertices.AddRange(chpRes.insertedVertices);
             progress?.Report("Removing outside polyhedrons.");
-            var icRes2 = interiorCharacterization.CalculateInteriorCharacterization(polyhedralization.m_explicitVertices, polyhedralization.m_implicitVertices, chpRes.polyhedrons, chpRes.facets, chpRes.segments, weldedTriangles, polyhedronInMultiplier);
-            polyhedralization.m_polyhedrons = TetrahedralizerUtility.NestedListToFlatList(TetrahedralizerUtility.FlatIListToNestedList(chpRes.polyhedrons).Where((i,j)=>0!=icRes2.polyhedronsLabels[j]).ToList());
+            var icRes2 = interiorCharacterization.CalculateInteriorCharacterization(polyhedralization.m_explicitVertices, polyhedralization.m_implicitVertices, chpRes.polyhedrons, chpRes.facets, chpRes.segments, bspRes.coplanarTriangles, weldedTriangles, polyhedronInMultiplier);
+            polyhedralization.m_polyhedrons = TetrahedralizerUtility.NestedListToFlatList(TetrahedralizerUtility.FlatIListToNestedList(chpRes.polyhedrons).Where((i,j)=>0!=icRes2[j]).ToList());
             //polyhedralization.m_polyhedrons = chpRes.polyhedrons;
             polyhedralization.m_facets = chpRes.facets;
             polyhedralization.m_segments = chpRes.segments;
