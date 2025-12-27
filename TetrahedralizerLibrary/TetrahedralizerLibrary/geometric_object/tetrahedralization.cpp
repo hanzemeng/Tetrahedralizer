@@ -51,13 +51,13 @@ uint32_t Tetrahedralization::get_tetrahedron_vertex(uint32_t t, uint32_t i)
 {
     return m_tetrahedrons[4*t+i];
 }
-uint32_t Tetrahedralization::get_tetrahedron_neighbor(uint32_t t, uint32_t i)
+pair<uint32_t,uint32_t> Tetrahedralization::get_tetrahedron_neighbor(uint32_t t, uint32_t i)
 {
     if(UNDEFINED_VALUE == m_neighbors[4*t+i])
     {
-        return UNDEFINED_VALUE;
+        return make_pair(UNDEFINED_VALUE,UNDEFINED_VALUE);
     }
-    return m_neighbors[4*t+i] / 4;
+    return make_pair(m_neighbors[4*t+i]/4, m_neighbors[4*t+i]%4);
 }
 tuple<uint32_t,uint32_t,uint32_t> Tetrahedralization::get_tetrahedron_facet(uint32_t t, uint32_t i)
 {
@@ -82,4 +82,31 @@ tuple<uint32_t,uint32_t,uint32_t> Tetrahedralization::get_tetrahedron_facet(uint
 uint32_t Tetrahedralization::get_vertex_incident_tetrahedron(uint32_t v)
 {
     return m_vertices_incidents[v];
+}
+
+vector<uint32_t> Tetrahedralization::get_all_facets()
+{
+    vector<uint32_t> res;
+    vector<bool> visited = vector<bool>(m_tetrahedrons.size(), false);
+    for(uint32_t i=0; i<m_tetrahedrons.size()/4; i++)
+    {
+        for(uint32_t j=0; j<4; j++)
+        {
+            if(visited[4*i+j])
+            {
+                continue;
+            }
+            auto [p0,p1,p2] = get_tetrahedron_facet(i, j);
+            res.push_back(p0);
+            res.push_back(p1);
+            res.push_back(p2);
+            auto[n,f] = get_tetrahedron_neighbor(i, j);
+            if(UNDEFINED_VALUE != n)
+            {
+                visited[4*n+f] = true;
+            }
+        }
+    }
+    
+    return res;
 }

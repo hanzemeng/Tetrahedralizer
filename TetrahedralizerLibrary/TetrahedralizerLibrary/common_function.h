@@ -146,15 +146,6 @@ inline double3 approximate_point(std::shared_ptr<genericPoint> m_vertices)
     m_vertices->getApproxXYZCoordinates(res.x, res.y, res.z, true);
     return res;
 }
-inline double3 approximate_facet_centroid(const std::vector<uint32_t>& vertices, std::shared_ptr<genericPoint>* vertices_positions)
-{
-    double3 res;
-    for(uint32_t v : vertices)
-    {
-        res += approximate_point(vertices_positions[v]);
-    }
-    return res / (double)vertices.size();
-}
 
 // return true if p is on or inside the triangle, false otherwise
 // always return false triangle is degenerate
@@ -343,8 +334,70 @@ inline std::vector<uint32_t> create_constraints(uint32_t constraints_count, uint
     return res;
 }
 
-inline std::vector<std::vector<uint32_t>> group_coplanar_triangles(std::vector<uint32_t>& triangles, std::vector<std::shared_ptr<genericPoint>>& vertices)
+inline std::vector<uint32_t> vector_random_elements(const std::vector<uint32_t>& vector, size_t m)
 {
+    std::unordered_set<uint32_t> res;
+    if(0 == vector.size())
+    {
+        return std::vector<uint32_t>();
+    }
+    
+//    std::random_device rd;
+//    std::mt19937 gen(rd());
+    std::mt19937 gen(UNDEFINED_VALUE);
+    std::uniform_int_distribution<size_t> dist(0, vector.size()-1);
+    
+    for(uint32_t i=0; i<m; i++)
+    {
+        res.insert(vector[dist(gen)]);
+    }
+    return std::vector<uint32_t>(res.begin(),res.end());
+}
+
+inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>>  group_coplanar_triangles(std::vector<uint32_t>& triangles, std::vector<std::shared_ptr<genericPoint>>& vertices)
+{
+    std::vector<uint64_t> planes_equations;
+    for(uint32_t i=0; i<triangles.size()/3; i++)
+    {
+        uint32_t t0 = triangles[3*i+0];
+        uint32_t t1 = triangles[3*i+1];
+        uint32_t t2 = triangles[3*i+2];
+        if(UNDEFINED_VALUE == t0)
+        {
+            planes_equations.push_back(UNDEFINED_VALUE);
+            planes_equations.push_back(UNDEFINED_VALUE);
+            planes_equations.push_back(UNDEFINED_VALUE);
+            planes_equations.push_back(UNDEFINED_VALUE);
+            continue;
+        }
+        
+        double coplanar_eps = 1e-12;
+        double quantize_eps = 1e-7;
+        double3 p0 = approximate_point(vertices[t0]);
+        double3 p1 = approximate_point(vertices[t1]);
+        double3 p2 = approximate_point(vertices[t2]);
+        double3 n = (p1-p0).cross(p2-p0);
+        double d = -n.dot(p0);
+        double s = std::max(std::abs(n.x),std::abs(n.y));
+        s = std::max(s,std::abs(n.z));
+        if(s > coplanar_eps)
+        {
+            n /= s;
+            d /= s;
+        }
+        if((n.x<0.0) ||
+           (n.x==0.0 && n.y<0.0) ||
+           (n.x==0.0 && n.y==0.0 && n.z<0.0))
+        {
+            n *= -1;
+            d *= -1;
+        }
+        planes_equations.push_back(std::llround(n.x/quantize_eps));
+        planes_equations.push_back(std::llround(n.y/quantize_eps));
+        planes_equations.push_back(std::llround(n.z/quantize_eps));
+        planes_equations.push_back(std::llround(d/quantize_eps));
+    }
+    
     std::vector<std::vector<uint32_t>> graph = std::vector<std::vector<uint32_t>>(triangles.size()/3);
     for(uint32_t i=0; i<triangles.size()/3; i++)
     {
@@ -364,6 +417,13 @@ inline std::vector<std::vector<uint32_t>> group_coplanar_triangles(std::vector<u
             {
                 continue;
             }
+            if(planes_equations[4*i+0] != planes_equations[4*j+0] ||
+               planes_equations[4*i+1] != planes_equations[4*j+1] ||
+               planes_equations[4*i+2] != planes_equations[4*j+2] ||
+               planes_equations[4*i+3] != planes_equations[4*j+3])
+            {
+                continue;
+            }
             if(0 == orient3d(t0,t1,t2,nt0,vertices.data()) &&
                0 == orient3d(t0,t1,t2,nt1,vertices.data()) &&
                0 == orient3d(t0,t1,t2,nt2,vertices.data()))
@@ -376,7 +436,8 @@ inline std::vector<std::vector<uint32_t>> group_coplanar_triangles(std::vector<u
     
     std::vector<bool> visited = std::vector<bool>(triangles.size()/3, false);
     std::queue<uint32_t> visit;
-    std::vector<std::vector<uint32_t>> res;
+    std::vector<std::vector<uint32_t>> res_groups;
+    std::vector<uint64_t> res_planes;
     for(uint32_t i=0; i<visited.size(); i++)
     {
         if(visited[i] || UNDEFINED_VALUE==triangles[3*i+0])
@@ -384,7 +445,11 @@ inline std::vector<std::vector<uint32_t>> group_coplanar_triangles(std::vector<u
             continue;
         }
         
-        res.push_back(std::vector<uint32_t>());
+        res_groups.push_back(std::vector<uint32_t>());
+        res_planes.push_back(planes_equations[4*i+0]);
+        res_planes.push_back(planes_equations[4*i+1]);
+        res_planes.push_back(planes_equations[4*i+2]);
+        res_planes.push_back(planes_equations[4*i+3]);
         visit.push(i);
         while(!visit.empty())
         {
@@ -395,7 +460,7 @@ inline std::vector<std::vector<uint32_t>> group_coplanar_triangles(std::vector<u
                 continue;
             }
             visited[c] = true;
-            res.back().push_back(c);
+            res_groups.back().push_back(c);
             for(uint32_t nc : graph[c])
             {
                 visit.push(nc);
@@ -403,7 +468,7 @@ inline std::vector<std::vector<uint32_t>> group_coplanar_triangles(std::vector<u
         }
     }
     
-    return res;
+    return std::make_pair(res_groups, res_planes);
 }
 
 #endif

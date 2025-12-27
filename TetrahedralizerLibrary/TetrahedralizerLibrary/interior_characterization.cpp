@@ -198,14 +198,16 @@ void InteriorCharacterizationHandle::interior_characterization()
 //                    throw "wtf";
 //                }
             }
-            gc.setDataCost((GCoptimization::SiteID)i, 0, out_area);
+            
             if(reachable_from_ghost[i])
             {
+                gc.setDataCost((GCoptimization::SiteID)i, 0, out_area);
                 gc.setDataCost((GCoptimization::SiteID)i, 1, m_polyhedron_in_multiplier * in_area);
             }
             else
             {
-                gc.setDataCost((GCoptimization::SiteID)i, 1, 0.0); // the polyhedron has to be in if it can't be reached from the ghost
+                gc.setDataCost((GCoptimization::SiteID)i, 0, 1.0); // the polyhedron has to be in if it can't be reached from the ghost
+                gc.setDataCost((GCoptimization::SiteID)i, 1, 0.0);
             }
         }
         

@@ -10,9 +10,10 @@ public:
     void assign_tetrahedrons(uint32_t* tetrahedrons, uint32_t tetrahedrons_count);
     uint32_t get_tetrahedrons_count();
     uint32_t get_tetrahedron_vertex(uint32_t t, uint32_t i);
-    uint32_t get_tetrahedron_neighbor(uint32_t t, uint32_t i);
+    std::pair<uint32_t,uint32_t> get_tetrahedron_neighbor(uint32_t t, uint32_t i);
     std::tuple<uint32_t,uint32_t,uint32_t> get_tetrahedron_facet(uint32_t t, uint32_t i);
     uint32_t get_vertex_incident_tetrahedron(uint32_t v);
+    std::vector<uint32_t> get_all_facets();
 
 private:
     std::vector<uint32_t> m_tetrahedrons;

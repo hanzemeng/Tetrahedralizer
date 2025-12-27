@@ -83,6 +83,38 @@ class Facet
             segments[i] += n;
         }
     }
+    
+    double3 get_centroid(std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<Segment>& segments)
+    {
+        std::vector<uint32_t> vs = get_vertices(segments);
+        double3 res;
+        for(uint32_t v : vs)
+        {
+            res += approximate_point(vertices[v]);
+        }
+        return res / (double)vs.size();
+    }
+    std::pair<double3,double> get_plane_equation(std::vector<std::shared_ptr<genericPoint>>& vertices)
+    {
+        double3 t0 = approximate_point(vertices[p0]);
+        double3 t1 = approximate_point(vertices[p1]);
+        double3 t2 = approximate_point(vertices[p2]);
+        double3 n = ((t1-t0).cross(t2-t0)).normalized();
+        double d = -n.dot(t0);
+        return std::make_pair(n,d);
+    }
+    std::pair<double3,double> get_bounding_sphere(std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<Segment>& segments)
+    {
+        std::vector<uint32_t> vs = get_vertices(segments);
+        double3 centroid = get_centroid(vertices, segments);
+        double r = -1.0;
+        for(uint32_t v : vs)
+        {
+            r = std::max(r, (approximate_point(vertices[v])-centroid).length_squared());
+        }
+        r = std::sqrt(r);
+        return std::make_pair(centroid, 1.05*r);
+    }
 };
 
 extern "C"

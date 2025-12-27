@@ -226,7 +226,7 @@ void Polyhedralization::calculate_facets_centroids()
     for(uint32_t i=0; i<m_facets.size(); i++)
     {
         vector<uint32_t> vs = m_facets[i].get_sorted_vertices(m_segments);
-        double3 centroid = approximate_facet_centroid(vs, m_vertices.data());
+        double3 centroid = m_facets[i].get_centroid(m_vertices, m_segments);
         double3 weight;
         barycentric_weight(m_facets[i].p0,m_facets[i].p1,m_facets[i].p2,centroid,m_vertices.data(), weight);
         m_facets[i].w0 = weight.x;

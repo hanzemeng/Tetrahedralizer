@@ -94,15 +94,19 @@ public:
         return x * x + y * y + z * z;
     }
 
-    double3 normalized() const {
+    double3 normalized() const
+    {
         double len = length();
-        if (len == 0.0) return double3(0.0, 0.0, 0.0);
-        return *this / len;
+        if (len > 1e-12)
+        {
+            return *this / len;
+        }
+        return *this;
     }
 
     void normalize() {
         double len = length();
-        if (len != 0.0) {
+        if (len > 1e-12) {
             x /= len; y /= len; z /= len;
         }
     }

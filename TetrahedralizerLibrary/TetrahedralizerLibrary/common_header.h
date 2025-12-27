@@ -13,6 +13,7 @@
 #include <cassert>
 #include <numbers>
 #include <memory>
+#include <random>
 #include "geometric_object/double3.h"
 #include "indirect_predicates/implicit_point.h"
 
