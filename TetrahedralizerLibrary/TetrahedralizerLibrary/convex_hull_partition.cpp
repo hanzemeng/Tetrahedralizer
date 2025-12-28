@@ -4,38 +4,85 @@ using namespace std;
 void ConvexHullPartitionHandle::Dispose()
 {}
 void ConvexHullPartitionHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values,
-                                         uint32_t convex_hull_facets_count, FacetInteropData* convex_hull_facets, uint32_t constraints_facets_count, FacetInteropData* constraints_facets,
+                                         uint32_t tetrahedrons_count, uint32_t* tetrahedrons, uint32_t constraints_facets_count, FacetInteropData* constraints_facets,
                                          uint32_t segments_count, SegmentInteropData* segments, uint32_t coplanar_triangles_count, uint32_t* coplanar_triangles)
 {
     m_polyhedralization.m_vertices = create_vertices(explicit_count, explicit_values, implicit_count, implicit_values);
     for(uint32_t i=0; i<segments_count; i++)
     {
-        m_polyhedralization.m_segments.push_back(segments[i].to_segment());
+        m_constraints_segments.push_back(segments[i].to_segment());
     }
-    m_polyhedralization.m_polyhedrons.push_back(vector<uint32_t>());
-    for(uint32_t i=0; i<convex_hull_facets_count; i++)
-    {
-        m_polyhedralization.m_polyhedrons[0].push_back(i);
-        m_polyhedralization.m_facets.push_back(convex_hull_facets[i].to_facet());
-        m_polyhedralization.m_facets[i].ip0 = 0;
-        m_polyhedralization.m_facets[i].ip1 = UNDEFINED_VALUE;
-    }
-    
     for(uint32_t i=0; i<constraints_facets_count; i++)
     {
         m_constraints_facets.push_back(constraints_facets[i].to_facet());
     }
-    vector<vector<uint32_t>> temp = flat_array_to_nested_vector(coplanar_triangles, coplanar_triangles_count);
-    for(uint32_t i=0; i<temp.size(); i++)
+    
+    vector<vector<uint32_t>> coplanar_groups_triangles = flat_array_to_nested_vector(coplanar_triangles, coplanar_triangles_count);
+    for(uint32_t i=0; i<coplanar_groups_triangles.size(); i++)
     {
-        for(uint32_t j=0; j<temp[i].size()/3; j++)
+        for(uint32_t j=0; j<coplanar_groups_triangles[i].size()/3; j++)
         {
-            uint32_t c0 = temp[i][3*j+0];
-            uint32_t c1 = temp[i][3*j+1];
-            uint32_t c2 = temp[i][3*j+2];
+            uint32_t c0 = coplanar_groups_triangles[i][3*j+0];
+            uint32_t c1 = coplanar_groups_triangles[i][3*j+1];
+            uint32_t c2 = coplanar_groups_triangles[i][3*j+2];
             sort_ints(c0, c1, c2);
             m_triangles_coplanar_groups[make_tuple(c0,c1,c2)] = i;
         }
+    }
+    
+    Tetrahedralization tetrahedralization;
+    tetrahedralization.assign_tetrahedrons(tetrahedrons, tetrahedrons_count);
+    vector<uint32_t> convex_hull = tetrahedralization.get_bounding_facets();
+    unordered_map<uint32_t, unordered_set<pair<uint32_t,uint32_t>,pair_ii_hash>> convex_hull_coplanar_segments;
+    for(uint32_t i=0; i<convex_hull.size()/3; i++)
+    {
+        uint32_t p0 = convex_hull[3*i+0];
+        uint32_t p1 = convex_hull[3*i+1];
+        uint32_t p2 = convex_hull[3*i+2];
+        uint32_t j = search_int(p0,p1,p2,m_triangles_coplanar_groups);
+        if(convex_hull_coplanar_segments.end() == convex_hull_coplanar_segments.find(j))
+        {
+            convex_hull_coplanar_segments[j] = unordered_set<pair<uint32_t,uint32_t>,pair_ii_hash>();
+        }
+        auto add_segment = [&](uint32_t i0, uint32_t i1)
+        {
+            sort_ints(i0, i1);
+            auto it = convex_hull_coplanar_segments[j].find(make_pair(i0, i1));
+            if(convex_hull_coplanar_segments[j].end() == it)
+            {
+                convex_hull_coplanar_segments[j].insert(make_pair(i0, i1));
+            }
+            else
+            {
+                convex_hull_coplanar_segments[j].erase(it);
+            }
+        };
+        add_segment(p0,p1);
+        add_segment(p1,p2);
+        add_segment(p2,p0);
+    }
+    
+    unordered_map<pair<uint32_t,uint32_t>, uint32_t, pair_ii_hash> segments_cache;
+    m_polyhedralization.m_polyhedrons.push_back(vector<uint32_t>());
+    for(auto& [k,v] : convex_hull_coplanar_segments)
+    {
+        uint32_t f = m_polyhedralization.m_facets.size();
+        m_polyhedralization.m_facets.push_back(Facet());
+        m_polyhedralization.m_facets[f].p0 = coplanar_groups_triangles[k][0];
+        m_polyhedralization.m_facets[f].p1 = coplanar_groups_triangles[k][1];
+        m_polyhedralization.m_facets[f].p2 = coplanar_groups_triangles[k][2];
+        m_polyhedralization.m_facets[f].ip0 = 0;
+        m_polyhedralization.m_facets[f].ip1 = UNDEFINED_VALUE;
+        for(auto s : v)
+        {
+            if(segments_cache.end() == segments_cache.find(s))
+            {
+                segments_cache[s] = m_polyhedralization.m_segments.size();
+                m_polyhedralization.m_segments.push_back(Segment(s.first,s.second));
+            }
+            m_polyhedralization.m_facets[f].segments.push_back(segments_cache[s]);
+        }
+        m_polyhedralization.m_polyhedrons[0].push_back(f);
     }
 }
 void ConvexHullPartitionHandle::Calculate()
@@ -97,11 +144,11 @@ extern "C" LIBRARY_EXPORT void DisposeConvexHullPartitionHandle(void* handle)
 }
 
 extern "C" LIBRARY_EXPORT void AddConvexHullPartitionInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values,
-                                                           uint32_t convex_hull_facets_count, FacetInteropData* convex_hull_facets, uint32_t constraints_facets_count, FacetInteropData* constraints_facets,
+                                                           uint32_t tetrahedrons_count, uint32_t* tetrahedrons, uint32_t constraints_facets_count, FacetInteropData* constraints_facets,
                                                            uint32_t segments_count, SegmentInteropData* segments, uint32_t coplanar_triangles_count, uint32_t* coplanar_triangles)
 {
     ((ConvexHullPartitionHandle*)handle)->AddInput(explicit_count, explicit_values, implicit_count, implicit_values,
-                                                   convex_hull_facets_count, convex_hull_facets, constraints_facets_count, constraints_facets,
+                                                   tetrahedrons_count, tetrahedrons, constraints_facets_count, constraints_facets,
                                                    segments_count, segments, coplanar_triangles_count, coplanar_triangles);
 }
 
@@ -159,19 +206,20 @@ void ConvexHullPartitionHandle::convex_hull_partition()
     vector<FacetOrder> facets_order;
     if(0 != m_constraints_facets.size())
     {
-        vector<Facet> facets = m_constraints_facets;
         vector<shared_ptr<genericPoint>> vertices = m_polyhedralization.m_vertices;
-        vector<Segment> segments = m_polyhedralization.m_segments;
-        for(uint32_t i=0; i<facets.size(); i++)
+        for(uint32_t i=0; i<m_constraints_facets.size(); i++)
         {
-            facets[i].ip0 = get_coplanar_group(facets[i].p0,facets[i].p1,facets[i].p2);
-            coplanar_groups_to_triangles[facets[i].ip0] = make_tuple(facets[i].p0,facets[i].p1,facets[i].p2);
+            m_constraints_facets[i].ip0 = get_coplanar_group(m_constraints_facets[i].p0,m_constraints_facets[i].p1,m_constraints_facets[i].p2);
+            coplanar_groups_to_triangles[m_constraints_facets[i].ip0] = make_tuple(m_constraints_facets[i].p0,m_constraints_facets[i].p1,m_constraints_facets[i].p2);
         }
-        facets_order = order_facets(vertices, segments, facets);
+        facets_order = order_facets(vertices, m_constraints_segments, m_constraints_facets);
     }
     
     queue<pair<uint32_t, uint32_t>> slice_order; // polyhedron, facets order index
-    slice_order.push(make_pair(0, 0));
+    if(!facets_order.empty())
+    {
+        slice_order.push(make_pair(0, 0));
+    }
     while(!slice_order.empty())
     {
         auto [p, i] = slice_order.front();

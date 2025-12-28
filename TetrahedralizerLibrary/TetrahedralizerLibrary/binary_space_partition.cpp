@@ -563,12 +563,21 @@ void BinarySpacePartitionHandle::binary_space_partition()
     
     m_polyhedralization.calculate_facets_centroids();
     
+    m_coplanar_triangles = vector<vector<uint32_t>>(coplanar_groups_triangles.size()/3);
+    for(uint32_t i=0; i<coplanar_groups_triangles.size()/3; i++)
+    {
+        m_coplanar_triangles[i].push_back(coplanar_groups_triangles[3*i+0]);
+        m_coplanar_triangles[i].push_back(coplanar_groups_triangles[3*i+1]);
+        m_coplanar_triangles[i].push_back(coplanar_groups_triangles[3*i+2]);
+    }
     for(auto [k,v] : triangles_coplanar_groups)
     {
         auto [p0,p1,p2] = k;
-        while(m_coplanar_triangles.size() <= v)
+        if((p0==m_coplanar_triangles[v][0] || p1==m_coplanar_triangles[v][0] || p2==m_coplanar_triangles[v][0]) &&
+           (p0==m_coplanar_triangles[v][1] || p1==m_coplanar_triangles[v][1] || p2==m_coplanar_triangles[v][1]) &&
+           (p0==m_coplanar_triangles[v][2] || p1==m_coplanar_triangles[v][2] || p2==m_coplanar_triangles[v][2]))
         {
-            m_coplanar_triangles.push_back(vector<uint32_t>());
+            continue;
         }
         m_coplanar_triangles[v].push_back(p0);
         m_coplanar_triangles[v].push_back(p1);

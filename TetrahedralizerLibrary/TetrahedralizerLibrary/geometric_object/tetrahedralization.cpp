@@ -110,3 +110,25 @@ vector<uint32_t> Tetrahedralization::get_all_facets()
     
     return res;
 }
+
+vector<uint32_t> Tetrahedralization::get_bounding_facets()
+{
+    vector<uint32_t> res;
+    for(uint32_t i=0; i<m_tetrahedrons.size()/4; i++)
+    {
+        for(uint32_t j=0; j<4; j++)
+        {
+            auto[n,f] = get_tetrahedron_neighbor(i, j);
+            if(UNDEFINED_VALUE != n)
+            {
+                continue;
+            }
+            auto [p0,p1,p2] = get_tetrahedron_facet(i, j);
+            res.push_back(p0);
+            res.push_back(p1);
+            res.push_back(p2);
+        }
+    }
+    
+    return res;
+}

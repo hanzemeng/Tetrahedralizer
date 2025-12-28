@@ -4,6 +4,7 @@
 #include "common_header.h"
 #include "common_function.h"
 #include "geometric_object/polyhedralization.hpp"
+#include "geometric_object/tetrahedralization.hpp"
 #include "geometric_object/segment.h"
 #include "geometric_object/facet.h"
 #include "triangle_tetrahedron_intersection.h"
@@ -14,7 +15,7 @@ class ConvexHullPartitionHandle
 public:
     void Dispose();
     void AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values,
-                  uint32_t convex_hull_facets_count, FacetInteropData* convex_hull_facets, uint32_t constraints_facets_count, FacetInteropData* constraints_facets,
+                  uint32_t tetrahedrons_count, uint32_t* tetrahedrons, uint32_t constraints_facets_count, FacetInteropData* constraints_facets,
                   uint32_t segments_count, SegmentInteropData* segments, uint32_t coplanar_triangles_count, uint32_t* coplanar_triangles);
     
     void Calculate();
@@ -30,6 +31,7 @@ public:
     
     
 private:
+    std::vector<Segment> m_constraints_segments;
     std::vector<Facet> m_constraints_facets;
     Polyhedralization m_polyhedralization;
     
@@ -42,7 +44,7 @@ extern "C" LIBRARY_EXPORT void* CreateConvexHullPartitionHandle();
 extern "C" LIBRARY_EXPORT void DisposeConvexHullPartitionHandle(void* handle);
 
 extern "C" LIBRARY_EXPORT void AddConvexHullPartitionInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values,
-                                                           uint32_t convex_hull_facets_count, FacetInteropData* convex_hull_facets, uint32_t constraints_facets_count, FacetInteropData* constraints_facets,
+                                                           uint32_t tetrahedrons_count, uint32_t* tetrahedrons, uint32_t constraints_facets_count, FacetInteropData* constraints_facets,
                                                            uint32_t segments_count, SegmentInteropData* segments, uint32_t coplanar_triangles_count, uint32_t* coplanar_triangles);
 
 extern "C" LIBRARY_EXPORT void CalculateConvexHullPartition(void* handle);

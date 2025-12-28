@@ -14,6 +14,7 @@ public:
     std::tuple<uint32_t,uint32_t,uint32_t> get_tetrahedron_facet(uint32_t t, uint32_t i);
     uint32_t get_vertex_incident_tetrahedron(uint32_t v);
     std::vector<uint32_t> get_all_facets();
+    std::vector<uint32_t> get_bounding_facets();
 
 private:
     std::vector<uint32_t> m_tetrahedrons;

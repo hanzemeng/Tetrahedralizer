@@ -26,6 +26,17 @@ inline void sort_ints(uint32_t& i0, uint32_t& i1, uint32_t& i2)
     }
 }
 
+inline uint32_t search_int(uint32_t i0, uint32_t i1, std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, pair_ii_hash>& map)
+{
+    sort_ints(i0, i1);
+    return map[std::make_pair(i0,i1)];
+}
+inline uint32_t search_int(uint32_t i0, uint32_t i1, uint32_t i2, std::unordered_map<std::tuple<uint32_t, uint32_t, uint32_t>, uint32_t, trio_iii_hash>& map)
+{
+    sort_ints(i0, i1, i2);
+    return map[std::make_tuple(i0,i1,i2)];
+}
+
 inline void clear_queue(std::queue<uint32_t>& q)
 {
     while(!q.empty())
@@ -354,7 +365,7 @@ inline std::vector<uint32_t> vector_random_elements(const std::vector<uint32_t>&
     return std::vector<uint32_t>(res.begin(),res.end());
 }
 
-inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>>  group_coplanar_triangles(std::vector<uint32_t>& triangles, std::vector<std::shared_ptr<genericPoint>>& vertices)
+inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>> group_coplanar_triangles(std::vector<uint32_t>& triangles, std::vector<std::shared_ptr<genericPoint>>& vertices)
 {
     std::vector<uint64_t> planes_equations;
     for(uint32_t i=0; i<triangles.size()/3; i++)
