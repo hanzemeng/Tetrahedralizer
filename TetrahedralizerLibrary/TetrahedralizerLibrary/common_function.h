@@ -26,30 +26,25 @@ inline void sort_ints(uint32_t& i0, uint32_t& i1, uint32_t& i2)
     }
 }
 
-inline uint32_t search_int(uint32_t i0, uint32_t i1, std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, pair_ii_hash>& map)
+inline uint32_t search_int(uint32_t i0, uint32_t i1, std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, ii32_hash>& map)
 {
     sort_ints(i0, i1);
     return map[std::make_pair(i0,i1)];
 }
-inline uint32_t search_int(uint32_t i0, uint32_t i1, uint32_t i2, std::unordered_map<std::tuple<uint32_t, uint32_t, uint32_t>, uint32_t, trio_iii_hash>& map)
+inline uint32_t search_int(uint32_t i0, uint32_t i1, uint32_t i2, std::unordered_map<std::tuple<uint32_t, uint32_t, uint32_t>, uint32_t, iii32_hash>& map)
 {
     sort_ints(i0, i1, i2);
     return map[std::make_tuple(i0,i1,i2)];
 }
-
-inline void clear_queue(std::queue<uint32_t>& q)
+inline uint32_t search_int_check(uint32_t i0, uint32_t i1, uint32_t i2, std::unordered_map<std::tuple<uint32_t, uint32_t, uint32_t>, uint32_t, iii32_hash>& map)
 {
-    while(!q.empty())
+    sort_ints(i0, i1, i2);
+    auto it = map.find(std::make_tuple(i0,i1,i2));
+    if(it == map.end())
     {
-        q.pop();
+        return UNDEFINED_VALUE;
     }
-}
-inline void clear_stack(std::stack<uint32_t>& s)
-{
-    while(!s.empty())
-    {
-        s.pop();
-    }
+    return it->second;
 }
 
 inline int double_to_int(double d)
@@ -151,11 +146,18 @@ inline int orient3d_ignore_axis(uint32_t p0,uint32_t p1,uint32_t p2,int axis, st
     throw "wrong axis value";
 }
 
-inline double3 approximate_point(std::shared_ptr<genericPoint> m_vertices)
+inline double3 approximate_vertex(std::shared_ptr<genericPoint> vertices)
 {
     double3 res;
-    m_vertices->getApproxXYZCoordinates(res.x, res.y, res.z, true);
+    vertices->getApproxXYZCoordinates(res.x, res.y, res.z, true);
     return res;
+}
+inline void approximate_verteices(std::vector<double3>& approximated_vertices, std::vector<std::shared_ptr<genericPoint>>& vertices)
+{
+    while(approximated_vertices.size() < vertices.size())
+    {
+        approximated_vertices.push_back(approximate_vertex(vertices[approximated_vertices.size()]));
+    }
 }
 
 // return true if p is on or inside the triangle, false otherwise
@@ -188,12 +190,56 @@ inline bool barycentric_weight(const double3& t0, const double3& t1, const doubl
     double margin = -1e-12 * sqrt(d00 + d11);
     return w.x>=margin && w.y>=margin && w.z>=margin;
 }
-inline bool barycentric_weight(uint32_t t0, uint32_t t1, uint32_t t2, const double3& p, std::shared_ptr<genericPoint>* vertices, double3& w)
+inline double3 closest_point_on_triangle(double3 p, double3 a, double3 b, double3 c)
 {
-    double3 p0 = approximate_point(vertices[t0]);
-    double3 p1 = approximate_point(vertices[t1]);
-    double3 p2 = approximate_point(vertices[t2]);
-    return barycentric_weight(p0,p1,p2,p,w);
+    double3 ab = b - a;
+    double3 ac = c - a;
+    double3 ap = p - a;
+
+    double d1 = ab.dot(ap);
+    double d2 = ac.dot(ap);
+    if (d1 <= 0.0 && d2 <= 0.0) return a;
+
+    double3 bp = p - b;
+    double d3 = ab.dot(bp);
+    double d4 = ac.dot(bp);
+    if (d3 >= 0.0 && d4 <= d3) return b;
+
+    double vc = d1*d4 - d3*d2;
+    if (vc <= 0.0 && d1 >= 0.0 && d3 <= 0.0)
+    {
+        double v = d1 / (d1 - d3);
+        return a + ab * v;
+    }
+
+    double3 cp = p - c;
+    double d5 = ab.dot(cp);
+    double d6 = ac.dot(cp);
+    if (d6 >= 0.0 && d5 <= d6) return c;
+
+    double vb = d5*d2 - d1*d6;
+    if (vb <= 0.0 && d2 >= 0.0 && d6 <= 0.0)
+    {
+        double w = d2 / (d2 - d6);
+        return a + ac * w;
+    }
+
+    double va = d3*d6 - d5*d4;
+    if (va <= 0.0 && (d4 - d3) >= 0.0 && (d5 - d6) >= 0.0)
+    {
+        double w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+        return b + (c - b) * w;
+    }
+
+    double denom = 1.0 / (va + vb + vc);
+    double v = vb * denom;
+    double w = vc * denom;
+    return a + ab * v + ac * w;
+}
+inline bool sphere_intersect_triangle(double3 c, double square_radius, double3 p0, double3 p1, double3 p2)
+{
+    double3 p = closest_point_on_triangle(c, p0, p1, p2);
+    return (p-c).length_squared() <= square_radius;
 }
 
 inline std::vector<std::vector<uint32_t>> flat_array_to_nested_vector(uint32_t* data, uint32_t count)
@@ -315,7 +361,7 @@ inline std::vector<std::shared_ptr<genericPoint>> create_vertices(uint32_t verti
 inline std::vector<uint32_t> create_constraints(uint32_t constraints_count, uint32_t* constraints, std::shared_ptr<genericPoint>* vertices, bool add_placeholder)
 {
     std::vector<uint32_t> res;
-    std::unordered_set<std::tuple<uint32_t,uint32_t,uint32_t>,trio_iii_hash> unique_constraints;
+    std::unordered_set<std::tuple<uint32_t,uint32_t,uint32_t>,iii32_hash> unique_constraints;
     for(uint32_t i=0; i<constraints_count; i++)
     {
         uint32_t c0 = constraints[3*i+0];
@@ -365,9 +411,9 @@ inline std::vector<uint32_t> vector_random_elements(const std::vector<uint32_t>&
     return std::vector<uint32_t>(res.begin(),res.end());
 }
 
-inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>> group_coplanar_triangles(std::vector<uint32_t>& triangles, std::vector<std::shared_ptr<genericPoint>>& vertices)
+inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>> group_coplanar_triangles(std::vector<uint32_t>& triangles, std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<double3>& approximated_vertices)
 {
-    std::vector<uint64_t> planes_equations;
+    std::unordered_map<std::tuple<uint64_t,uint64_t,uint64_t,uint64_t>,std::vector<uint32_t>, iiii64_hash> coplanar_planes;
     for(uint32_t i=0; i<triangles.size()/3; i++)
     {
         uint32_t t0 = triangles[3*i+0];
@@ -375,18 +421,14 @@ inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>> grou
         uint32_t t2 = triangles[3*i+2];
         if(UNDEFINED_VALUE == t0)
         {
-            planes_equations.push_back(UNDEFINED_VALUE);
-            planes_equations.push_back(UNDEFINED_VALUE);
-            planes_equations.push_back(UNDEFINED_VALUE);
-            planes_equations.push_back(UNDEFINED_VALUE);
             continue;
         }
         
         double coplanar_eps = 1e-12;
         double quantize_eps = 1e-7;
-        double3 p0 = approximate_point(vertices[t0]);
-        double3 p1 = approximate_point(vertices[t1]);
-        double3 p2 = approximate_point(vertices[t2]);
+        double3 p0 = approximated_vertices[t0];
+        double3 p1 = approximated_vertices[t1];
+        double3 p2 = approximated_vertices[t2];
         double3 n = (p1-p0).cross(p2-p0);
         double d = -n.dot(p0);
         double s = std::max(std::abs(n.x),std::abs(n.y));
@@ -403,79 +445,56 @@ inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>> grou
             n *= -1;
             d *= -1;
         }
-        planes_equations.push_back(std::llround(n.x/quantize_eps));
-        planes_equations.push_back(std::llround(n.y/quantize_eps));
-        planes_equations.push_back(std::llround(n.z/quantize_eps));
-        planes_equations.push_back(std::llround(d/quantize_eps));
+        coplanar_planes[std::make_tuple(std::llround(n.x/quantize_eps),
+                                        std::llround(n.y/quantize_eps),
+                                        std::llround(n.z/quantize_eps),
+                                        std::llround(d/quantize_eps))].push_back(i);
     }
     
-    std::vector<std::vector<uint32_t>> graph = std::vector<std::vector<uint32_t>>(triangles.size()/3);
-    for(uint32_t i=0; i<triangles.size()/3; i++)
-    {
-        uint32_t t0 = triangles[3*i+0];
-        uint32_t t1 = triangles[3*i+1];
-        uint32_t t2 = triangles[3*i+2];
-        if(UNDEFINED_VALUE == t0)
-        {
-            continue;
-        }
-        for(uint32_t j=0; j<i; j++)
-        {
-            uint32_t nt0 = triangles[3*j+0];
-            uint32_t nt1 = triangles[3*j+1];
-            uint32_t nt2 = triangles[3*j+2];
-            if(UNDEFINED_VALUE == nt0)
-            {
-                continue;
-            }
-            if(planes_equations[4*i+0] != planes_equations[4*j+0] ||
-               planes_equations[4*i+1] != planes_equations[4*j+1] ||
-               planes_equations[4*i+2] != planes_equations[4*j+2] ||
-               planes_equations[4*i+3] != planes_equations[4*j+3])
-            {
-                continue;
-            }
-            if(0 == orient3d(t0,t1,t2,nt0,vertices.data()) &&
-               0 == orient3d(t0,t1,t2,nt1,vertices.data()) &&
-               0 == orient3d(t0,t1,t2,nt2,vertices.data()))
-            {
-                graph[i].push_back(j);
-                graph[j].push_back(i);
-            }
-        }
-    }
-    
-    std::vector<bool> visited = std::vector<bool>(triangles.size()/3, false);
-    std::queue<uint32_t> visit;
-    std::vector<std::vector<uint32_t>> res_groups;
     std::vector<uint64_t> res_planes;
-    for(uint32_t i=0; i<visited.size(); i++)
+    std::vector<std::vector<uint32_t>> res_groups;
+    for(auto& [plane, tris] : coplanar_planes)
     {
-        if(visited[i] || UNDEFINED_VALUE==triangles[3*i+0])
-        {
-            continue;
-        }
+        uint32_t start_n = res_groups.size();
         
-        res_groups.push_back(std::vector<uint32_t>());
-        res_planes.push_back(planes_equations[4*i+0]);
-        res_planes.push_back(planes_equations[4*i+1]);
-        res_planes.push_back(planes_equations[4*i+2]);
-        res_planes.push_back(planes_equations[4*i+3]);
-        visit.push(i);
-        while(!visit.empty())
+        for(uint32_t t : tris)
         {
-            uint32_t c = visit.front();
-            visit.pop();
-            if(visited[c])
+            uint32_t cg = UNDEFINED_VALUE;
+            uint32_t t0 = triangles[3*t+0];
+            uint32_t t1 = triangles[3*t+1];
+            uint32_t t2 = triangles[3*t+2];
+            
+            for(uint32_t i=start_n; i<res_groups.size(); i++)
             {
-                continue;
+                for(uint32_t j=0; j<res_groups[i].size(); j++)
+                {
+                    uint32_t nt = res_groups[i][j];
+                    uint32_t nt0 = triangles[3*nt+0];
+                    uint32_t nt1 = triangles[3*nt+1];
+                    uint32_t nt2 = triangles[3*nt+2];
+                    
+                    if(0 == orient3d(t0,t1,t2,nt0,vertices.data()) &&
+                       0 == orient3d(t0,t1,t2,nt1,vertices.data()) &&
+                       0 == orient3d(t0,t1,t2,nt2,vertices.data()))
+                    {
+                        cg = i;
+                        goto FOUND_GROUP;
+                    }
+                }
             }
-            visited[c] = true;
-            res_groups.back().push_back(c);
-            for(uint32_t nc : graph[c])
+            
+            if(cg == UNDEFINED_VALUE)
             {
-                visit.push(nc);
+                cg = res_groups.size();
+                res_groups.push_back(std::vector<uint32_t>());
+                auto [p0,p1,p2,p3] = plane;
+                res_planes.push_back(p0);
+                res_planes.push_back(p1);
+                res_planes.push_back(p2);
+                res_planes.push_back(p3);
             }
+            FOUND_GROUP:
+            res_groups[cg].push_back(t);
         }
     }
     

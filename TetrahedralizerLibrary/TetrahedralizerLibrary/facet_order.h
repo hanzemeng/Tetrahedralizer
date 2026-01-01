@@ -15,7 +15,7 @@ public:
 };
 
 // facet ip0 is coplanar group index, p0 p1 p2 is coplanar group triangle
-inline uint32_t order_facets(std::vector<uint32_t>& facets_indexes, std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<Segment>& segments, std::vector<Facet>& facets,
+inline uint32_t order_facets(std::vector<uint32_t>& facets_indexes, std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<double3>& approximated_vertices, std::vector<Segment>& segments, std::vector<Facet>& facets,
                              std::vector<FacetOrder>& order_tree,
                              std::vector<std::pair<double3,double>>& facets_spheres, std::unordered_map<uint32_t, std::pair<double3,double>>& planes_equations)
 {
@@ -219,8 +219,9 @@ inline uint32_t order_facets(std::vector<uint32_t>& facets_indexes, std::vector<
         facets[bot_facet].segments.push_back(i_e);
         best_top.push_back(top_facet);
         best_bot.push_back(bot_facet);
-        facets_spheres.push_back(facets[top_facet].get_bounding_sphere(vertices, segments));
-        facets_spheres.push_back(facets[bot_facet].get_bounding_sphere(vertices, segments));
+        approximate_verteices(approximated_vertices, vertices);
+        facets_spheres.push_back(facets[top_facet].get_bounding_sphere(approximated_vertices, segments, false));
+        facets_spheres.push_back(facets[bot_facet].get_bounding_sphere(approximated_vertices, segments, false));
     }
     
 //    for(uint32_t f : best_top)
@@ -232,27 +233,19 @@ inline uint32_t order_facets(std::vector<uint32_t>& facets_indexes, std::vector<
 //        facets[f].get_sorted_vertices(segments);
 //    }
     
-    order_tree[res].top = order_facets(best_top, vertices, segments, facets, order_tree, facets_spheres, planes_equations);
-    order_tree[res].bot = order_facets(best_bot, vertices, segments, facets, order_tree, facets_spheres, planes_equations);
+    order_tree[res].top = order_facets(best_top, vertices, approximated_vertices, segments, facets, order_tree, facets_spheres, planes_equations);
+    order_tree[res].bot = order_facets(best_bot, vertices, approximated_vertices, segments, facets, order_tree, facets_spheres, planes_equations);
     
-    while(vertices.size() > start_vn)
-    {
-        vertices.pop_back();
-    }
-    while(segments.size() > start_sn)
-    {
-        segments.pop_back();
-    }
-    while(facets.size() > start_fn)
-    {
-        facets.pop_back();
-        facets_spheres.pop_back();
-    }
+    vertices.resize(start_vn);
+    approximated_vertices.resize(start_vn);
+    segments.resize(start_sn);
+    facets.resize(start_fn);
+    facets_spheres.resize(start_fn);
     return res;
 }
 
 // facet ip0 is coplanar group index, p0 p1 p2 is coplanar group triangle
-inline std::vector<FacetOrder> order_facets(std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<Segment>& segments, std::vector<Facet>& facets)
+inline std::vector<FacetOrder> order_facets(std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<double3>& approximated_vertices, std::vector<Segment>& segments, std::vector<Facet>& facets)
 {
     std::vector<FacetOrder> res;
     std::vector<uint32_t> facets_indexes;
@@ -261,16 +254,16 @@ inline std::vector<FacetOrder> order_facets(std::vector<std::shared_ptr<genericP
     for(uint32_t i=0; i<facets.size(); i++)
     {
         facets_indexes.push_back(i);
-        facets_spheres.push_back(facets[i].get_bounding_sphere(vertices, segments));
+        facets_spheres.push_back(facets[i].get_bounding_sphere(approximated_vertices, segments, false));
         uint32_t cg = facets[i].ip0;
         if(planes_equations.end() != planes_equations.find(cg))
         {
             continue;
         }
-        planes_equations[cg] = facets[i].get_plane_equation(vertices);
+        planes_equations[cg] = facets[i].get_plane_equation(approximated_vertices);
     }
     
-    order_facets(facets_indexes, vertices, segments, facets, res, facets_spheres, planes_equations);
+    order_facets(facets_indexes, vertices, approximated_vertices, segments, facets, res, facets_spheres, planes_equations);
     return res;
 }
 

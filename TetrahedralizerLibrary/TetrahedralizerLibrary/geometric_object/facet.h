@@ -38,6 +38,17 @@ class Facet
         this->ip0 = ip0;
         this->ip1 = ip1;
     }
+    Facet(uint32_t s, uint32_t n, uint32_t p0, uint32_t p1, uint32_t p2, uint32_t cg)
+    {
+        for(uint32_t i=0; i<n; i++)
+        {
+            this->segments.push_back(i+s);
+        }
+        this->p0 = p0;
+        this->p1 = p1;
+        this->p2 = p2;
+        this->ip0 = cg;
+    }
     Facet(const Facet& other)
     {
         this->segments = other.segments;
@@ -84,36 +95,45 @@ class Facet
         }
     }
     
-    double3 get_centroid(std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<Segment>& segments)
+    double3 get_centroid(std::vector<double3>& vertices, std::vector<Segment>& segments)
     {
         std::vector<uint32_t> vs = get_vertices(segments);
         double3 res;
         for(uint32_t v : vs)
         {
-            res += approximate_point(vertices[v]);
+            res += vertices[v];
         }
         return res / (double)vs.size();
     }
-    std::pair<double3,double> get_plane_equation(std::vector<std::shared_ptr<genericPoint>>& vertices)
+    std::pair<double3,double> get_plane_equation(std::vector<double3>& approximated_vertices)
     {
-        double3 t0 = approximate_point(vertices[p0]);
-        double3 t1 = approximate_point(vertices[p1]);
-        double3 t2 = approximate_point(vertices[p2]);
+        double3 t0 = approximated_vertices[p0];
+        double3 t1 = approximated_vertices[p1];
+        double3 t2 = approximated_vertices[p2];
         double3 n = ((t1-t0).cross(t2-t0)).normalized();
         double d = -n.dot(t0);
         return std::make_pair(n,d);
     }
-    std::pair<double3,double> get_bounding_sphere(std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<Segment>& segments)
+    std::pair<double3, double> get_bounding_sphere(std::vector<double3>& approximated_vertices, std::vector<Segment>& segments, bool square_radius=true, double padding=1.05)
     {
         std::vector<uint32_t> vs = get_vertices(segments);
-        double3 centroid = get_centroid(vertices, segments);
-        double r = -1.0;
-        for(uint32_t v : vs)
+        double3 centroid(0.0,0.0,0.0);
+        for(uint32_t i : vs)
         {
-            r = std::max(r, (approximate_point(vertices[v])-centroid).length_squared());
+            centroid += approximated_vertices[i];
         }
-        r = std::sqrt(r);
-        return std::make_pair(centroid, 1.05*r);
+        centroid /= (double)vs.size();
+        
+        double radius = -1.0;
+        for(uint32_t i : vs)
+        {
+            radius = std::max(radius, (centroid-approximated_vertices[i]).length_squared());
+        }
+        if(!square_radius)
+        {
+            radius = std::sqrt(radius);
+        }
+        return std::make_pair(centroid, padding*radius);
     }
 };
 

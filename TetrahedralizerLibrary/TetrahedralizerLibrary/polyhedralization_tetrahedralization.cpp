@@ -88,75 +88,75 @@ void PolyhedralizationTetrahedralizationHandle::polyhedralization_tetrahedraliza
 
 uint32_t PolyhedralizationTetrahedralizationHandle::find_connect_vertex(uint32_t polyhedron)
 {
-    m_u_set_i_0.clear(); // get all vertices
-    for(uint32_t i=0; i<m_polyhedrons[polyhedron].size(); i++)
-    {
-        uint32_t f = m_polyhedrons[polyhedron][i];
-        for(uint32_t j=0; j<m_facets[f].size(); j++)
-        {
-            m_u_set_i_0.insert(m_facets[f][j]);
-        }
-    }
-    
-    for(uint32_t v : m_u_set_i_0)
-    {
-        // clear facets counters
-        for(uint32_t i=0; i<m_polyhedrons[polyhedron].size(); i++)
-        {
-            uint32_t f = m_polyhedrons[polyhedron][i];
-            for(uint32_t j=0; j<m_triangulated_facets_counters[f].size(); j++)
-            {
-                m_triangulated_facets_counters[f][j] = 0;
-            }
-        }
-        
-        for(uint32_t i=0; i<m_polyhedrons[polyhedron].size(); i++)
-        {
-            uint32_t f = m_polyhedrons[polyhedron][i];
-            for(uint32_t j=0; j<m_triangulated_facets[f].size(); j+=3)
-            {
-                uint32_t t0 = m_triangulated_facets[f][j+0];
-                uint32_t t1 = m_triangulated_facets[f][j+1];
-                uint32_t t2 = m_triangulated_facets[f][j+2];
-                if(v==t0 || v==t1 || v==t2 || 0 == orient3d(t0, t1, t2, v, m_vertices.data()))
-                {
-                    continue;
-                }
-                
-                m_triangulated_facets_counters[f][j/3]++;
-                find_connect_vertex_helper(polyhedron,t0,t1,v);
-                find_connect_vertex_helper(polyhedron,t0,t2,v);
-                find_connect_vertex_helper(polyhedron,t1,t2,v);
-            }
-        }
-        
-        // check facets counters
-        for(uint32_t i=0; i<m_polyhedrons[polyhedron].size(); i++)
-        {
-            uint32_t f = m_polyhedrons[polyhedron][i];
-            for(uint32_t j=0; j<m_triangulated_facets_counters[f].size(); j++)
-            {
-                if(1 != m_triangulated_facets_counters[f][j])
-                {
-                    goto NEXT_VERTEX;
-                }
-            }
-        }
-        return v;
-        NEXT_VERTEX:
-        continue;
-    }
-    
-    // if polyhedron can't be tetrahedralized by connecting a vertex to every triangulated facet
-    double3 center(0.0,0.0,0.0);
-    for(uint32_t v : m_u_set_i_0)
-    {
-        center += approximate_point(m_vertices[v]);
-    }
-    center /= (double)m_u_set_i_0.size();
+//    m_u_set_i_0.clear(); // get all vertices
+//    for(uint32_t i=0; i<m_polyhedrons[polyhedron].size(); i++)
+//    {
+//        uint32_t f = m_polyhedrons[polyhedron][i];
+//        for(uint32_t j=0; j<m_facets[f].size(); j++)
+//        {
+//            m_u_set_i_0.insert(m_facets[f][j]);
+//        }
+//    }
+//    
+//    for(uint32_t v : m_u_set_i_0)
+//    {
+//        // clear facets counters
+//        for(uint32_t i=0; i<m_polyhedrons[polyhedron].size(); i++)
+//        {
+//            uint32_t f = m_polyhedrons[polyhedron][i];
+//            for(uint32_t j=0; j<m_triangulated_facets_counters[f].size(); j++)
+//            {
+//                m_triangulated_facets_counters[f][j] = 0;
+//            }
+//        }
+//        
+//        for(uint32_t i=0; i<m_polyhedrons[polyhedron].size(); i++)
+//        {
+//            uint32_t f = m_polyhedrons[polyhedron][i];
+//            for(uint32_t j=0; j<m_triangulated_facets[f].size(); j+=3)
+//            {
+//                uint32_t t0 = m_triangulated_facets[f][j+0];
+//                uint32_t t1 = m_triangulated_facets[f][j+1];
+//                uint32_t t2 = m_triangulated_facets[f][j+2];
+//                if(v==t0 || v==t1 || v==t2 || 0 == orient3d(t0, t1, t2, v, m_vertices.data()))
+//                {
+//                    continue;
+//                }
+//                
+//                m_triangulated_facets_counters[f][j/3]++;
+//                find_connect_vertex_helper(polyhedron,t0,t1,v);
+//                find_connect_vertex_helper(polyhedron,t0,t2,v);
+//                find_connect_vertex_helper(polyhedron,t1,t2,v);
+//            }
+//        }
+//        
+//        // check facets counters
+//        for(uint32_t i=0; i<m_polyhedrons[polyhedron].size(); i++)
+//        {
+//            uint32_t f = m_polyhedrons[polyhedron][i];
+//            for(uint32_t j=0; j<m_triangulated_facets_counters[f].size(); j++)
+//            {
+//                if(1 != m_triangulated_facets_counters[f][j])
+//                {
+//                    goto NEXT_VERTEX;
+//                }
+//            }
+//        }
+//        return v;
+//        NEXT_VERTEX:
+//        continue;
+//    }
+//    
+//    // if polyhedron can't be tetrahedralized by connecting a vertex to every triangulated facet
+//    double3 center(0.0,0.0,0.0);
+//    for(uint32_t v : m_u_set_i_0)
+//    {
+//        center += approximate_point(m_vertices[v]);
+//    }
+//    center /= (double)m_u_set_i_0.size();
     uint32_t connect_vertex = m_vertices.size();
-    m_vertices.push_back(std::make_shared<explicitPoint3D> (center.x, center.y, center.z));
-    m_inserted_polyhedrons_centroids.push_back(polyhedron);
+//    m_vertices.push_back(std::make_shared<explicitPoint3D> (center.x, center.y, center.z));
+//    m_inserted_polyhedrons_centroids.push_back(polyhedron);
     return connect_vertex;
 }
 

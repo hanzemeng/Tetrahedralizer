@@ -33,9 +33,10 @@ public:
 private:
     std::vector<Segment> m_constraints_segments;
     std::vector<Facet> m_constraints_facets;
+    std::vector<double3> m_approximated_vertices;
     Polyhedralization m_polyhedralization;
     
-    std::unordered_map<std::tuple<uint32_t, uint32_t, uint32_t>, uint32_t, trio_iii_hash> m_triangles_coplanar_groups;
+    std::unordered_map<std::tuple<uint32_t, uint32_t, uint32_t>, uint32_t, iii32_hash> m_triangles_coplanar_groups;
     
     void convex_hull_partition();
 };

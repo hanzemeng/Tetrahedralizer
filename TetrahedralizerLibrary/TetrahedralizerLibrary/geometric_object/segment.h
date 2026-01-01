@@ -61,15 +61,15 @@ class Segment
         return *this;
     }
     
-    void increase_vertices_indexes(uint32_t n)
+    void increase_vertices_indexes(uint32_t threshold, uint32_t amount)
     {
         auto increase = [&](uint32_t o) -> uint32_t
         {
-            if(UNDEFINED_VALUE == o)
+            if(UNDEFINED_VALUE==o || o<threshold)
             {
-                return UNDEFINED_VALUE;
+                return o;
             }
-            return o+n;
+            return o+amount;
         };
         e0 = increase(e0);
         e1 = increase(e1);
@@ -160,14 +160,6 @@ class Segment
         }
         int o0 = orientation_cache[e0];
         int o1 = orientation_cache[e1];
-//        if(o0 !=  orient3d(c0,c1,c2,e0,vertices.data()))
-//        {
-//            throw "something is wrong";
-//        }
-//        if(o1 !=  orient3d(c0,c1,c2,e1,vertices.data()))
-//        {
-//            throw "something is wrong";
-//        }
         
         if(0 == o0)
         {

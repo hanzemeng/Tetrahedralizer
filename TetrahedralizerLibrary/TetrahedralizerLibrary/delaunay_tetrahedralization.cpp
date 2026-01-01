@@ -199,7 +199,7 @@ void DelaunayTetrahedralizationHandle::delaunay_tetrahedralization()
         }
         // tetrahedralize hole
         {
-            unordered_map<pair<uint32_t,uint32_t>,uint32_t,pair_ii_hash> neighbors_cache;
+            unordered_map<pair<uint32_t,uint32_t>,uint32_t,ii32_hash> neighbors_cache;
             auto connect_neighbor = [&](uint32_t p0, uint32_t p1, uint32_t t)
             {
                 sort_ints(p0,p1);

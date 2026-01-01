@@ -24,7 +24,7 @@ private:
     std::vector<std::vector<uint32_t>> m_polyhedrons;
     std::vector<Facet> m_facets;
     std::vector<Segment> m_segments;
-    std::unordered_map<std::tuple<uint32_t, uint32_t, uint32_t>, uint32_t, trio_iii_hash> m_triangles_coplanar_groups;
+    std::unordered_map<std::tuple<uint32_t, uint32_t, uint32_t>, uint32_t, iii32_hash> m_triangles_coplanar_groups;
     std::vector<uint32_t> m_constraints;
     double m_polyhedron_in_multiplier; // multiply this to the cost labeling a polyhedron to be in
     

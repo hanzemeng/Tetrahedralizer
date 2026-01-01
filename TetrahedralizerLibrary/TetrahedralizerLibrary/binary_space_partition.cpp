@@ -5,10 +5,10 @@ void BinarySpacePartitionHandle::Dispose()
 {}
 void BinarySpacePartitionHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t tetrahedrons_count, uint32_t* tetrahedrons, uint32_t constraints_count, uint32_t* constraints, bool aggressively_add_virtual_constraints)
 {
-    m_vertices = create_vertices(explicit_count, explicit_values, 0, nullptr);
-    m_polyhedralization.m_vertices = m_vertices;
+    m_polyhedralization.m_vertices = create_vertices(explicit_count, explicit_values, 0, nullptr);
+    approximate_verteices(m_approximated_vertices, m_polyhedralization.m_vertices);
     m_tetrahedralization.assign_tetrahedrons(tetrahedrons, tetrahedrons_count);
-    m_constraints = create_constraints(constraints_count, constraints, m_vertices.data(), true);
+    m_constraints = create_constraints(constraints_count, constraints, m_polyhedralization.m_vertices.data(), true);
 }
 void BinarySpacePartitionHandle::Calculate()
 {
@@ -134,17 +134,17 @@ extern "C" LIBRARY_EXPORT void GetBinarySpacePartitionCoplanarTriangles(void* ha
 
 void BinarySpacePartitionHandle::binary_space_partition()
 {
+    ofstream time_file("timing.txt", std::ios::app);
+    
+    vector<chrono::time_point<chrono::high_resolution_clock>> times;
+    times.push_back(std::chrono::high_resolution_clock::now());
+    
     // find a triangle to represent all coplanar triangles
-    unordered_map<tuple<uint32_t, uint32_t, uint32_t>, uint32_t, trio_iii_hash> triangles_coplanar_groups;
+    unordered_map<tuple<uint32_t, uint32_t, uint32_t>, uint32_t, iii32_hash> triangles_coplanar_groups;
     vector<uint32_t> coplanar_groups_triangles;
     auto get_coplanar_group = [&](uint32_t p0,uint32_t p1,uint32_t p2) -> uint32_t
     {
-        sort_ints(p0,p1,p2);
-        if(triangles_coplanar_groups.end() == triangles_coplanar_groups.find(make_tuple(p0,p1,p2)))
-        {
-            return UNDEFINED_VALUE;
-        }
-        return triangles_coplanar_groups[make_tuple(p0,p1,p2)];
+        return search_int_check(p0,p1,p2,triangles_coplanar_groups);
     };
     auto get_coplanar_group_triangle = [&](uint32_t p0,uint32_t p1,uint32_t p2) -> tuple<uint32_t, uint32_t, uint32_t>
     {
@@ -155,9 +155,9 @@ void BinarySpacePartitionHandle::binary_space_partition()
     // create virtual constraints and coplanar groups
     {
         // calculate coplanar groups for tetrahedralization and constraints facets
-        vector<uint32_t> triangles = m_tetrahedralization.get_all_facets() ;
+        vector<uint32_t> triangles = m_tetrahedralization.get_all_facets();
         triangles.insert(triangles.end(),m_constraints.begin(),m_constraints.end());
-        auto [coplanar_groups, coplanar_planes] = group_coplanar_triangles(triangles, m_vertices);
+        auto [coplanar_groups, coplanar_planes] = group_coplanar_triangles(triangles, m_polyhedralization.m_vertices, m_approximated_vertices);
         for(uint32_t i=0; i<coplanar_groups.size(); i++)
         {
             uint32_t c0 = triangles[3*coplanar_groups[i][0]+0];
@@ -176,12 +176,12 @@ void BinarySpacePartitionHandle::binary_space_partition()
                 triangles_coplanar_groups[make_tuple(nc0,nc1,nc2)] = cg;
             }
         }
-        
+        times.push_back(std::chrono::high_resolution_clock::now());
         // create virtual constraints
         vector<uint32_t> virtual_constraints;
         auto add_virtual_constraint = [&](uint32_t s0, uint32_t s1, uint32_t c) // e0 and e1 incident the constraint c
         {
-            uint32_t t = m_tetrahedralization.get_vertex_incident_tetrahedron(s0);
+            uint32_t t = m_tetrahedralization.get_incident_tetrahedron(s0);
             uint32_t c0 = m_constraints[3*c+0];
             uint32_t c1 = m_constraints[3*c+1];
             uint32_t c2 = m_constraints[3*c+2];
@@ -189,7 +189,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
             for(uint64_t i=0; i<4; i++)
             {
                 uint32_t v = m_tetrahedralization.get_tetrahedron_vertex(t, i);
-                if(c0 == v || c1 == v || c2 == v || 0 == orient3d(cg0,cg1,cg2,v,m_vertices.data()))
+                if(c0 == v || c1 == v || c2 == v || 0 == orient3d(cg0,cg1,cg2,v,m_polyhedralization.m_vertices.data()))
                 {
                     continue;
                 }
@@ -205,7 +205,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
             throw "can't add virtual constraint";
         };
         
-        unordered_map<pair<uint32_t,uint32_t>, vector<uint32_t>, pair_ii_hash> segments_incident_constraints;
+        unordered_map<pair<uint32_t,uint32_t>, vector<uint32_t>, ii32_hash> segments_incident_constraints;
         for(uint32_t i=0; i<m_constraints.size()/3; i++)
         {
             uint32_t c0 = m_constraints[3*i+0];
@@ -272,12 +272,12 @@ void BinarySpacePartitionHandle::binary_space_partition()
             vertices.erase(vertices.begin());
             
             auto [cc0,cc1,cc2] = get_coplanar_group_triangle(c0,c1,c2);
-            int ignore_axis = max_component_in_triangle_normal(cc0,cc1,cc2, m_vertices.data());
-            int os2 = orient3d_ignore_axis(s0,s1,s2,ignore_axis, m_vertices.data());
+            int ignore_axis = max_component_in_triangle_normal(cc0,cc1,cc2, m_polyhedralization.m_vertices.data());
+            int os2 = orient3d_ignore_axis(s0,s1,s2,ignore_axis, m_polyhedralization.m_vertices.data());
             bool all_vertices_on_same_side = true;
             for(uint32_t s3 : vertices)
             {
-                int os3 = orient3d_ignore_axis(s0,s1,s3,ignore_axis, m_vertices.data());
+                int os3 = orient3d_ignore_axis(s0,s1,s3,ignore_axis, m_polyhedralization.m_vertices.data());
                 if(0 == os3)
                 {
                     continue;
@@ -297,9 +297,9 @@ void BinarySpacePartitionHandle::binary_space_partition()
                 add_virtual_constraint(s0,s1, constraints[0]);
             }
         }
-        
+        times.push_back(std::chrono::high_resolution_clock::now());
         // combine coplanar group
-        auto [vc_coplanar_groups, vc_coplanar_planes] = group_coplanar_triangles(virtual_constraints, m_vertices);
+        auto [vc_coplanar_groups, vc_coplanar_planes] = group_coplanar_triangles(virtual_constraints, m_polyhedralization.m_vertices, m_approximated_vertices);
         for(uint32_t i=0; i<vc_coplanar_groups.size(); i++)
         {
             uint32_t vcg = UNDEFINED_VALUE;
@@ -322,7 +322,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
                         uint32_t c0 = triangles[3*c+0];
                         uint32_t c1 = triangles[3*c+1];
                         uint32_t c2 = triangles[3*c+2];
-                        if(0==orient3d(vc0,vc1,vc2,c0,m_vertices.data()) && 0==orient3d(vc0,vc1,vc2,c1,m_vertices.data()) && 0==orient3d(vc0,vc1,vc2,c2,m_vertices.data()))
+                        if(0==orient3d(vc0,vc1,vc2,c0,m_polyhedralization.m_vertices.data()) && 0==orient3d(vc0,vc1,vc2,c1,m_polyhedralization.m_vertices.data()) && 0==orient3d(vc0,vc1,vc2,c2,m_polyhedralization.m_vertices.data()))
                         {
                             vcg = get_coplanar_group(c0, c1, c2);
                             goto FOUND_GROUP;
@@ -354,12 +354,13 @@ void BinarySpacePartitionHandle::binary_space_partition()
         }
         
         m_constraints.insert(m_constraints.end(), virtual_constraints.begin(), virtual_constraints.end());
+        times.push_back(std::chrono::high_resolution_clock::now());
     }
     
     // convert tetrahedrons to polyhedrons
     {
-        unordered_map<pair<uint32_t, uint32_t>, uint32_t, pair_ii_hash> segments_cache;
-        unordered_map<tuple<uint32_t, uint32_t, uint32_t>, uint32_t, trio_iii_hash> facets_cache;
+        unordered_map<pair<uint32_t, uint32_t>, uint32_t, ii32_hash> segments_cache;
+        unordered_map<tuple<uint32_t, uint32_t, uint32_t>, uint32_t, iii32_hash> facets_cache;
         for(uint32_t i=0; i<m_tetrahedralization.get_tetrahedrons_count(); i++)
         {
             uint32_t p = m_polyhedralization.m_polyhedrons.size();
@@ -405,124 +406,143 @@ void BinarySpacePartitionHandle::binary_space_partition()
             }
         }
     }
-    
-    
+    times.push_back(std::chrono::high_resolution_clock::now());
 
     // for every polyhedron, find the constraints that intersect it
     unordered_map<uint32_t, vector<FacetOrder>> polyhedrons_slice_order; // first is polyhedron, second is slice order and coplanar group
     {
-        unordered_map<uint32_t, vector<tuple<vector<shared_ptr<genericPoint>>, vector<Segment>, vector<Facet>>>> polyhedrons_intersect_constraints;
+//        vector<pair<double3, double>> tetrahedrons_bounding_spheres;
+//        for(uint32_t i=0; i<m_tetrahedralization.get_tetrahedrons_count(); i++)
+//        {
+//            auto [t0,t1,t2,t3] = m_tetrahedralization.get_tetrahedron_vertices(i);
+//            double3 p0 = m_approximated_vertices[t0];
+//            double3 p1 = m_approximated_vertices[t1];
+//            double3 p2 = m_approximated_vertices[t2];
+//            double3 p3 = m_approximated_vertices[t3];
+//            tetrahedrons_bounding_spheres.push_back(calculate_bounding_sphere(p0, p1, p2, p3));
+//        }
+//        vector<pair<double3, double>> constraints_bounding_spheres;
+//        for(uint32_t i=0; i<m_constraints.size()/3; i++)
+//        {
+//            uint32_t c0 = m_constraints[3*i+0];
+//            uint32_t c1 = m_constraints[3*i+1];
+//            uint32_t c2 = m_constraints[3*i+2];
+//            if(UNDEFINED_VALUE == c0)
+//            {
+//                constraints_bounding_spheres.push_back(make_pair(double3(),0.0));
+//                continue;
+//            }
+//            
+//            double3 p0 = m_approximated_vertices[c0];
+//            double3 p1 = m_approximated_vertices[c1];
+//            double3 p2 = m_approximated_vertices[c2];
+//            constraints_bounding_spheres.push_back(calculate_bounding_sphere(p0, p1, p2));
+//        }
+        
+        unordered_map<uint32_t, tuple<vector<shared_ptr<genericPoint>>, vector<Segment>, vector<Facet>>> polyhedrons_intersect_constraints;
+        vector<uint32_t> visited_tetrahedrons = vector<uint32_t>(m_tetrahedralization.get_tetrahedrons_count(), UNDEFINED_VALUE);
+        queue<uint32_t> visit_tetrahedrons;
+        std::chrono::high_resolution_clock::duration cut_time = std::chrono::high_resolution_clock::duration::zero();
         for(uint32_t i=0; i<m_constraints.size()/3; i++)
         {
             uint32_t c0 = m_constraints[3*i+0];
             uint32_t c1 = m_constraints[3*i+1];
             uint32_t c2 = m_constraints[3*i+2];
-            if(UNDEFINED_VALUE == c0)
+            if(UNDEFINED_VALUE == c0 || UNDEFINED_VALUE != m_tetrahedralization.get_incident_tetrahedron(c0, c1, c2))
             {
                 continue;
             }
+            auto [cc0, cc1, cc2] = get_coplanar_group_triangle(c0, c1, c2);
+            uint32_t cg = get_coplanar_group(c0, c1, c2);
             
-            unordered_set<uint32_t> visited_tetrahedrons;
-            visited_tetrahedrons.insert(UNDEFINED_VALUE);
-            queue<uint32_t> visit_tetrahedrons;
-            visit_tetrahedrons.push(m_tetrahedralization.get_vertex_incident_tetrahedron(c0));
-            visit_tetrahedrons.push(m_tetrahedralization.get_vertex_incident_tetrahedron(c1));
-            visit_tetrahedrons.push(m_tetrahedralization.get_vertex_incident_tetrahedron(c2));
-
+            visit_tetrahedrons.push(m_tetrahedralization.get_incident_tetrahedron(c0));
+            visit_tetrahedrons.push(m_tetrahedralization.get_incident_tetrahedron(c1));
+            visit_tetrahedrons.push(m_tetrahedralization.get_incident_tetrahedron(c2));
             while(!visit_tetrahedrons.empty())
             {
                 uint32_t t = visit_tetrahedrons.front();
                 visit_tetrahedrons.pop();
-                if(visited_tetrahedrons.end() != visited_tetrahedrons.find(t))
+                if(UNDEFINED_VALUE==t || i==visited_tetrahedrons[t])
                 {
                     continue;
                 }
-                visited_tetrahedrons.insert(t);
-                
-                uint32_t t0 = m_tetrahedralization.get_tetrahedron_vertex(t,0);
-                uint32_t t1 = m_tetrahedralization.get_tetrahedron_vertex(t,1);
-                uint32_t t2 = m_tetrahedralization.get_tetrahedron_vertex(t,2);
-                uint32_t t3 = m_tetrahedralization.get_tetrahedron_vertex(t,3);
-                
-                vector<shared_ptr<genericPoint>> vertices;
-                vector<Segment> segments;
-                vector<Facet> facets;
+                visited_tetrahedrons[t] = i;
+
+                auto [t0,t1,t2,t3] = m_tetrahedralization.get_tetrahedron_vertices(t);
+                vector<Segment> segments = {Segment(c0,c1),Segment(c1,c2),Segment(c2,c0)};
+                vector<uint32_t> planes;
+                vector<uint32_t> planes_groups;
+                planes.push_back(cc0);
+                planes.push_back(cc1);
+                planes.push_back(cc2);
+                planes_groups.push_back(cg);
                 auto add_facet = [&](uint32_t p0,uint32_t p1,uint32_t p2,uint32_t p3) // p3 is the oppsite vertex of a tetrahedron facet
                 {
-                    uint32_t vn = vertices.size();
                     auto [cp0, cp1, cp2] = get_coplanar_group_triangle(p0, p1, p2);
-                    vertices.push_back(m_vertices[p0]);
-                    vertices.push_back(m_vertices[p1]);
-                    vertices.push_back(m_vertices[p2]);
-                    if(UNDEFINED_VALUE != p3 && -1 == orient3d(cp0,cp1,cp2,p3,m_vertices.data()))
+                    if(-1 == orient3d(cp0,cp1,cp2,p3,m_polyhedralization.m_vertices.data()))
                     {
-                        vertices.push_back(m_vertices[cp0]);
-                        vertices.push_back(m_vertices[cp2]);
-                        vertices.push_back(m_vertices[cp1]);
+                        planes.push_back(cp0);
+                        planes.push_back(cp2);
+                        planes.push_back(cp1);
                     }
                     else
                     {
-                        vertices.push_back(m_vertices[cp0]);
-                        vertices.push_back(m_vertices[cp1]);
-                        vertices.push_back(m_vertices[cp2]);
+                        planes.push_back(cp0);
+                        planes.push_back(cp1);
+                        planes.push_back(cp2);
                     }
-                    
-                    uint32_t sn = segments.size();
-                    segments.push_back(Segment(vn+0,vn+1));
-                    segments.push_back(Segment(vn+1,vn+2));
-                    segments.push_back(Segment(vn+2,vn+0));
-                    
-                    facets.push_back(Facet(sn+0,sn+1,sn+2,vn+3,vn+4,vn+5,get_coplanar_group(p0, p1, p2)));
+                    planes_groups.push_back(get_coplanar_group(p0, p1, p2));
                 };
-                add_facet(c0,c1,c2,UNDEFINED_VALUE);
                 add_facet(t0,t1,t2,t3);
                 add_facet(t1,t0,t3,t2);
                 add_facet(t0,t2,t3,t1);
                 add_facet(t2,t1,t3,t0);
+                
+                auto s = std::chrono::high_resolution_clock::now();
+                uint32_t original_vertices_count = m_polyhedralization.m_vertices.size();
+                auto [int_type, top_segments] = triangle_tetrahedron_intersection(m_polyhedralization.m_vertices, segments, planes, planes_groups);
+                auto e = std::chrono::high_resolution_clock::now();
+                cut_time += (e-s);
 
-                int int_type = triangle_tetrahedron_intersection(vertices, segments, facets);
+                if(2 == int_type)
+                {
+                    auto& [all_vertices, all_segments, all_facets] = polyhedrons_intersect_constraints[t];
+                    uint32_t vn = all_vertices.size();
+                    uint32_t sn = all_segments.size();
+                    all_vertices.insert(all_vertices.end(), m_polyhedralization.m_vertices.begin()+original_vertices_count, m_polyhedralization.m_vertices.end());
+                    for(uint32_t s : top_segments)
+                    {
+                        segments[s].increase_vertices_indexes(original_vertices_count, vn);
+                        all_segments.push_back(segments[s]);
+                    }
+                    all_facets.push_back(Facet(sn, top_segments.size(), cc0,cc1,cc2,cg));
+                }
+                
+                m_polyhedralization.m_vertices.resize(original_vertices_count);
                 if(0 == int_type)
                 {
                     continue;
                 }
-                if(2 == int_type)
-                {
-                    polyhedrons_intersect_constraints[t].push_back(make_tuple(vertices, segments, facets));
-                }
-                
                 for(uint32_t f=0; f<4; f++)
                 {
                     visit_tetrahedrons.push(m_tetrahedralization.get_tetrahedron_neighbor(t, f).first);
                 }
             }
         }
-        
-        for(auto& [p, slices] : polyhedrons_intersect_constraints)
+        time_file << std::chrono::duration_cast<std::chrono::milliseconds>(cut_time) << '\n';
+        times.push_back(std::chrono::high_resolution_clock::now());
+        for(auto& [p, v] : polyhedrons_intersect_constraints)
         {
-            vector<shared_ptr<genericPoint>> all_vertices;
-            vector<Segment> all_segments;
-            vector<Facet> all_facets;
-            for(auto& [vertices, segments, facets] : slices)
-            {
-                uint32_t vn = all_vertices.size();
-                uint32_t sn = all_segments.size();
-                
-                all_vertices.insert(all_vertices.end(), vertices.begin(), vertices.end());
-                for(uint32_t i=0; i<segments.size(); i++)
-                {
-                    segments[i].increase_vertices_indexes(vn);
-                }
-                all_segments.insert(all_segments.end(), segments.begin(), segments.end());
-                facets[0].increase_segments_indexes(sn);
-                facets[0].p0 += vn;
-                facets[0].p1 += vn;
-                facets[0].p2 += vn;
-                all_facets.push_back(facets[0]);
-            }
-            
-            polyhedrons_slice_order[p] = order_facets(all_vertices,all_segments,all_facets);
+            auto& [all_vertices, all_segments, all_facets] = v;
+            uint32_t original_vertices_count = m_polyhedralization.m_vertices.size();
+            m_polyhedralization.m_vertices.insert(m_polyhedralization.m_vertices.end(), all_vertices.begin(), all_vertices.end());
+            approximate_verteices(m_approximated_vertices, m_polyhedralization.m_vertices);
+            polyhedrons_slice_order[p] = order_facets(m_polyhedralization.m_vertices,m_approximated_vertices, all_segments,all_facets);
+            m_polyhedralization.m_vertices.resize(original_vertices_count);
+            m_approximated_vertices.resize(original_vertices_count);
         }
     }
+    times.push_back(std::chrono::high_resolution_clock::now());
     
     // slice polyhedrons
     for(auto& [p, facets_order] : polyhedrons_slice_order)
@@ -560,8 +580,9 @@ void BinarySpacePartitionHandle::binary_space_partition()
             }
         }
     }
-    
-    m_polyhedralization.calculate_facets_centroids();
+    times.push_back(std::chrono::high_resolution_clock::now());
+    approximate_verteices(m_approximated_vertices, m_polyhedralization.m_vertices);
+    m_polyhedralization.calculate_facets_centroids(m_approximated_vertices);
     
     m_coplanar_triangles = vector<vector<uint32_t>>(coplanar_groups_triangles.size()/3);
     for(uint32_t i=0; i<coplanar_groups_triangles.size()/3; i++)
@@ -583,4 +604,12 @@ void BinarySpacePartitionHandle::binary_space_partition()
         m_coplanar_triangles[v].push_back(p1);
         m_coplanar_triangles[v].push_back(p2);
     }
+    times.push_back(std::chrono::high_resolution_clock::now());
+    
+    for(uint32_t i=1; i<times.size(); i++)
+    {
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(times[i] - times[i-1]);
+        time_file << i << " Time: " << duration.count() << " ms\n";
+    }
+    time_file.close();
 }

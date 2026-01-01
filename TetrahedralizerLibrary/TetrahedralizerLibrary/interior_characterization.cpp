@@ -12,10 +12,7 @@ void InteriorCharacterizationHandle::interior_characterization()
     vector<double> facets_approximated_areas;
     {
         vector<double3> vertices_approximated_positions;
-        for(uint32_t i=0; i<m_vertices.size(); i++)
-        {
-            vertices_approximated_positions.push_back(approximate_point(m_vertices[i]));
-        }
+        approximate_verteices(vertices_approximated_positions, m_vertices);
         double total_area = 0.0;
         for(uint32_t i=0; i<m_facets.size(); i++)
         {

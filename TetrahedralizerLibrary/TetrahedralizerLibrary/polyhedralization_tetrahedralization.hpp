@@ -31,7 +31,6 @@ private:
     std::vector<uint32_t> m_inserted_facets_centroids;
     std::vector<uint32_t> m_inserted_polyhedrons_centroids;
     std::vector<uint32_t> m_tetrahedrons;
-    COMMON_FIELDS
     
     void polyhedralization_tetrahedralization();
     uint32_t find_connect_vertex(uint32_t polyhedron);

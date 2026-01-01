@@ -31,7 +31,7 @@ public:
     
     
 private:
-    std::vector<std::shared_ptr<genericPoint>> m_vertices;
+    std::vector<double3> m_approximated_vertices;
     Tetrahedralization m_tetrahedralization;
     std::vector<uint32_t> m_constraints;
     
