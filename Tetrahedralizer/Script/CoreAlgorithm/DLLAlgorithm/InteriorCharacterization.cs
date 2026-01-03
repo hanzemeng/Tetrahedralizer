@@ -23,10 +23,9 @@ namespace Hanzzz.Tetrahedralizer
         /// <returns>
         /// A tuple containing:
         /// <para><c>polyhedronsLabels</c>0 if the polyhedron is outside, otherwise inside.</para>
-        /// <para><c>facetsVerticesMapping</c>for every vertex in every facet: (n, c1...cn). n is the number of constraints, c1...cn are indexes to the coplanar constraints that intersect the vertex.</para>
         /// <para><c>facetsCentroidsMapping</c>for every facet centroid: record a coplanar constraint that touches it. UNDEFINED_VALUE if no such constraint.</para>
         /// </returns>
-        public List<int> CalculateInteriorCharacterization(IReadOnlyList<double> explicitVertices, IReadOnlyList<int> implicitVertices, IReadOnlyList<int> polyhedrons, IReadOnlyList<Facet> facets, IReadOnlyList<Segment> segments, IReadOnlyList<int> coplanarTriangles, IReadOnlyList<int> constraints, double polyhedronInMultiplier)
+        public (List<int> polyhedronsLabels, List<int> facetsCentroidsMapping) CalculateInteriorCharacterization(IReadOnlyList<double> explicitVertices, IReadOnlyList<int> implicitVertices, IReadOnlyList<int> polyhedrons, IReadOnlyList<Facet> facets, IReadOnlyList<Segment> segments, IReadOnlyList<int> coplanarTriangles, IReadOnlyList<int> constraints, double polyhedronInMultiplier)
         {
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern IntPtr CreateInteriorCharacterizationHandle();
@@ -41,9 +40,15 @@ namespace Hanzzz.Tetrahedralizer
             static extern void CalculateInteriorCharacterization(IntPtr handle);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern void GetInteriorCharacterizationPolyhedronsLabels(IntPtr handle, [Out] int[] labels);
+            [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
+            static extern void GetInteriorCharacterizationFacetsCentroidsMapping(IntPtr handle, [Out] int[] labels);
             int GetPolyhedronsCount(IntPtr _)
             {
                 return TetrahedralizerUtility.CountFlatIListElements(polyhedrons);
+            }
+            int GetFacetsCount(IntPtr _)
+            {
+                return facets.Count;
             }
 
             double[] explicitVerticesArray = explicitVertices.ToArray();
@@ -68,13 +73,14 @@ namespace Hanzzz.Tetrahedralizer
             CalculateInteriorCharacterization(handle);
    
             List<int> polyhedronsLabels = InteropUtility.GetList<int>(handle, GetPolyhedronsCount, GetInteriorCharacterizationPolyhedronsLabels);
+            List<int> facetsCentroidsMapping = InteropUtility.GetList<int>(handle, GetFacetsCount, GetInteriorCharacterizationFacetsCentroidsMapping);
             DisposeInteriorCharacterizationHandle(handle);
             foreach(GCHandle gCHandle in facetsInteropDataHandles)
             {
                 gCHandle.Free();
             }
 
-            return polyhedronsLabels;
+            return (polyhedronsLabels, facetsCentroidsMapping);
         }
     }
     

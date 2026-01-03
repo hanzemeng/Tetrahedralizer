@@ -16,11 +16,9 @@ namespace Hanzzz.Tetrahedralizer
         public List<int> m_implicitVertices; // 5/9 followed by indexes of m_explicitVertices.
         
         public List<int> m_polyhedrons; // # of polyhedron facets, followed by facets indexes.
-        
         public List<Facet> m_facets;
         public List<Segment> m_segments;
 
-        public List<int> m_facetsVerticesMapping; // for every vertex in every facet, record # of incident constraints followed by indexes of the constraints
         public List<int> m_facetsCentroidsMapping; // for every facet centroid, record an incident constraint, UNDEFINED_VALUE if no such constraint
         public List<bool> m_facetsPointOut; // only defined for exterior facets, true if the facet points out of its polyhedron
     
@@ -217,6 +215,197 @@ namespace Hanzzz.Tetrahedralizer
             return TetrahedralizerUtility.CountFlatIListElements(m_polyhedrons);
         }
     
+        public void RemoveUnusedData()
+        {
+            // remove facets
+            {
+                List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedrons);
+                List<bool> usedFacets = Enumerable.Repeat(false,m_facets.Count).ToList();
+                polyhedrons.ForEach(i=>i.ForEach(j=>usedFacets[j]=true));
+                List<Facet> newFacets = new List<Facet>();
+                List<int> newFacetsCentroidsMapping = new List<int>();
+                int[] mapping = new int[m_facets.Count];
+                for(int i=0; i<m_facets.Count; i++)
+                {
+                    if(!usedFacets[i])
+                    {
+                        continue;
+                    }
+                    mapping[i] = newFacets.Count;
+                    newFacets.Add(m_facets[i]);
+                    newFacetsCentroidsMapping.Add(m_facetsCentroidsMapping[i]);
+                }
+                foreach(List<int> polyhedron in polyhedrons)
+                {
+                    for(int i=0; i<polyhedron.Count; i++)
+                    {
+                        polyhedron[i] = mapping[polyhedron[i]];
+                    }
+                }
+                m_polyhedrons = TetrahedralizerUtility.NestedListToFlatList(polyhedrons);
+                m_facets = newFacets;
+                m_facetsCentroidsMapping = newFacetsCentroidsMapping;
+            }
+            // remove segments
+            {
+                List<bool> usedSegments = Enumerable.Repeat(false,m_segments.Count).ToList();
+                m_facets.ForEach(i=>i.segments.ForEach(j=>usedSegments[j]=true));
+                List<Segment> newSegments = new List<Segment>();
+                int[] mapping = new int[m_segments.Count];
+                for(int i=0; i<m_segments.Count; i++)
+                {
+                    if(!usedSegments[i])
+                    {
+                        continue;
+                    }
+                    mapping[i] = newSegments.Count;
+                    newSegments.Add(m_segments[i]);
+                }
+                foreach(Facet facet in m_facets)
+                {
+                    for(int i=0; i<facet.segments.Count; i++)
+                    {
+                        facet.segments[i] = mapping[facet.segments[i]];
+                    }
+                }
+                m_segments = newSegments;
+            }
+            //remove implicit vertices
+            {
+                int explicitCount = m_explicitVertices.Count/3;
+                List<List<int>> implicitVertices = TetrahedralizerUtility.FlatIListToNestedList(m_implicitVertices);
+                List<bool> usedImplicitVertices = Enumerable.Repeat(false,implicitVertices.Count).ToList();
+                List<List<int>> newImplicitVertices = new List<List<int>>();
+                int[] mapping = new int[implicitVertices.Count];
+                foreach(Segment segment in m_segments)
+                {
+                    if(segment.e0>=explicitCount)
+                    {
+                        usedImplicitVertices[segment.e0-explicitCount] = true;
+                    }
+                    if(segment.e1>=explicitCount)
+                    {
+                        usedImplicitVertices[segment.e1-explicitCount] = true;
+                    }
+                }
+
+                for(int i=0; i<implicitVertices.Count; i++)
+                {
+                    if(!usedImplicitVertices[i])
+                    {
+                        continue;
+                    }
+                    mapping[i] = newImplicitVertices.Count;
+                    newImplicitVertices.Add(implicitVertices[i]);
+                }
+                foreach(Segment segment in m_segments)
+                {
+                    if(segment.e0>=explicitCount)
+                    {
+                        segment.e0 = mapping[segment.e0-explicitCount] + explicitCount;
+                    }
+                    if(segment.e1>=explicitCount)
+                    {
+                        segment.e1 = mapping[segment.e1-explicitCount] + explicitCount;
+                    }
+                }
+                m_implicitVertices = TetrahedralizerUtility.NestedListToFlatList(newImplicitVertices);
+            }
+            //remove explicit vertices
+            {
+                int explicitCount = m_explicitVertices.Count/3;
+                List<bool> usedExplicitVertices = Enumerable.Repeat(false,m_explicitVertices.Count/3).ToList();
+                List<double> newExplicitVertices = new List<double>();
+                int[] mapping = new int[m_explicitVertices.Count/3];
+
+                foreach(Facet facet in m_facets)
+                {
+                    usedExplicitVertices[facet.p0] = true;
+                    usedExplicitVertices[facet.p1] = true;
+                    usedExplicitVertices[facet.p2] = true;
+                }
+                foreach(Segment segment in m_segments)
+                {
+                    if(segment.e0<explicitCount)
+                    {
+                        usedExplicitVertices[segment.e0] = true;
+                    }
+                    if(segment.e1<explicitCount)
+                    {
+                        usedExplicitVertices[segment.e1] = true;
+                    }
+                    usedExplicitVertices[segment.p0] = true;
+                    usedExplicitVertices[segment.p1] = true;
+                    if(TetrahedralizerConstant.UNDEFINED_VALUE != segment.p2)
+                    {
+                        usedExplicitVertices[segment.p2] = true;
+                        usedExplicitVertices[segment.p3] = true;
+                        usedExplicitVertices[segment.p4] = true;
+                        usedExplicitVertices[segment.p5] = true;
+                    }
+                }
+                List<List<int>> implicitVertices = TetrahedralizerUtility.FlatIListToNestedList(m_implicitVertices);
+                implicitVertices.ForEach(i=>i.ForEach(j=>usedExplicitVertices[j]=true));
+
+                for(int i=0; i<explicitCount; i++)
+                {
+                    if(!usedExplicitVertices[i])
+                    {
+                        continue;
+                    }
+                    mapping[i] = newExplicitVertices.Count/3;
+                    newExplicitVertices.Add(m_explicitVertices[3*i+0]);
+                    newExplicitVertices.Add(m_explicitVertices[3*i+1]);
+                    newExplicitVertices.Add(m_explicitVertices[3*i+2]);
+                }
+
+                int implicitVerticesDiff = explicitCount-newExplicitVertices.Count/3;
+                foreach(Facet facet in m_facets)
+                {
+                    facet.p0 = mapping[facet.p0];
+                    facet.p1 = mapping[facet.p1];
+                    facet.p2 = mapping[facet.p2];
+                }
+                foreach(Segment segment in m_segments)
+                {
+                    if(segment.e0<explicitCount)
+                    {
+                        segment.e0 = mapping[segment.e0];
+                    }
+                    else
+                    {
+                        segment.e0 -= implicitVerticesDiff;
+                    }
+                    if(segment.e1<explicitCount)
+                    {
+                        segment.e1 = mapping[segment.e1];
+                    }
+                    else
+                    {
+                        segment.e1 -= implicitVerticesDiff;
+                    }
+                    segment.p0 = mapping[segment.p0];
+                    segment.p1 = mapping[segment.p1];
+                    if(TetrahedralizerConstant.UNDEFINED_VALUE != segment.p2)
+                    {
+                        segment.p2 = mapping[segment.p2];
+                        segment.p3 = mapping[segment.p3];
+                        segment.p4 = mapping[segment.p4];
+                        segment.p5 = mapping[segment.p5];
+                    }
+                }
+                
+                foreach(List<int> implicitVertex in implicitVertices)
+                {
+                    for(int i=0; i<implicitVertex.Count; i++)
+                    {
+                        implicitVertex[i] = mapping[implicitVertex[i]];
+                    }
+                }
+                m_implicitVertices = TetrahedralizerUtility.NestedListToFlatList(implicitVertices);
+                m_explicitVertices = newExplicitVertices;
+            }
+        }
         public void Assign(Polyhedralization polyhedralization)
         {
             m_explicitVertices = polyhedralization.m_explicitVertices;
@@ -224,7 +413,6 @@ namespace Hanzzz.Tetrahedralizer
             m_polyhedrons = polyhedralization.m_polyhedrons;
             m_facets = polyhedralization.m_facets;
             m_segments = polyhedralization.m_segments;
-            m_facetsVerticesMapping = polyhedralization.m_facetsVerticesMapping;
             m_facetsCentroidsMapping = polyhedralization.m_facetsCentroidsMapping;
             m_facetsPointOut = polyhedralization.m_facetsPointOut;
         }

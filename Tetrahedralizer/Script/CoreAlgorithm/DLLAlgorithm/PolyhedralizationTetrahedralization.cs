@@ -24,7 +24,7 @@ namespace Hanzzz.Tetrahedralizer
         /// <para><c>tetrahedrons</c>A list of tetrahedrons (t0,t1,t2,t3) in left-hand orientation.</para>
         /// </returns>
         public (List<int> insertedFacetsCentroids, List<int> insertedPolyhedronsCentroids, List<int> tetrahedrons)
-        CalculatePolyhedralizationTetrahedralization(IReadOnlyList<double> explicitVertices, IReadOnlyList<int> implicitVertices, IReadOnlyList<int> polyhedrons, IReadOnlyList<int> facets, IReadOnlyList<int> facetsCentroids, IReadOnlyList<double> facetsCentroidsWeights)
+        CalculatePolyhedralizationTetrahedralization(IReadOnlyList<double> explicitVertices, IReadOnlyList<int> implicitVertices, IReadOnlyList<int> polyhedrons, IReadOnlyList<Facet> facets, IReadOnlyList<Segment> segments)
         {
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern IntPtr CreatePolyhedralizationTetrahedralizationHandle();
@@ -32,42 +32,51 @@ namespace Hanzzz.Tetrahedralizer
             static extern void DisposePolyhedralizationTetrahedralizationHandle(IntPtr handle);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern void AddPolyhedralizationTetrahedralizationInput(IntPtr handle, 
-            int explicit_count, double[] explicit_values, int implicit_count, int[] implicit_values, 
-            int polyhedrons_count, int[] polyhedrons, int facets_count, int[] facets, int[] facets_centroids, double[] facets_centroids_weights);
+            int explicit_count, double[] explicit_values, int implicit_count, int[] implicit_values,
+            int polyhedrons_count, int[] polyhedrons, int facets_count, FacetInteropData[] facets, int segments_count, SegmentInteropData[] segments);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern void CalculatePolyhedralizationTetrahedralization(IntPtr handle);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern int GetPolyhedralizationTetrahedralizationInsertedFacetsCentroidsCount(IntPtr handle);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-            static extern IntPtr GetPolyhedralizationTetrahedralizationInsertedFacetsCentroids(IntPtr handle);
+            static extern void GetPolyhedralizationTetrahedralizationInsertedFacetsCentroids(IntPtr handle, [Out] int[] out_array);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern int GetPolyhedralizationTetrahedralizationInsertedPolyhedronsCentroidsCount(IntPtr handle);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-            static extern IntPtr GetPolyhedralizationTetrahedralizationInsertedPolyhedronsCentroids(IntPtr handle);
+            static extern void GetPolyhedralizationTetrahedralizationInsertedPolyhedronsCentroids(IntPtr handle, [Out] int[] out_array);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern int GetPolyhedralizationTetrahedralizationTetrahedronsCount(IntPtr handle);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-            static extern IntPtr GetPolyhedralizationTetrahedralizationTetrahedrons(IntPtr handle);
+            static extern void GetPolyhedralizationTetrahedralizationTetrahedrons(IntPtr handle, [Out] int[] out_array);
     
     
             double[] explicitVerticesArray = explicitVertices.ToArray();
             TetrahedralizerUtility.SwapElementsByInterval(explicitVerticesArray, 3); // Change from left to right hand coordinate.
             int[] implicitVerticesArray = null == implicitVertices ? null : implicitVertices.ToArray();
             int implicitVerticesCount = null == implicitVertices ? 0 : TetrahedralizerUtility.CountFlatIListElements(implicitVerticesArray);
-    
+            
+            FacetInteropData[] facetsInteropData = new FacetInteropData[facets.Count];
+            GCHandle[] facetsInteropDataHandles = new GCHandle[facets.Count];
+            for(int i=0; i<facets.Count; i++)
+            {
+                facetsInteropData[i] = new FacetInteropData(facets[i], out facetsInteropDataHandles[i]);
+            }
+            SegmentInteropData[] segmentInteropData = segments.Select(i=>new SegmentInteropData(i)).ToArray();
+
             IntPtr handle = CreatePolyhedralizationTetrahedralizationHandle();
             AddPolyhedralizationTetrahedralizationInput(handle, explicitVerticesArray.Length/3, explicitVerticesArray, implicitVerticesCount, implicitVerticesArray,
-            TetrahedralizerUtility.CountFlatIListElements(polyhedrons), polyhedrons.ToArray(), TetrahedralizerUtility.CountFlatIListElements(facets), facets.ToArray(), facetsCentroids.ToArray(), facetsCentroidsWeights.ToArray());
+            TetrahedralizerUtility.CountFlatIListElements(polyhedrons), polyhedrons.ToArray(), facets.Count, facetsInteropData.ToArray(), segments.Count, segmentInteropData.ToArray());
             CalculatePolyhedralizationTetrahedralization(handle);
     
-            IntPtr ptr = GetPolyhedralizationTetrahedralizationInsertedFacetsCentroids(handle);
-            List<int> insertedFacetsCentroids = ptr.ReadInt32Repeat(GetPolyhedralizationTetrahedralizationInsertedFacetsCentroidsCount(handle));
-            ptr = GetPolyhedralizationTetrahedralizationInsertedPolyhedronsCentroids(handle);
-            List<int> insertedPolyhedronsCentroids = ptr.ReadInt32Repeat(GetPolyhedralizationTetrahedralizationInsertedPolyhedronsCentroidsCount(handle));
-            ptr = GetPolyhedralizationTetrahedralizationTetrahedrons(handle);
-            List<int> tetrahedrons = ptr.ReadInt32Repeat(4*GetPolyhedralizationTetrahedralizationTetrahedronsCount(handle));
+            List<int> insertedFacetsCentroids = InteropUtility.GetList<int>(handle, GetPolyhedralizationTetrahedralizationInsertedFacetsCentroidsCount, GetPolyhedralizationTetrahedralizationInsertedFacetsCentroids);
+            List<int> insertedPolyhedronsCentroids = InteropUtility.GetList<int>(handle, GetPolyhedralizationTetrahedralizationInsertedPolyhedronsCentroidsCount, GetPolyhedralizationTetrahedralizationInsertedPolyhedronsCentroids);
+            List<int> tetrahedrons = InteropUtility.GetList<int>(handle, GetPolyhedralizationTetrahedralizationTetrahedronsCount, GetPolyhedralizationTetrahedralizationTetrahedrons);
 
             DisposePolyhedralizationTetrahedralizationHandle(handle);
+            foreach(GCHandle gCHandle in facetsInteropDataHandles)
+            {
+                gCHandle.Free();
+            }
     
             TetrahedralizerUtility.SwapElementsByInterval(tetrahedrons, 4); // Change from right to left hand coordinate.
             return (insertedFacetsCentroids, insertedPolyhedronsCentroids, tetrahedrons);

@@ -26,7 +26,7 @@ namespace Hanzzz.Tetrahedralizer
         /// <para><c>facetsCentroidsWeights</c>(w0,w1). w0,w1,1-w0-w1 are weights of the 3 explicit vertices defined above.</para>
         /// </returns>
         public (List<int> insertedVertices, List<int> polyhedrons, List<Facet> facets, List<Segment> segments)
-        CalculateConvexHullPartition(IReadOnlyList<double> explicitVertices, IReadOnlyList<int> implicitVertices, IReadOnlyList<Facet> convexHullFacets, IReadOnlyList<Facet> constraintsFacets, IReadOnlyList<Segment> segments, IReadOnlyList<int> coplanarTriangles)
+        CalculateConvexHullPartition(IReadOnlyList<double> explicitVertices, IReadOnlyList<int> implicitVertices, IReadOnlyList<int> tetrahedrons, IReadOnlyList<Facet> constraintsFacets, IReadOnlyList<Segment> segments, IReadOnlyList<int> coplanarTriangles)
         {
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern IntPtr CreateConvexHullPartitionHandle();
@@ -35,7 +35,7 @@ namespace Hanzzz.Tetrahedralizer
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern void AddConvexHullPartitionInput(IntPtr handle, 
             int explicit_count, double[] explicit_values, int implicit_count, int[] implicit_values, 
-            int convex_hull_facets_count, FacetInteropData[] convex_hull_facets, int constraints_facets_count, FacetInteropData[] constraints_facets, 
+            int tetrahedrons_count, int[] tetrahedrons, int constraints_facets_count, FacetInteropData[] constraints_facets, 
             int segments_count, SegmentInteropData[] segments, int coplanar_triangles_count, int[] coplanar_triangles);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern void CalculateConvexHullPartition(IntPtr handle);
@@ -60,13 +60,9 @@ namespace Hanzzz.Tetrahedralizer
             TetrahedralizerUtility.SwapElementsByInterval(explicitVerticesArray, 3);
             int[] implicitVerticesArray = null == implicitVertices ? null : implicitVertices.ToArray();
             int implicitCount = null == implicitVertices ? 0 : TetrahedralizerUtility.CountFlatIListElements(implicitVerticesArray);
-    
-            FacetInteropData[] convexHullFacetsInteropData = new FacetInteropData[convexHullFacets.Count];
-            GCHandle[] convexHullFacetsInteropDataHandles = new GCHandle[convexHullFacets.Count];
-            for(int i=0; i<convexHullFacets.Count; i++)
-            {
-                convexHullFacetsInteropData[i] = new FacetInteropData(convexHullFacets[i], out convexHullFacetsInteropDataHandles[i]);
-            }
+            int[] tetrahedronsArray = tetrahedrons.ToArray();
+            TetrahedralizerUtility.SwapElementsByInterval(tetrahedronsArray,4);
+
             FacetInteropData[] constraintsFacetsInteropData = new FacetInteropData[constraintsFacets.Count];
             GCHandle[] constraintsFacetsInteropDataHandles = new GCHandle[constraintsFacets.Count];
             for(int i=0; i<constraintsFacets.Count; i++)
@@ -75,11 +71,10 @@ namespace Hanzzz.Tetrahedralizer
             }
             SegmentInteropData[] segmentInteropData = segments.Select(i=>new SegmentInteropData(i)).ToArray();
 
-
             IntPtr handle = CreateConvexHullPartitionHandle();
             AddConvexHullPartitionInput(handle, 
             explicitVerticesArray.Length/3, explicitVerticesArray, implicitCount, implicitVerticesArray, 
-            convexHullFacets.Count, convexHullFacetsInteropData, constraintsFacets.Count, constraintsFacetsInteropData, 
+            tetrahedronsArray.Length/4, tetrahedronsArray, constraintsFacets.Count, constraintsFacetsInteropData, 
             segments.Count, segmentInteropData, TetrahedralizerUtility.CountFlatIListElements(coplanarTriangles), coplanarTriangles.ToArray());
             CalculateConvexHullPartition(handle);
     
@@ -89,10 +84,6 @@ namespace Hanzzz.Tetrahedralizer
             List<Segment> newSegments = InteropUtility.GetList<SegmentInteropData>(handle, GetConvexHullPartitionSegmentsCount, GetConvexHullPartitionSegments).Select(i=>new Segment(i)).ToList();
 
             DisposeConvexHullPartitionHandle(handle);
-            for(int i=0; i<convexHullFacets.Count; i++)
-            {
-                convexHullFacetsInteropDataHandles[i].Free();
-            }
             for(int i=0; i<constraintsFacets.Count; i++)
             {
                 constraintsFacetsInteropDataHandles[i].Free();

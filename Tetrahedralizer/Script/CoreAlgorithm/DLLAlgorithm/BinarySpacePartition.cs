@@ -16,7 +16,6 @@ namespace Hanzzz.Tetrahedralizer
         /// <param name="tetrahedrons">A list of tetrahedrons (t0,t1,t2,t3) in left-hand orientation.</param>
         /// <param name="constraints">A list of constraints (c0,c1,c2). Orientation does not matter.</param>
         /// <param name="aggressivelyAddVirtualConstraints">If true, the common edges between coplanar constraints will be used to slice the tetrahedrons.</param>
-        /// <param name="removeCollinearSegments">If true, collinear segments in the resulting facets will be removed.</param>
         /// <returns>
         /// A tuple containing:
         /// <para><c>insertedVertices</c>(n, i1...in). n is 5 or 9, i1...in are indexes of explicit vertices.</para>
@@ -26,7 +25,7 @@ namespace Hanzzz.Tetrahedralizer
         /// <para><c>facetsCentroidsWeights</c>(w0,w1). w0,w1,1-w0-w1 are weights of the 3 explicit vertices defined above.</para>
         /// </returns>
         public (List<int> insertedVertices, List<int> polyhedrons, List<Facet> facets, List<Segment> segments, List<int> coplanarTriangles)
-        CalculateBinarySpacePartition(IReadOnlyList<double> explicitVertices, IReadOnlyList<int> tetrahedrons, IReadOnlyList<int> constraints, bool aggressivelyAddVirtualConstraints, bool removeCollinearSegments)
+        CalculateBinarySpacePartition(IReadOnlyList<double> explicitVertices, IReadOnlyList<int> tetrahedrons, IReadOnlyList<int> constraints, bool aggressivelyAddVirtualConstraints)
         {
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern IntPtr CreateBinarySpacePartitionHandle();
@@ -71,31 +70,6 @@ namespace Hanzzz.Tetrahedralizer
             List<Facet> facets = InteropUtility.GetList<FacetInteropData>(handle, GetBinarySpacePartitionFacetsCount, GetBinarySpacePartitionFacets).Select(i=>new Facet(i)).ToList();
             List<Segment> segments = InteropUtility.GetList<SegmentInteropData>(handle, GetBinarySpacePartitionSegmentsCount, GetBinarySpacePartitionSegments).Select(i=>new Segment(i)).ToList();
             List<int> coplanarTriangles = InteropUtility.GetList<int>(handle, GetBinarySpacePartitionCoplanarTrianglesCount, GetBinarySpacePartitionCoplanarTriangles);
-
-            if(removeCollinearSegments)
-            {
-                //List<List<int>> facetsNested = TetrahedralizerUtility.FlatIListToNestedList(facets);
-                //List<List<int>> newFacetsNested = new List<List<int>>();
-                //using GenericPointPredicate genericPointPredicate = new GenericPointPredicate(explicitVertices, insertedVertices);
-    
-                //foreach(List<int> facet in facetsNested)
-                //{
-                //    List<int> newFacet = new List<int>();
-                //    for(int i=0; i<facet.Count; i++)
-                //    {
-                //        int p = 0==i ? facet.Count-1:i-1;
-                //        int n = facet.Count-1==i ? 0:i+1;
-    
-                //        if(!genericPointPredicate.IsCollinear(facet[p],facet[i],facet[n]))
-                //        {
-                //            newFacet.Add(facet[i]);
-                //        }
-                //    }
-                //    newFacetsNested.Add(newFacet);
-                //}
-    
-                //facets = TetrahedralizerUtility.NestedListToFlatList(newFacetsNested);
-            }
     
             DisposeBinarySpacePartitionHandle(handle);
             return (insertedVertices, polyhedrons, facets, segments, coplanarTriangles);
