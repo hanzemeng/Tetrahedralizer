@@ -227,13 +227,12 @@ void Polyhedralization::calculate_facets_centroids(vector<double3>& approximated
 {
     for(uint32_t i=0; i<m_facets.size(); i++)
     {
-        double3 centroid = m_facets[i].get_centroid(approximated_vertices, m_segments);
+        double3 centroid = m_facets[i].get_explicit_centroid(approximated_vertices, m_segments);
         double3 p0 = approximated_vertices[m_facets[i].p0];
         double3 p1 = approximated_vertices[m_facets[i].p1];
         double3 p2 = approximated_vertices[m_facets[i].p2];
-        double3 weight;
-        barycentric_weight(p0,p1,p2,centroid,weight);
-        m_facets[i].w0 = weight.x;
-        m_facets[i].w1 = weight.y;
+        auto [in, w] = barycentric_weight(p0,p1,p2,centroid);
+        m_facets[i].w0 = w.x;
+        m_facets[i].w1 = w.y;
     }
 }

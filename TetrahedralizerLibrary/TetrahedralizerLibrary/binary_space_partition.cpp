@@ -134,11 +134,6 @@ extern "C" LIBRARY_EXPORT void GetBinarySpacePartitionCoplanarTriangles(void* ha
 
 void BinarySpacePartitionHandle::binary_space_partition()
 {
-    ofstream time_file("timing.txt", std::ios::app);
-    
-    vector<chrono::time_point<chrono::high_resolution_clock>> times;
-    times.push_back(std::chrono::high_resolution_clock::now());
-    
     // find a triangle to represent all coplanar triangles
     unordered_map<tuple<uint32_t, uint32_t, uint32_t>, uint32_t, iii32_hash> triangles_coplanar_groups;
     vector<uint32_t> coplanar_groups_triangles;
@@ -160,23 +155,29 @@ void BinarySpacePartitionHandle::binary_space_partition()
         auto [coplanar_groups, coplanar_planes] = group_coplanar_triangles(triangles, m_polyhedralization.m_vertices, m_approximated_vertices);
         for(uint32_t i=0; i<coplanar_groups.size(); i++)
         {
-            uint32_t c0 = triangles[3*coplanar_groups[i][0]+0];
-            uint32_t c1 = triangles[3*coplanar_groups[i][0]+1];
-            uint32_t c2 = triangles[3*coplanar_groups[i][0]+2];
+            double max_demon = std::numeric_limits<double>::quiet_NaN();
             uint32_t cg = coplanar_groups_triangles.size()/3;
-            coplanar_groups_triangles.push_back(c0);
-            coplanar_groups_triangles.push_back(c1);
-            coplanar_groups_triangles.push_back(c2);
+            uint32_t c0,c1,c2;
             for(uint32_t j=0; j<coplanar_groups[i].size(); j++)
             {
                 uint32_t nc0 = triangles[3*coplanar_groups[i][j]+0];
                 uint32_t nc1 = triangles[3*coplanar_groups[i][j]+1];
                 uint32_t nc2 = triangles[3*coplanar_groups[i][j]+2];
+                double demon = fabs(barycentric_weight_denom(m_approximated_vertices[nc0],m_approximated_vertices[nc1],m_approximated_vertices[nc2]));
+                if(isnan(max_demon) || demon > max_demon) // search for the largest triangle to define the plane
+                {
+                    max_demon = demon;
+                    c0 = nc0;
+                    c1 = nc1;
+                    c2 = nc2;
+                }
                 sort_ints(nc0, nc1, nc2);
                 triangles_coplanar_groups[make_tuple(nc0,nc1,nc2)] = cg;
             }
+            coplanar_groups_triangles.push_back(c0);
+            coplanar_groups_triangles.push_back(c1);
+            coplanar_groups_triangles.push_back(c2);
         }
-        times.push_back(std::chrono::high_resolution_clock::now());
         // create virtual constraints
         vector<uint32_t> virtual_constraints;
         auto add_virtual_constraint = [&](uint32_t s0, uint32_t s1, uint32_t c) // e0 and e1 incident the constraint c
@@ -297,7 +298,6 @@ void BinarySpacePartitionHandle::binary_space_partition()
                 add_virtual_constraint(s0,s1, constraints[0]);
             }
         }
-        times.push_back(std::chrono::high_resolution_clock::now());
         // combine coplanar group
         auto [vc_coplanar_groups, vc_coplanar_planes] = group_coplanar_triangles(virtual_constraints, m_polyhedralization.m_vertices, m_approximated_vertices);
         for(uint32_t i=0; i<vc_coplanar_groups.size(); i++)
@@ -354,7 +354,6 @@ void BinarySpacePartitionHandle::binary_space_partition()
         }
         
         m_constraints.insert(m_constraints.end(), virtual_constraints.begin(), virtual_constraints.end());
-        times.push_back(std::chrono::high_resolution_clock::now());
     }
     
     // convert tetrahedrons to polyhedrons
@@ -406,39 +405,10 @@ void BinarySpacePartitionHandle::binary_space_partition()
             }
         }
     }
-    times.push_back(std::chrono::high_resolution_clock::now());
 
     // for every polyhedron, find the constraints that intersect it
     unordered_map<uint32_t, vector<FacetOrder>> polyhedrons_slice_order; // first is polyhedron, second is slice order and coplanar group
     {
-//        vector<pair<double3, double>> tetrahedrons_bounding_spheres;
-//        for(uint32_t i=0; i<m_tetrahedralization.get_tetrahedrons_count(); i++)
-//        {
-//            auto [t0,t1,t2,t3] = m_tetrahedralization.get_tetrahedron_vertices(i);
-//            double3 p0 = m_approximated_vertices[t0];
-//            double3 p1 = m_approximated_vertices[t1];
-//            double3 p2 = m_approximated_vertices[t2];
-//            double3 p3 = m_approximated_vertices[t3];
-//            tetrahedrons_bounding_spheres.push_back(calculate_bounding_sphere(p0, p1, p2, p3));
-//        }
-//        vector<pair<double3, double>> constraints_bounding_spheres;
-//        for(uint32_t i=0; i<m_constraints.size()/3; i++)
-//        {
-//            uint32_t c0 = m_constraints[3*i+0];
-//            uint32_t c1 = m_constraints[3*i+1];
-//            uint32_t c2 = m_constraints[3*i+2];
-//            if(UNDEFINED_VALUE == c0)
-//            {
-//                constraints_bounding_spheres.push_back(make_pair(double3(),0.0));
-//                continue;
-//            }
-//            
-//            double3 p0 = m_approximated_vertices[c0];
-//            double3 p1 = m_approximated_vertices[c1];
-//            double3 p2 = m_approximated_vertices[c2];
-//            constraints_bounding_spheres.push_back(calculate_bounding_sphere(p0, p1, p2));
-//        }
-        
         unordered_map<uint32_t, tuple<vector<shared_ptr<genericPoint>>, vector<Segment>, vector<Facet>>> polyhedrons_intersect_constraints;
         vector<uint32_t> visited_tetrahedrons = vector<uint32_t>(m_tetrahedralization.get_tetrahedrons_count(), UNDEFINED_VALUE);
         queue<uint32_t> visit_tetrahedrons;
@@ -529,8 +499,6 @@ void BinarySpacePartitionHandle::binary_space_partition()
                 }
             }
         }
-        time_file << std::chrono::duration_cast<std::chrono::milliseconds>(cut_time) << '\n';
-        times.push_back(std::chrono::high_resolution_clock::now());
         for(auto& [p, v] : polyhedrons_intersect_constraints)
         {
             auto& [all_vertices, all_segments, all_facets] = v;
@@ -542,7 +510,6 @@ void BinarySpacePartitionHandle::binary_space_partition()
             m_approximated_vertices.resize(original_vertices_count);
         }
     }
-    times.push_back(std::chrono::high_resolution_clock::now());
     
     // slice polyhedrons
     for(auto& [p, facets_order] : polyhedrons_slice_order)
@@ -580,10 +547,9 @@ void BinarySpacePartitionHandle::binary_space_partition()
             }
         }
     }
-    times.push_back(std::chrono::high_resolution_clock::now());
+
     approximate_verteices(m_approximated_vertices, m_polyhedralization.m_vertices);
     m_polyhedralization.calculate_facets_centroids(m_approximated_vertices);
-    
     m_coplanar_triangles = vector<vector<uint32_t>>(coplanar_groups_triangles.size()/3);
     for(uint32_t i=0; i<coplanar_groups_triangles.size()/3; i++)
     {
@@ -604,12 +570,4 @@ void BinarySpacePartitionHandle::binary_space_partition()
         m_coplanar_triangles[v].push_back(p1);
         m_coplanar_triangles[v].push_back(p2);
     }
-    times.push_back(std::chrono::high_resolution_clock::now());
-    
-    for(uint32_t i=1; i<times.size(); i++)
-    {
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(times[i] - times[i-1]);
-        time_file << i << " Time: " << duration.count() << " ms\n";
-    }
-    time_file.close();
 }

@@ -121,7 +121,6 @@ inline std::pair<int, std::vector<uint32_t>> triangle_tetrahedron_intersection(s
         }
     }
     
-    
     return std::make_pair(2, facet);
 }
 

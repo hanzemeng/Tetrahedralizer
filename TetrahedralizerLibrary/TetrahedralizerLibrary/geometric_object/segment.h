@@ -137,11 +137,11 @@ class Segment
             }
         }
         
-//        if((segments.back().e0 != res[0] && segments.back().e0 != res.back()) ||
-//           (segments.back().e1 != res[0] && segments.back().e1 != res.back()))
-//        {
-//            throw "something is wrong";
-//        }
+        if((segments.back().e0 != res[0] && segments.back().e0 != res.back()) ||
+           (segments.back().e1 != res[0] && segments.back().e1 != res.back()))
+        {
+            throw "something is wrong";
+        }
         return std::vector<uint32_t>(res.begin(),res.end());
     }
     

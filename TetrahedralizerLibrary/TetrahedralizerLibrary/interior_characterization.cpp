@@ -3,12 +3,6 @@ using namespace std;
 
 void InteriorCharacterizationHandle::interior_characterization()
 {
-    auto get_coplanar_group = [&](uint32_t p0,uint32_t p1,uint32_t p2) -> uint32_t
-    {
-        sort_ints(p0,p1,p2);
-        return m_triangles_coplanar_groups[make_tuple(p0,p1,p2)];
-    };
-    
     vector<double> facets_approximated_areas;
     {
         vector<double3> vertices_approximated_positions;
@@ -44,38 +38,35 @@ void InteriorCharacterizationHandle::interior_characterization()
         {
             continue;
         }
-        uint32_t cg = get_coplanar_group(c0,c1,c2);
+        uint32_t cg = search_int(c0,c1,c2,m_triangles_coplanar_groups);
         while(constraints_coplanar_groups.size() <= cg)
         {
             constraints_coplanar_groups.push_back(vector<uint32_t>());
         }
-        constraints_coplanar_groups[cg].push_back(c0);
-        constraints_coplanar_groups[cg].push_back(c1);
-        constraints_coplanar_groups[cg].push_back(c2);
+        constraints_coplanar_groups[cg].push_back(i);
     }
     
-    vector<uint32_t> facets_centroids_incident_constraints = vector<uint32_t>(3*m_facets.size(), UNDEFINED_VALUE);
+    m_facets_centroids_mapping = vector<uint32_t>(m_facets.size(), UNDEFINED_VALUE);
     for(uint32_t i=0; i<m_facets.size(); i++)
     {
         shared_ptr<genericPoint> centroid = make_shared<implicitPoint3D_BPT>
         (m_vertices[m_facets[i].p0]->toExplicit3D(), m_vertices[m_facets[i].p1]->toExplicit3D(), m_vertices[m_facets[i].p2]->toExplicit3D(),
          m_facets[i].w0, m_facets[i].w1);
         
-        uint32_t cg = get_coplanar_group(m_facets[i].p0, m_facets[i].p1, m_facets[i].p2);
+        uint32_t cg = search_int(m_facets[i].p0, m_facets[i].p1, m_facets[i].p2,m_triangles_coplanar_groups);
         if(cg >= constraints_coplanar_groups.size())
         {
             continue;
         }
-        for(uint32_t j=0; j<constraints_coplanar_groups[cg].size()/3; j++)
+        for(uint32_t j=0; j<constraints_coplanar_groups[cg].size(); j++)
         {
-            uint32_t c0 = constraints_coplanar_groups[cg][3*j+0];
-            uint32_t c1 = constraints_coplanar_groups[cg][3*j+1];
-            uint32_t c2 = constraints_coplanar_groups[cg][3*j+2];
+            uint32_t c = constraints_coplanar_groups[cg][j];
+            uint32_t c0 = m_constraints[3*c+0];
+            uint32_t c1 = m_constraints[3*c+1];
+            uint32_t c2 = m_constraints[3*c+2];
             if(genericPoint::pointInTriangle(*centroid,*m_vertices[c0],*m_vertices[c1],*m_vertices[c2]))
             {
-                facets_centroids_incident_constraints[3*i+0] = c0;
-                facets_centroids_incident_constraints[3*i+1] = c1;
-                facets_centroids_incident_constraints[3*i+2] = c2;
+                m_facets_centroids_mapping[i] = c;
                 break;
             }
         }
@@ -88,7 +79,7 @@ void InteriorCharacterizationHandle::interior_characterization()
         vector<double> polyhedrons_to_ghost_weight = vector<double>(m_polyhedrons.size(), -1.0); // total area of facets connected to the ghost polyhedron, negative means not connectd
         for(uint32_t i=0; i<m_facets.size(); i++)
         {
-            if(UNDEFINED_VALUE != facets_centroids_incident_constraints[3*i+0])
+            if(UNDEFINED_VALUE != m_facets_centroids_mapping[i])
             {
                 continue;
             }
@@ -158,13 +149,14 @@ void InteriorCharacterizationHandle::interior_characterization()
             for(uint32_t j=0; j<m_polyhedrons[i].size(); j++)
             {
                 uint32_t f = m_polyhedrons[i][j];
-                uint32_t t0 = facets_centroids_incident_constraints[3*f+0];
-                uint32_t t1 = facets_centroids_incident_constraints[3*f+1];
-                uint32_t t2 = facets_centroids_incident_constraints[3*f+2];
-                if(UNDEFINED_VALUE == t0)
+                uint32_t c = m_facets_centroids_mapping[f];
+                if(UNDEFINED_VALUE == c)
                 {
                     continue;
                 }
+                uint32_t t0 = m_constraints[3*c+0];
+                uint32_t t1 = m_constraints[3*c+1];
+                uint32_t t2 = m_constraints[3*c+2];
                 
                 int orient = 0;
                 for(uint32_t k=0; k<m_polyhedrons[i].size(); k++)
@@ -261,6 +253,10 @@ void InteriorCharacterizationHandle::GetPolyhedronsLabels(uint32_t* out)
 {
     write_buffer_with_vector(out, m_polyhedrons_labels);
 }
+void InteriorCharacterizationHandle::GetFacetsCentroidsMapping(uint32_t* out)
+{
+    write_buffer_with_vector(out, m_facets_centroids_mapping);
+}
 
 extern "C" LIBRARY_EXPORT void* CreateInteriorCharacterizationHandle()
 {
@@ -289,4 +285,9 @@ extern "C" LIBRARY_EXPORT void CalculateInteriorCharacterization(void* handle)
 extern "C" LIBRARY_EXPORT void GetInteriorCharacterizationPolyhedronsLabels(void* handle, uint32_t* out)
 {
     ((InteriorCharacterizationHandle*)handle)->GetPolyhedronsLabels(out);
+}
+
+extern "C" LIBRARY_EXPORT void GetInteriorCharacterizationFacetsCentroidsMapping(void* handle, uint32_t* out)
+{
+    ((InteriorCharacterizationHandle*)handle)->GetFacetsCentroidsMapping(out);
 }

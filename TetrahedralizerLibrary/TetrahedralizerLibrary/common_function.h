@@ -162,84 +162,44 @@ inline void approximate_verteices(std::vector<double3>& approximated_vertices, s
 
 // return true if p is on or inside the triangle, false otherwise
 // always return false triangle is degenerate
-inline bool barycentric_weight(const double3& t0, const double3& t1, const double3& t2, const double3& p, double3& w)
+inline std::pair<bool, double3> barycentric_weight(double3 t0, double3 t1, double3 t2, double3 p)
 {
     double3 v0 = t1 - t0;
     double3 v1 = t2 - t0;
     double3 v2 = p  - t0;
-
     double d00 = v0.dot(v0);
     double d01 = v0.dot(v1);
     double d11 = v1.dot(v1);
     double d20 = v2.dot(v0);
     double d21 = v2.dot(v1);
-
     double denom = d00 * d11 - d01 * d01;
-    double eps = 1e-12 * (d00 + d11);
+    double eps = 1e-12;
+    
+    double3 w;
     if(std::fabs(denom) < eps)
     {
         w.x = 0.333;
         w.y = 0.333;
         w.z = 0.333;
-        return false;
+        return std::make_pair(false,w);
     }
     w.y = (d11 * d20 - d01 * d21) / denom;
     w.z = (d00 * d21 - d01 * d20) / denom;
     w.x = 1.0 - w.y - w.z;
 
-    double margin = -1e-12 * sqrt(d00 + d11);
-    return w.x>=margin && w.y>=margin && w.z>=margin;
+    double margin = -1e-12;
+    return std::make_pair(w.x>=margin && w.y>=margin && w.z>=margin, w);
 }
-inline double3 closest_point_on_triangle(double3 p, double3 a, double3 b, double3 c)
+inline double barycentric_weight_denom(double3 t0, double3 t1, double3 t2)
 {
-    double3 ab = b - a;
-    double3 ac = c - a;
-    double3 ap = p - a;
+    double3 v0 = t1 - t0;
+    double3 v1 = t2 - t0;
 
-    double d1 = ab.dot(ap);
-    double d2 = ac.dot(ap);
-    if (d1 <= 0.0 && d2 <= 0.0) return a;
+    double d00 = v0.dot(v0);
+    double d01 = v0.dot(v1);
+    double d11 = v1.dot(v1);
 
-    double3 bp = p - b;
-    double d3 = ab.dot(bp);
-    double d4 = ac.dot(bp);
-    if (d3 >= 0.0 && d4 <= d3) return b;
-
-    double vc = d1*d4 - d3*d2;
-    if (vc <= 0.0 && d1 >= 0.0 && d3 <= 0.0)
-    {
-        double v = d1 / (d1 - d3);
-        return a + ab * v;
-    }
-
-    double3 cp = p - c;
-    double d5 = ab.dot(cp);
-    double d6 = ac.dot(cp);
-    if (d6 >= 0.0 && d5 <= d6) return c;
-
-    double vb = d5*d2 - d1*d6;
-    if (vb <= 0.0 && d2 >= 0.0 && d6 <= 0.0)
-    {
-        double w = d2 / (d2 - d6);
-        return a + ac * w;
-    }
-
-    double va = d3*d6 - d5*d4;
-    if (va <= 0.0 && (d4 - d3) >= 0.0 && (d5 - d6) >= 0.0)
-    {
-        double w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
-        return b + (c - b) * w;
-    }
-
-    double denom = 1.0 / (va + vb + vc);
-    double v = vb * denom;
-    double w = vc * denom;
-    return a + ab * v + ac * w;
-}
-inline bool sphere_intersect_triangle(double3 c, double square_radius, double3 p0, double3 p1, double3 p2)
-{
-    double3 p = closest_point_on_triangle(c, p0, p1, p2);
-    return (p-c).length_squared() <= square_radius;
+    return d00 * d11 - d01 * d01;
 }
 
 inline std::vector<std::vector<uint32_t>> flat_array_to_nested_vector(uint32_t* data, uint32_t count)
@@ -431,13 +391,13 @@ inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>> grou
         double3 p2 = approximated_vertices[t2];
         double3 n = (p1-p0).cross(p2-p0);
         double d = -n.dot(p0);
-        double s = std::max(std::abs(n.x),std::abs(n.y));
-        s = std::max(s,std::abs(n.z));
-        if(s > coplanar_eps)
+        double s = std::max(std::max(std::abs(n.x),std::abs(n.y)),std::abs(n.z));
+        if(s < coplanar_eps)
         {
-            n /= s;
-            d /= s;
+            continue;
         }
+        n /= s;
+        d /= s;
         if((n.x<0.0) ||
            (n.x==0.0 && n.y<0.0) ||
            (n.x==0.0 && n.y==0.0 && n.z<0.0))

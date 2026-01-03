@@ -11,13 +11,14 @@ void PolyhedralizationTetrahedralizationHandle::polyhedralization_tetrahedraliza
         for(uint32_t i=0; i<m_facets.size(); i++)
         {
             uint32_t connect_vertex = UNDEFINED_VALUE;
-            for(uint32_t j=0; j<m_facets[i].size(); j++)
+            vector<uint32_t> vs = m_facets[i].get_sorted_vertices(m_segments);
+            for(uint32_t j=0; j<vs.size(); j++)
             {
-                uint32_t p = m_facets[i][j];
-                for(uint32_t k=0; k<m_facets[i].size(); k++)
+                uint32_t p = vs[j];
+                for(uint32_t k=0; k<vs.size(); k++)
                 {
-                    uint32_t e0 = m_facets[i][k];
-                    uint32_t e1 = m_facets[i][(k+1)%m_facets[i].size()];
+                    uint32_t e0 = vs[k];
+                    uint32_t e1 = vs[(k+1)%vs.size()];
                     if(p == e0 || p == e1)
                     {
                         continue;
@@ -40,10 +41,10 @@ void PolyhedralizationTetrahedralizationHandle::polyhedralization_tetrahedraliza
                 m_inserted_facets_centroids.push_back(i);
             }
             
-            for(uint32_t j=0; j<m_facets[i].size(); j++) // triangulate
+            for(uint32_t j=0; j<vs.size(); j++) // triangulate
             {
-                uint32_t e0 = m_facets[i][j];
-                uint32_t e1 = m_facets[i][(j+1)%m_facets[i].size()];
+                uint32_t e0 = vs[j];
+                uint32_t e1 = vs[(j+1)%vs.size()];
                 if(connect_vertex == e0 || connect_vertex == e1)
                 {
                     continue;
@@ -88,75 +89,68 @@ void PolyhedralizationTetrahedralizationHandle::polyhedralization_tetrahedraliza
 
 uint32_t PolyhedralizationTetrahedralizationHandle::find_connect_vertex(uint32_t polyhedron)
 {
-//    m_u_set_i_0.clear(); // get all vertices
-//    for(uint32_t i=0; i<m_polyhedrons[polyhedron].size(); i++)
-//    {
-//        uint32_t f = m_polyhedrons[polyhedron][i];
-//        for(uint32_t j=0; j<m_facets[f].size(); j++)
-//        {
-//            m_u_set_i_0.insert(m_facets[f][j]);
-//        }
-//    }
-//    
-//    for(uint32_t v : m_u_set_i_0)
-//    {
-//        // clear facets counters
-//        for(uint32_t i=0; i<m_polyhedrons[polyhedron].size(); i++)
-//        {
-//            uint32_t f = m_polyhedrons[polyhedron][i];
-//            for(uint32_t j=0; j<m_triangulated_facets_counters[f].size(); j++)
-//            {
-//                m_triangulated_facets_counters[f][j] = 0;
-//            }
-//        }
-//        
-//        for(uint32_t i=0; i<m_polyhedrons[polyhedron].size(); i++)
-//        {
-//            uint32_t f = m_polyhedrons[polyhedron][i];
-//            for(uint32_t j=0; j<m_triangulated_facets[f].size(); j+=3)
-//            {
-//                uint32_t t0 = m_triangulated_facets[f][j+0];
-//                uint32_t t1 = m_triangulated_facets[f][j+1];
-//                uint32_t t2 = m_triangulated_facets[f][j+2];
-//                if(v==t0 || v==t1 || v==t2 || 0 == orient3d(t0, t1, t2, v, m_vertices.data()))
-//                {
-//                    continue;
-//                }
-//                
-//                m_triangulated_facets_counters[f][j/3]++;
-//                find_connect_vertex_helper(polyhedron,t0,t1,v);
-//                find_connect_vertex_helper(polyhedron,t0,t2,v);
-//                find_connect_vertex_helper(polyhedron,t1,t2,v);
-//            }
-//        }
-//        
-//        // check facets counters
-//        for(uint32_t i=0; i<m_polyhedrons[polyhedron].size(); i++)
-//        {
-//            uint32_t f = m_polyhedrons[polyhedron][i];
-//            for(uint32_t j=0; j<m_triangulated_facets_counters[f].size(); j++)
-//            {
-//                if(1 != m_triangulated_facets_counters[f][j])
-//                {
-//                    goto NEXT_VERTEX;
-//                }
-//            }
-//        }
-//        return v;
-//        NEXT_VERTEX:
-//        continue;
-//    }
-//    
-//    // if polyhedron can't be tetrahedralized by connecting a vertex to every triangulated facet
-//    double3 center(0.0,0.0,0.0);
-//    for(uint32_t v : m_u_set_i_0)
-//    {
-//        center += approximate_point(m_vertices[v]);
-//    }
-//    center /= (double)m_u_set_i_0.size();
+    unordered_set<uint32_t> polyhedron_vertices;
+    for(uint32_t f : m_polyhedrons[polyhedron])
+    {
+        vector<uint32_t> vs = m_facets[f].get_vertices(m_segments);
+        polyhedron_vertices.insert(vs.begin(),vs.end());
+    }
+
+    for(uint32_t v : polyhedron_vertices)
+    {
+        // clear facets counters
+        for(uint32_t f : m_polyhedrons[polyhedron])
+        {
+            fill(m_triangulated_facets_counters[f].begin(),m_triangulated_facets_counters[f].end(), 0);
+        }
+        
+        for(uint32_t i=0; i<m_polyhedrons[polyhedron].size(); i++)
+        {
+            uint32_t f = m_polyhedrons[polyhedron][i];
+            for(uint32_t j=0; j<m_triangulated_facets[f].size(); j+=3)
+            {
+                uint32_t t0 = m_triangulated_facets[f][j+0];
+                uint32_t t1 = m_triangulated_facets[f][j+1];
+                uint32_t t2 = m_triangulated_facets[f][j+2];
+                if(v==t0 || v==t1 || v==t2 || 0 == orient3d(t0, t1, t2, v, m_vertices.data()))
+                {
+                    continue;
+                }
+                
+                m_triangulated_facets_counters[f][j/3]++;
+                find_connect_vertex_helper(polyhedron,t0,t1,v);
+                find_connect_vertex_helper(polyhedron,t0,t2,v);
+                find_connect_vertex_helper(polyhedron,t1,t2,v);
+            }
+        }
+        
+        // check facets counters
+        for(uint32_t i=0; i<m_polyhedrons[polyhedron].size(); i++)
+        {
+            uint32_t f = m_polyhedrons[polyhedron][i];
+            for(uint32_t j=0; j<m_triangulated_facets_counters[f].size(); j++)
+            {
+                if(1 != m_triangulated_facets_counters[f][j])
+                {
+                    goto NEXT_VERTEX;
+                }
+            }
+        }
+        return v;
+        NEXT_VERTEX:
+        continue;
+    }
+    
+    // if polyhedron can't be tetrahedralized by connecting a vertex to every triangulated facet
+    double3 center(0.0,0.0,0.0);
+    for(uint32_t v : polyhedron_vertices)
+    {
+        center += m_approximated_vertices[v];
+    }
+    center /= (double)polyhedron_vertices.size();
     uint32_t connect_vertex = m_vertices.size();
-//    m_vertices.push_back(std::make_shared<explicitPoint3D> (center.x, center.y, center.z));
-//    m_inserted_polyhedrons_centroids.push_back(polyhedron);
+    m_vertices.push_back(std::make_shared<explicitPoint3D> (center.x, center.y, center.z));
+    m_inserted_polyhedrons_centroids.push_back(polyhedron);
     return connect_vertex;
 }
 
@@ -196,12 +190,21 @@ void PolyhedralizationTetrahedralizationHandle::add_tetrahedron(uint32_t t0,uint
 
 void PolyhedralizationTetrahedralizationHandle::Dispose()
 {}
-void PolyhedralizationTetrahedralizationHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights)
+void PolyhedralizationTetrahedralizationHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values,
+                                                         uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, FacetInteropData* facets, uint32_t segments_count, SegmentInteropData* segments)
 {
     m_vertices = create_vertices(explicit_count, explicit_values, implicit_count, implicit_values);
+    approximate_verteices(m_approximated_vertices, m_vertices);
     m_polyhedrons = flat_array_to_nested_vector(polyhedrons, polyhedrons_count);
-    m_facets = flat_array_to_nested_vector(facets, facets_count);
-    m_facets_centroids = create_vertices(facets_count, facets_centroids, facets_centroids_weights, m_vertices.data());
+    for(uint32_t i=0; i<facets_count; i++)
+    {
+        m_facets.push_back(facets[i].to_facet());
+        m_facets_centroids.push_back(m_facets[i].get_implicit_centroid(m_vertices));
+    }
+    for(uint32_t i=0; i<segments_count; i++)
+    {
+        m_segments.push_back(segments[i].to_segment());
+    }
 }
 
 void PolyhedralizationTetrahedralizationHandle::Calculate()
@@ -213,25 +216,25 @@ uint32_t PolyhedralizationTetrahedralizationHandle::GetInsertedFacetsCentroidsCo
 {
     return m_inserted_facets_centroids.size();
 }
-uint32_t* PolyhedralizationTetrahedralizationHandle::GetInsertedFacetsCentroids()
+void PolyhedralizationTetrahedralizationHandle::GetInsertedFacetsCentroids(uint32_t* out)
 {
-    return m_inserted_facets_centroids.data();
+    write_buffer_with_vector(out, m_inserted_facets_centroids);
 }
 uint32_t PolyhedralizationTetrahedralizationHandle::GetInsertedPolyhedronsCentroidsCount()
 {
     return m_inserted_polyhedrons_centroids.size();
 }
-uint32_t* PolyhedralizationTetrahedralizationHandle::GetInsertedPolyhedronsCentroids()
+void PolyhedralizationTetrahedralizationHandle::GetInsertedPolyhedronsCentroids(uint32_t* out)
 {
-    return m_inserted_polyhedrons_centroids.data();
+    write_buffer_with_vector(out, m_inserted_polyhedrons_centroids);
 }
 uint32_t PolyhedralizationTetrahedralizationHandle::GetTetrahedronsCount()
 {
-    return m_tetrahedrons.size() / 4;
+    return m_tetrahedrons.size();
 }
-uint32_t* PolyhedralizationTetrahedralizationHandle::GetTetrahedrons()
+void PolyhedralizationTetrahedralizationHandle::GetTetrahedrons(uint32_t* out)
 {
-    return m_tetrahedrons.data();
+    write_buffer_with_vector(out, m_tetrahedrons);
 }
 
 extern "C" LIBRARY_EXPORT void* CreatePolyhedralizationTetrahedralizationHandle()
@@ -244,9 +247,10 @@ extern "C" LIBRARY_EXPORT void DisposePolyhedralizationTetrahedralizationHandle(
     delete ((PolyhedralizationTetrahedralizationHandle*)handle);
 }
 
-extern "C" LIBRARY_EXPORT void AddPolyhedralizationTetrahedralizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values, uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, uint32_t* facets, uint32_t* facets_centroids, double* facets_centroids_weights)
+extern "C" LIBRARY_EXPORT void AddPolyhedralizationTetrahedralizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values,
+                                                                                                          uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, FacetInteropData* facets, uint32_t segments_count, SegmentInteropData* segments)
 {
-    ((PolyhedralizationTetrahedralizationHandle*)handle)->AddInput(explicit_count, explicit_values, implicit_count, implicit_values, polyhedrons_count, polyhedrons, facets_count, facets, facets_centroids, facets_centroids_weights);
+    ((PolyhedralizationTetrahedralizationHandle*)handle)->AddInput(explicit_count, explicit_values, implicit_count, implicit_values, polyhedrons_count, polyhedrons, facets_count, facets, segments_count, segments);
 }
 
 extern "C" LIBRARY_EXPORT void CalculatePolyhedralizationTetrahedralization(void* handle)
@@ -258,23 +262,23 @@ extern "C" LIBRARY_EXPORT uint32_t GetPolyhedralizationTetrahedralizationInserte
 {
     return ((PolyhedralizationTetrahedralizationHandle*)handle)->GetInsertedFacetsCentroidsCount();
 }
-extern "C" LIBRARY_EXPORT uint32_t* GetPolyhedralizationTetrahedralizationInsertedFacetsCentroids(void* handle)
+extern "C" LIBRARY_EXPORT void GetPolyhedralizationTetrahedralizationInsertedFacetsCentroids(void* handle, uint32_t* out)
 {
-    return ((PolyhedralizationTetrahedralizationHandle*)handle)->GetInsertedFacetsCentroids();
+    ((PolyhedralizationTetrahedralizationHandle*)handle)->GetInsertedFacetsCentroids(out);
 }
 extern "C" LIBRARY_EXPORT uint32_t GetPolyhedralizationTetrahedralizationInsertedPolyhedronsCentroidsCount(void* handle)
 {
     return ((PolyhedralizationTetrahedralizationHandle*)handle)->GetInsertedPolyhedronsCentroidsCount();
 }
-extern "C" LIBRARY_EXPORT uint32_t* GetPolyhedralizationTetrahedralizationInsertedPolyhedronsCentroids(void* handle)
+extern "C" LIBRARY_EXPORT void GetPolyhedralizationTetrahedralizationInsertedPolyhedronsCentroids(void* handle,uint32_t* out)
 {
-    return ((PolyhedralizationTetrahedralizationHandle*)handle)->GetInsertedPolyhedronsCentroids();
+    ((PolyhedralizationTetrahedralizationHandle*)handle)->GetInsertedPolyhedronsCentroids(out);
 }
 extern "C" LIBRARY_EXPORT uint32_t GetPolyhedralizationTetrahedralizationTetrahedronsCount(void* handle)
 {
     return ((PolyhedralizationTetrahedralizationHandle*)handle)->GetTetrahedronsCount();
 }
-extern "C" LIBRARY_EXPORT uint32_t* GetPolyhedralizationTetrahedralizationTetrahedrons(void* handle)
+extern "C" LIBRARY_EXPORT void GetPolyhedralizationTetrahedralizationTetrahedrons(void* handle, uint32_t* out)
 {
-    return ((PolyhedralizationTetrahedralizationHandle*)handle)->GetTetrahedrons();
+    ((PolyhedralizationTetrahedralizationHandle*)handle)->GetTetrahedrons(out);
 }

@@ -18,6 +18,7 @@ public:
     void Calculate();
     
     void GetPolyhedronsLabels(uint32_t* out); // 1 if the polyhedron is in, otherwise the polyhedron is out
+    void GetFacetsCentroidsMapping(uint32_t* out);
 
 private:
     std::vector<std::shared_ptr<genericPoint>> m_vertices;
@@ -29,6 +30,7 @@ private:
     double m_polyhedron_in_multiplier; // multiply this to the cost labeling a polyhedron to be in
     
     std::vector<uint32_t> m_polyhedrons_labels;
+    std::vector<uint32_t> m_facets_centroids_mapping;
     
     void interior_characterization();
 };
@@ -43,5 +45,6 @@ extern "C" LIBRARY_EXPORT void AddInteriorCharacterizationInput(void* handle, ui
 extern "C" LIBRARY_EXPORT void CalculateInteriorCharacterization(void* handle);
 
 extern "C" LIBRARY_EXPORT void GetInteriorCharacterizationPolyhedronsLabels(void* handle, uint32_t* out);
+extern "C" LIBRARY_EXPORT void GetInteriorCharacterizationFacetsCentroidsMapping(void* handle, uint32_t* out);
 
 #endif

@@ -95,15 +95,20 @@ class Facet
         }
     }
     
-    double3 get_centroid(std::vector<double3>& vertices, std::vector<Segment>& segments)
+    double3 get_explicit_centroid(std::vector<double3>& approximated_vertices, std::vector<Segment>& segments)
     {
         std::vector<uint32_t> vs = get_vertices(segments);
         double3 res;
         for(uint32_t v : vs)
         {
-            res += vertices[v];
+            res += approximated_vertices[v];
         }
         return res / (double)vs.size();
+    }
+    std::shared_ptr<genericPoint> get_implicit_centroid(std::vector<std::shared_ptr<genericPoint>>& vertices)
+    {
+        return std::make_shared<implicitPoint3D_BPT>
+        (vertices[p0]->toExplicit3D(),vertices[p1]->toExplicit3D(),vertices[p2]->toExplicit3D(),w0,w1);
     }
     std::pair<double3,double> get_plane_equation(std::vector<double3>& approximated_vertices)
     {
