@@ -118,9 +118,9 @@ inline bool inner_segment_cross_inner_segment(uint32_t s0,uint32_t s1,uint32_t s
 {
     return genericPoint::innerSegmentsCross(*m_vertices[s0],*m_vertices[s1],*m_vertices[s2],*m_vertices[s3]);
 }
-inline bool segment_cross_segment(uint32_t s0,uint32_t s1,uint32_t s2,uint32_t s3, std::shared_ptr<genericPoint>* m_vertices)
+inline bool segment_cross_segment(uint32_t s0,uint32_t s1,uint32_t s2,uint32_t s3, int normal, std::shared_ptr<genericPoint>* m_vertices)
 {
-    return genericPoint::segmentsCross(*m_vertices[s0],*m_vertices[s1],*m_vertices[s2],*m_vertices[s3]);
+    return genericPoint::segmentsCross(*m_vertices[s0],*m_vertices[s1],*m_vertices[s2],*m_vertices[s3], normal);
 }
 inline int max_component_in_triangle_normal(uint32_t t0,uint32_t t1,uint32_t t2, std::shared_ptr<genericPoint>* m_vertices)
 {
@@ -374,6 +374,7 @@ inline std::vector<uint32_t> vector_random_elements(const std::vector<uint32_t>&
 inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>> group_coplanar_triangles(std::vector<uint32_t>& triangles, std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<double3>& approximated_vertices)
 {
     std::unordered_map<std::tuple<uint64_t,uint64_t,uint64_t,uint64_t>,std::vector<uint32_t>, iiii64_hash> coplanar_planes;
+    std::vector<uint32_t> special_triangles;
     for(uint32_t i=0; i<triangles.size()/3; i++)
     {
         uint32_t t0 = triangles[3*i+0];
@@ -394,10 +395,12 @@ inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>> grou
         double s = std::max(std::max(std::abs(n.x),std::abs(n.y)),std::abs(n.z));
         if(s < coplanar_eps)
         {
+            special_triangles.push_back(i);
             continue;
         }
         n /= s;
         d /= s;
+        
         if((n.x<0.0) ||
            (n.x==0.0 && n.y<0.0) ||
            (n.x==0.0 && n.y==0.0 && n.z<0.0))
@@ -426,20 +429,17 @@ inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>> grou
             
             for(uint32_t i=start_n; i<res_groups.size(); i++)
             {
-                for(uint32_t j=0; j<res_groups[i].size(); j++)
+                uint32_t nt = res_groups[i][0];
+                uint32_t nt0 = triangles[3*nt+0];
+                uint32_t nt1 = triangles[3*nt+1];
+                uint32_t nt2 = triangles[3*nt+2];
+                
+                if(0 == orient3d(t0,t1,t2,nt0,vertices.data()) &&
+                   0 == orient3d(t0,t1,t2,nt1,vertices.data()) &&
+                   0 == orient3d(t0,t1,t2,nt2,vertices.data()))
                 {
-                    uint32_t nt = res_groups[i][j];
-                    uint32_t nt0 = triangles[3*nt+0];
-                    uint32_t nt1 = triangles[3*nt+1];
-                    uint32_t nt2 = triangles[3*nt+2];
-                    
-                    if(0 == orient3d(t0,t1,t2,nt0,vertices.data()) &&
-                       0 == orient3d(t0,t1,t2,nt1,vertices.data()) &&
-                       0 == orient3d(t0,t1,t2,nt2,vertices.data()))
-                    {
-                        cg = i;
-                        goto FOUND_GROUP;
-                    }
+                    cg = i;
+                    break;
                 }
             }
             
@@ -453,9 +453,44 @@ inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>> grou
                 res_planes.push_back(p2);
                 res_planes.push_back(p3);
             }
-            FOUND_GROUP:
             res_groups[cg].push_back(t);
         }
+    }
+    
+    for(uint32_t t : special_triangles)
+    {
+        uint32_t cg = UNDEFINED_VALUE;
+        uint32_t t0 = triangles[3*t+0];
+        uint32_t t1 = triangles[3*t+1];
+        uint32_t t2 = triangles[3*t+2];
+        
+        for(uint32_t i=0; i<res_groups.size(); i++)
+        {
+            uint32_t nt = res_groups[i][0];
+            uint32_t nt0 = triangles[3*nt+0];
+            uint32_t nt1 = triangles[3*nt+1];
+            uint32_t nt2 = triangles[3*nt+2];
+            
+            if(0 == orient3d(t0,t1,t2,nt0,vertices.data()) &&
+               0 == orient3d(t0,t1,t2,nt1,vertices.data()) &&
+               0 == orient3d(t0,t1,t2,nt2,vertices.data()))
+            {
+                cg = i;
+                break;
+            }
+        }
+        
+        if(cg == UNDEFINED_VALUE)
+        {
+            cg = res_groups.size();
+            res_groups.push_back(std::vector<uint32_t>());
+            res_planes.push_back(UNDEFINED_VALUE); // just add some random value since we can't calculate the plane equation
+            res_planes.push_back(UNDEFINED_VALUE);
+            res_planes.push_back(UNDEFINED_VALUE);
+            res_planes.push_back(UNDEFINED_VALUE);
+        }
+        FOUND_GROUP:
+        res_groups[cg].push_back(t);
     }
     
     return std::make_pair(res_groups, res_planes);

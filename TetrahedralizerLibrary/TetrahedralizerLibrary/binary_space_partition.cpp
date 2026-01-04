@@ -3,7 +3,7 @@ using namespace std;
 
 void BinarySpacePartitionHandle::Dispose()
 {}
-void BinarySpacePartitionHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t tetrahedrons_count, uint32_t* tetrahedrons, uint32_t constraints_count, uint32_t* constraints, bool aggressively_add_virtual_constraints)
+void BinarySpacePartitionHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t tetrahedrons_count, uint32_t* tetrahedrons, uint32_t constraints_count, uint32_t* constraints)
 {
     m_polyhedralization.m_vertices = create_vertices(explicit_count, explicit_values, 0, nullptr);
     approximate_verteices(m_approximated_vertices, m_polyhedralization.m_vertices);
@@ -78,9 +78,9 @@ extern "C" LIBRARY_EXPORT void DisposeBinarySpacePartitionHandle(void* handle)
     delete (BinarySpacePartitionHandle*)handle;
 }
 
-extern "C" LIBRARY_EXPORT void AddBinarySpacePartitionInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t tetrahedron_count, uint32_t* tetrahedrons, uint32_t constraints_count, uint32_t* constraints, bool aggressively_add_virtual_constraints)
+extern "C" LIBRARY_EXPORT void AddBinarySpacePartitionInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t tetrahedron_count, uint32_t* tetrahedrons, uint32_t constraints_count, uint32_t* constraints)
 {
-    ((BinarySpacePartitionHandle*)handle)->AddInput(explicit_count, explicit_values, tetrahedron_count, tetrahedrons, constraints_count, constraints, aggressively_add_virtual_constraints);
+    ((BinarySpacePartitionHandle*)handle)->AddInput(explicit_count, explicit_values, tetrahedron_count, tetrahedrons, constraints_count, constraints);
 }
 
 extern "C" LIBRARY_EXPORT void CalculateBinarySpacePartition(void* handle)
@@ -155,7 +155,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
         auto [coplanar_groups, coplanar_planes] = group_coplanar_triangles(triangles, m_polyhedralization.m_vertices, m_approximated_vertices);
         for(uint32_t i=0; i<coplanar_groups.size(); i++)
         {
-            double max_demon = std::numeric_limits<double>::quiet_NaN();
+            double max_demon = -1.0;
             uint32_t cg = coplanar_groups_triangles.size()/3;
             uint32_t c0,c1,c2;
             for(uint32_t j=0; j<coplanar_groups[i].size(); j++)
@@ -164,7 +164,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
                 uint32_t nc1 = triangles[3*coplanar_groups[i][j]+1];
                 uint32_t nc2 = triangles[3*coplanar_groups[i][j]+2];
                 double demon = fabs(barycentric_weight_denom(m_approximated_vertices[nc0],m_approximated_vertices[nc1],m_approximated_vertices[nc2]));
-                if(isnan(max_demon) || demon > max_demon) // search for the largest triangle to define the plane
+                if(demon > max_demon) // search for the largest triangle to define the plane
                 {
                     max_demon = demon;
                     c0 = nc0;
@@ -178,6 +178,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
             coplanar_groups_triangles.push_back(c1);
             coplanar_groups_triangles.push_back(c2);
         }
+
         // create virtual constraints
         vector<uint32_t> virtual_constraints;
         auto add_virtual_constraint = [&](uint32_t s0, uint32_t s1, uint32_t c) // e0 and e1 incident the constraint c
@@ -312,22 +313,18 @@ void BinarySpacePartitionHandle::binary_space_partition()
                 {
                     continue;
                 }
-                for(uint32_t vc : vc_coplanar_groups[i])
+                uint32_t vc = vc_coplanar_groups[i][0];
+                uint32_t vc0 = virtual_constraints[3*vc+0];
+                uint32_t vc1 = virtual_constraints[3*vc+1];
+                uint32_t vc2 = virtual_constraints[3*vc+2];
+                uint32_t c = coplanar_groups[j][0];
+                uint32_t c0 = triangles[3*c+0];
+                uint32_t c1 = triangles[3*c+1];
+                uint32_t c2 = triangles[3*c+2];
+                if(0==orient3d(vc0,vc1,vc2,c0,m_polyhedralization.m_vertices.data()) && 0==orient3d(vc0,vc1,vc2,c1,m_polyhedralization.m_vertices.data()) && 0==orient3d(vc0,vc1,vc2,c2,m_polyhedralization.m_vertices.data()))
                 {
-                    uint32_t vc0 = virtual_constraints[3*vc+0];
-                    uint32_t vc1 = virtual_constraints[3*vc+1];
-                    uint32_t vc2 = virtual_constraints[3*vc+2];
-                    for(uint32_t c : coplanar_groups[j])
-                    {
-                        uint32_t c0 = triangles[3*c+0];
-                        uint32_t c1 = triangles[3*c+1];
-                        uint32_t c2 = triangles[3*c+2];
-                        if(0==orient3d(vc0,vc1,vc2,c0,m_polyhedralization.m_vertices.data()) && 0==orient3d(vc0,vc1,vc2,c1,m_polyhedralization.m_vertices.data()) && 0==orient3d(vc0,vc1,vc2,c2,m_polyhedralization.m_vertices.data()))
-                        {
-                            vcg = get_coplanar_group(c0, c1, c2);
-                            goto FOUND_GROUP;
-                        }
-                    }
+                    vcg = get_coplanar_group(c0, c1, c2);
+                    break;
                 }
             }
             
@@ -342,7 +339,6 @@ void BinarySpacePartitionHandle::binary_space_partition()
                 coplanar_groups_triangles.push_back(vc1);
                 coplanar_groups_triangles.push_back(vc2);
             }
-            FOUND_GROUP:
             for(uint32_t vc : vc_coplanar_groups[i])
             {
                 uint32_t vc0 = virtual_constraints[3*vc+0];
@@ -549,7 +545,10 @@ void BinarySpacePartitionHandle::binary_space_partition()
     }
 
     approximate_verteices(m_approximated_vertices, m_polyhedralization.m_vertices);
-    m_polyhedralization.calculate_facets_centroids(m_approximated_vertices);
+    for(uint32_t i=0; i<m_polyhedralization.m_facets.size(); i++)
+    {
+        m_polyhedralization.m_facets[i].calculate_implicit_centroid(m_approximated_vertices, m_polyhedralization.m_segments);
+    }
     m_coplanar_triangles = vector<vector<uint32_t>>(coplanar_groups_triangles.size()/3);
     for(uint32_t i=0; i<coplanar_groups_triangles.size()/3; i++)
     {

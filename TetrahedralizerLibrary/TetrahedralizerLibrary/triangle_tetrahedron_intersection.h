@@ -6,28 +6,6 @@
 #include "geometric_object/segment.h"
 #include "geometric_object/facet.h"
 
-inline bool triangle_tetrahedron_intersection_coarse(std::vector<std::shared_ptr<genericPoint>>& vertices, uint32_t c0, uint32_t c1, uint32_t c2, uint32_t cg, uint32_t t0,uint32_t t1,uint32_t t2,uint32_t t3, std::unordered_map<std::pair<uint32_t,uint32_t>, int, ii32_hash>& orient_cache)
-{
-    auto get_orient = [&](uint32_t p) -> int
-    {
-        auto it = orient_cache.find(std::make_pair(cg,p));
-        if(orient_cache.end() == it)
-        {
-            int o = orient3d(c0,c1,c2,p,vertices.data());
-            orient_cache[std::make_pair(cg,p)] = o;
-            return o;
-        }
-        return it->second;
-    };
-    
-    int o0 = get_orient(t0);
-    int o1 = get_orient(t1);
-    int o2 = get_orient(t2);
-    int o3 = get_orient(t3);
-    
-    return (o0<0||o1<0||o2<0||o3<0) && (o0>0||o1>0||o2>0||o3>0);
-}
-
 // 0th plane is the triangle plane
 inline std::pair<int, std::vector<uint32_t>> triangle_tetrahedron_intersection(std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<Segment>& segments, std::vector<uint32_t>& planes, std::vector<uint32_t>& planes_groups)
 {

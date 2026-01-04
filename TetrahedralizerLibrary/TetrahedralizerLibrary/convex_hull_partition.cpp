@@ -230,5 +230,8 @@ void ConvexHullPartitionHandle::convex_hull_partition()
     }
     
     approximate_verteices(m_approximated_vertices, m_polyhedralization.m_vertices);
-    m_polyhedralization.calculate_facets_centroids(m_approximated_vertices);
+    for(uint32_t i=0; i<m_polyhedralization.m_facets.size(); i++)
+    {
+        m_polyhedralization.m_facets[i].calculate_implicit_centroid(m_approximated_vertices, m_polyhedralization.m_segments);
+    }
 }

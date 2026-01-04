@@ -95,14 +95,23 @@ uint32_t PolyhedralizationTetrahedralizationHandle::find_connect_vertex(uint32_t
         vector<uint32_t> vs = m_facets[f].get_vertices(m_segments);
         polyhedron_vertices.insert(vs.begin(),vs.end());
     }
+    
+    unordered_set<tuple<uint32_t,uint32_t,uint32_t>, iii32_hash> polyhedron_triangles;
+    for(uint32_t f : m_polyhedrons[polyhedron])
+    {
+        for(uint32_t j=0; j<m_triangulated_facets[f].size(); j+=3)
+        {
+            uint32_t t0 = m_triangulated_facets[f][j+0];
+            uint32_t t1 = m_triangulated_facets[f][j+1];
+            uint32_t t2 = m_triangulated_facets[f][j+2];
+            sort_ints(t0,t1,t2);
+            polyhedron_triangles.insert(make_tuple(t0,t1,t2));
+        }
+    }
 
     for(uint32_t v : polyhedron_vertices)
     {
-        // clear facets counters
-        for(uint32_t f : m_polyhedrons[polyhedron])
-        {
-            fill(m_triangulated_facets_counters[f].begin(),m_triangulated_facets_counters[f].end(), 0);
-        }
+        unordered_set<tuple<uint32_t,uint32_t,uint32_t>, iii32_hash> cur_triangles;
         
         for(uint32_t i=0; i<m_polyhedrons[polyhedron].size(); i++)
         {
@@ -117,23 +126,23 @@ uint32_t PolyhedralizationTetrahedralizationHandle::find_connect_vertex(uint32_t
                     continue;
                 }
                 
-                m_triangulated_facets_counters[f][j/3]++;
-                find_connect_vertex_helper(polyhedron,t0,t1,v);
-                find_connect_vertex_helper(polyhedron,t0,t2,v);
-                find_connect_vertex_helper(polyhedron,t1,t2,v);
+                auto add_triangle = [&](uint32_t p0, uint32_t p1, uint32_t p2)
+                {
+                    sort_ints(p0,p1,p2);
+                    cur_triangles.insert(make_tuple(p0,p1,p2));
+                };
+                add_triangle(t0,t1,t2);
+                add_triangle(t0,t1,v);
+                add_triangle(t1,t2,v);
+                add_triangle(t2,t0,v);
             }
         }
         
-        // check facets counters
-        for(uint32_t i=0; i<m_polyhedrons[polyhedron].size(); i++)
+        for(auto k : polyhedron_triangles)
         {
-            uint32_t f = m_polyhedrons[polyhedron][i];
-            for(uint32_t j=0; j<m_triangulated_facets_counters[f].size(); j++)
+            if(cur_triangles.end() == cur_triangles.find(k))
             {
-                if(1 != m_triangulated_facets_counters[f][j])
-                {
-                    goto NEXT_VERTEX;
-                }
+                goto NEXT_VERTEX;
             }
         }
         return v;

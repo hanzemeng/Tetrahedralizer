@@ -83,15 +83,7 @@ int Polyhedralization::slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint
         else
         {
             uint32_t i_e = m_segments.size();
-            m_segments.push_back(Segment());
-            m_segments[i_e].e0 = i0;
-            m_segments[i_e].e1 = i1;
-            m_segments[i_e].p0 = m_facets[f].p0;
-            m_segments[i_e].p1 = m_facets[f].p1;
-            m_segments[i_e].p2 = m_facets[f].p2;
-            m_segments[i_e].p3 = c0;
-            m_segments[i_e].p4 = c1;
-            m_segments[i_e].p5 = c2;
+            m_segments.push_back(Segment(i0,i1,m_facets[f].p0,m_facets[f].p1,m_facets[f].p2,c0,c1,c2));
             on_segments.insert(i_e);
             
             m_facets[f].segments.clear();
@@ -223,16 +215,176 @@ int Polyhedralization::slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint
     return 0;
 }
 
-void Polyhedralization::calculate_facets_centroids(vector<double3>& approximated_vertices)
+bool Polyhedralization::slice_facet_with_plane(uint32_t f, uint32_t c0, uint32_t c1, uint32_t c2)
 {
+    unordered_map<uint32_t,int> orient_cache;
+    unordered_map<uint32_t,uint32_t> split_segments;
+    vector<uint32_t> top_segments;
+    vector<uint32_t> bot_segments;
+    bool has_edge_on_constraint = false;
+    uint32_t i0(UNDEFINED_VALUE), i1(UNDEFINED_VALUE);
+    
+    for(uint32_t s : m_facets[f].segments)
+    {
+        auto [i_p,top_s,bot_s,vs] = Segment::slice_segment_with_plane(s, c0, c1, c2, m_vertices, m_segments, orient_cache);
+        if(0 != vs.size())
+        {
+            m_inserted_vertices.push_back(vs);
+            if(s==top_s)
+            {
+                split_segments[s] = bot_s;
+            }
+            else
+            {
+                split_segments[s] = top_s;
+            }
+        }
+        
+        if(UNDEFINED_VALUE == i_p && top_s == UNDEFINED_VALUE && bot_s == UNDEFINED_VALUE)
+        {
+            has_edge_on_constraint = true;
+            break;
+        }
+        
+        if(UNDEFINED_VALUE != i_p)
+        {
+            if(UNDEFINED_VALUE == i0 || i_p == i0)
+            {
+                i0 = i_p;
+            }
+            else
+            {
+                i1 = i_p;
+            }
+        }
+        if(UNDEFINED_VALUE != top_s)
+        {
+            top_segments.push_back(top_s);
+        }
+        if(UNDEFINED_VALUE != bot_s)
+        {
+            bot_segments.push_back(bot_s);
+        }
+    }
+    
+    if(has_edge_on_constraint || i1 == UNDEFINED_VALUE) // constraint intersects on one or more edges of the facet or does not intersect the facet
+    {
+        return false;
+    }
+
+    uint32_t i_e = m_segments.size();
+    m_segments.push_back(Segment(i0,i1,m_facets[f].p0,m_facets[f].p1,m_facets[f].p2,c0,c1,c2));
+    
+    m_facets[f].segments.clear();
+    uint32_t b_f = m_facets.size();
+    m_facets.push_back(Facet(m_facets[f]));
+    m_facets[f].segments = top_segments;
+    m_facets[f].segments.push_back(i_e);
+    m_facets[b_f].segments = bot_segments;
+    m_facets[b_f].segments.push_back(i_e);
+    
+    uint32_t p0 = m_facets[f].ip0;
+    uint32_t p1 = m_facets[f].ip1;
+    if(UNDEFINED_VALUE != p0)
+    {
+        if(m_polyhedrons[p0].end() == find(m_polyhedrons[p0].begin(), m_polyhedrons[p0].end(), f))
+        {
+            m_polyhedrons[p0].push_back(f);
+        }
+        if(m_polyhedrons[p0].end() == find(m_polyhedrons[p0].begin(), m_polyhedrons[p0].end(), b_f))
+        {
+            m_polyhedrons[p0].push_back(b_f);
+        }
+    }
+    if(UNDEFINED_VALUE != p1)
+    {
+        if(m_polyhedrons[p1].end() == find(m_polyhedrons[p1].begin(), m_polyhedrons[p1].end(), f))
+        {
+            m_polyhedrons[p1].push_back(f);
+        }
+        if(m_polyhedrons[p1].end() == find(m_polyhedrons[p1].begin(), m_polyhedrons[p1].end(), b_f))
+        {
+            m_polyhedrons[p1].push_back(b_f);
+        }
+    }
+
+    m_visited_polyhedrons.resize(m_polyhedrons.size(), UNDEFINED_VALUE);
+    for(auto [ori_s, new_s] : split_segments)
+    {
+        for(uint32_t i=0; i<m_facets.size(); i++)
+        {
+            if(i==f || i==b_f)
+            {
+                continue;
+            }
+            if(m_facets[i].contains_segment(ori_s) && !m_facets[i].contains_segment(new_s))
+            {
+                m_facets[i].segments.push_back(new_s);
+            }
+        }
+//        m_visit_polyhedrons.push(p0);
+//        m_visit_polyhedrons.push(p1);
+//        while(!m_visit_polyhedrons.empty())
+//        {
+//            uint32_t cur = m_visit_polyhedrons.front();
+//            m_visit_polyhedrons.pop();
+//            if(UNDEFINED_VALUE==cur || m_visit_index==m_visited_polyhedrons[cur])
+//            {
+//                continue;
+//            }
+//            m_visited_polyhedrons[cur] = m_visit_index;
+//            
+//            bool search_neighbor = false;
+//            for(uint32_t cur_f : m_polyhedrons[cur])
+//            {
+//                if(!m_facets[cur_f].contains_segment(ori_s))
+//                {
+//                    continue;
+//                }
+//                search_neighbor = true;
+//                if(f==cur_f || b_f==cur_f)
+//                {
+//                    continue;
+//                }
+//                if(!m_facets[cur_f].contains_segment(new_s))
+//                {
+//                    m_facets[cur_f].segments.push_back(new_s);
+//                }
+//            }
+//            
+//            if(search_neighbor)
+//            {
+//                for(uint32_t cur_f : m_polyhedrons[cur])
+//                {
+//                    if(cur == m_facets[cur_f].ip0)
+//                    {
+//                        m_visit_polyhedrons.push(m_facets[cur_f].ip1);
+//                    }
+//                    else
+//                    {
+//                        m_visit_polyhedrons.push(m_facets[cur_f].ip0);
+//                    }
+//                }
+//            }
+//        }
+//        m_visit_index++;
+    }
+    
     for(uint32_t i=0; i<m_facets.size(); i++)
     {
-        double3 centroid = m_facets[i].get_explicit_centroid(approximated_vertices, m_segments);
-        double3 p0 = approximated_vertices[m_facets[i].p0];
-        double3 p1 = approximated_vertices[m_facets[i].p1];
-        double3 p2 = approximated_vertices[m_facets[i].p2];
-        auto [in, w] = barycentric_weight(p0,p1,p2,centroid);
-        m_facets[i].w0 = w.x;
-        m_facets[i].w1 = w.y;
+        m_facets[i].get_sorted_vertices(m_segments);
     }
+    
+    return true;
+}
+
+vector<uint32_t> Polyhedralization::get_polyhedron_vertices(uint32_t p)
+{
+    unordered_set<uint32_t> res;
+    for(uint32_t f : m_polyhedrons[p])
+    {
+        vector<uint32_t> vs = m_facets[f].get_vertices(m_segments);
+        res.insert(vs.begin(),vs.end());
+    }
+    return vector<uint32_t>(res.begin(),res.end());
 }

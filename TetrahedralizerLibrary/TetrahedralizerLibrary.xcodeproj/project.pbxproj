@@ -36,6 +36,8 @@
 				delaunay_tetrahedralization.cpp,
 				delaunay_tetrahedralization.hpp,
 				facet_order.h,
+				facet_partition.cpp,
+				facet_partition.hpp,
 				generic_point_approximation.cpp,
 				generic_point_approximation.hpp,
 				generic_point_predicate.cpp,

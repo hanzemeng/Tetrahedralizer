@@ -18,7 +18,8 @@ public:
     Polyhedralization();
     // 1 if above, -1 if below, 0 if split. new polyhedron appended to m_polyhedrons
     int slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint32_t c1, uint32_t c2);
-    void calculate_facets_centroids(std::vector<double3>& approximated_vertices);
+    bool slice_facet_with_plane(uint32_t f, uint32_t c0, uint32_t c1, uint32_t c2);
+    std::vector<uint32_t> get_polyhedron_vertices(uint32_t p);
     
 private:
     uint32_t m_visit_index;

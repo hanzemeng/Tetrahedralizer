@@ -61,9 +61,68 @@ class Facet
         this->ip1 = other.ip1;
     }
     
+    void increase_segments_indexes(uint32_t n)
+    {
+        for(uint32_t i=0; i<segments.size(); i++)
+        {
+            segments[i] += n;
+        }
+    }
+    
     bool contains_segment(uint32_t segment)
     {
         return segments.end() != std::find(segments.begin(), segments.end(), segment);
+    }
+    
+    bool intersects_segment(uint32_t s0, uint32_t s1, int normal, std::vector<std::shared_ptr<genericPoint>>& all_vertices, std::vector<Segment>& all_segments)
+    {
+        for(uint32_t s : segments)
+        {
+            uint32_t p0 = all_segments[s].e0;
+            uint32_t p1 = all_segments[s].e1;
+            if(segment_cross_segment(s0, s1, p0, p1, normal, all_vertices.data()))
+            {
+                return true;
+            }
+        }
+        
+        std::vector<uint32_t> vs = get_sorted_vertices(all_segments);
+        bool b0 = true;
+        bool b1 = true;
+        int o0 = 0;
+        int o1 = 0;
+        for(uint32_t i=0; i<vs.size(); i++)
+        {
+            uint32_t p0 = vs[i];
+            uint32_t p1 = vs[(i+1)%vs.size()];
+            
+            if(b0)
+            {
+                int o = orient3d_ignore_axis(p0,p1,s0,normal,all_vertices.data());
+                if(0 == o0)
+                {
+                    o0 = o;
+                }
+                if(0 != o && o0 != o)
+                {
+                    b0 = false;
+                }
+            }
+            if(b1)
+            {
+                int o = orient3d_ignore_axis(p0,p1,s1,normal,all_vertices.data());
+                if(0 == o1)
+                {
+                    o1 = o;
+                }
+                if(0 != o && o1 != o)
+                {
+                    b1 = false;
+                }
+            }
+        }
+        
+        return b0 || b1;
     }
     
     std::vector<uint32_t> get_sorted_vertices(std::vector<Segment>& all_segments)
@@ -86,24 +145,21 @@ class Facet
         }
         return std::vector<uint32_t>(res.begin(),res.end());
     }
-    
-    void increase_segments_indexes(uint32_t n)
-    {
-        for(uint32_t i=0; i<segments.size(); i++)
-        {
-            segments[i] += n;
-        }
-    }
-    
-    double3 get_explicit_centroid(std::vector<double3>& approximated_vertices, std::vector<Segment>& segments)
+    void calculate_implicit_centroid(std::vector<double3>& approximated_vertices, std::vector<Segment>& segments)
     {
         std::vector<uint32_t> vs = get_vertices(segments);
-        double3 res;
+        double3 centroid;
         for(uint32_t v : vs)
         {
-            res += approximated_vertices[v];
+            centroid += approximated_vertices[v];
         }
-        return res / (double)vs.size();
+        centroid /= (double)vs.size();
+        double3 pp0 = approximated_vertices[p0];
+        double3 pp1 = approximated_vertices[p1];
+        double3 pp2 = approximated_vertices[p2];
+        auto [in, w] = barycentric_weight(pp0,pp1,pp2,centroid);
+        w0 = w.x;
+        w1 = w.y;
     }
     std::shared_ptr<genericPoint> get_implicit_centroid(std::vector<std::shared_ptr<genericPoint>>& vertices)
     {

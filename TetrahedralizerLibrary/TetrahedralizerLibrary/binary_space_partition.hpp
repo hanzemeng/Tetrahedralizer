@@ -14,7 +14,7 @@ class BinarySpacePartitionHandle
 {
 public:
     void Dispose();
-    void AddInput(uint32_t, double*, uint32_t, uint32_t*, uint32_t, uint32_t*, bool);
+    void AddInput(uint32_t, double*, uint32_t, uint32_t*, uint32_t, uint32_t*);
     
     void Calculate();
     
@@ -44,7 +44,7 @@ private:
 extern "C" LIBRARY_EXPORT void* CreateBinarySpacePartitionHandle();
 extern "C" LIBRARY_EXPORT void DisposeBinarySpacePartitionHandle(void* handle);
 
-extern "C" LIBRARY_EXPORT void AddBinarySpacePartitionInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t tetrahedron_count, uint32_t* tetrahedrons, uint32_t constraints_count, uint32_t* constraints, bool);
+extern "C" LIBRARY_EXPORT void AddBinarySpacePartitionInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t tetrahedron_count, uint32_t* tetrahedrons, uint32_t constraints_count, uint32_t* constraints);
 
 extern "C" LIBRARY_EXPORT void CalculateBinarySpacePartition(void* handle);
 

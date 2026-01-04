@@ -64,7 +64,7 @@ void InteriorCharacterizationHandle::interior_characterization()
             uint32_t c0 = m_constraints[3*c+0];
             uint32_t c1 = m_constraints[3*c+1];
             uint32_t c2 = m_constraints[3*c+2];
-            if(genericPoint::pointInTriangle(*centroid,*m_vertices[c0],*m_vertices[c1],*m_vertices[c2]))
+            if(genericPoint::pointInTriangle(*centroid,*m_vertices[c0],*m_vertices[c1],*m_vertices[c2], m_coplanar_groups_normals[cg]))
             {
                 m_facets_centroids_mapping[i] = c;
                 break;
@@ -230,6 +230,7 @@ void InteriorCharacterizationHandle::AddInput(uint32_t explicit_count, double* e
     vector<vector<uint32_t>> temp = flat_array_to_nested_vector(coplanar_triangles, coplanar_triangles_count);
     for(uint32_t i=0; i<temp.size(); i++)
     {
+        m_coplanar_groups_normals.push_back(max_component_in_triangle_normal(temp[i][0], temp[i][1], temp[i][2], m_vertices.data()));
         for(uint32_t j=0; j<temp[i].size()/3; j++)
         {
             uint32_t c0 = temp[i][3*j+0];

@@ -25,9 +25,9 @@ public:
     uint32_t GetPolyhedronsCount();
     void GetPolyhedrons(uint32_t* out);
     uint32_t GetFacetsCount();
-    void GetFacets(FacetInteropData* outArray);
+    void GetFacets(FacetInteropData* out);
     uint32_t GetSegmentsCount();
-    void GetSegments(SegmentInteropData* outArray);
+    void GetSegments(SegmentInteropData* out);
     
     
 private:
