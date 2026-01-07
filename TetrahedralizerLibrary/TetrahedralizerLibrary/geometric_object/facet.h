@@ -157,7 +157,7 @@ class Facet
         double3 pp0 = approximated_vertices[p0];
         double3 pp1 = approximated_vertices[p1];
         double3 pp2 = approximated_vertices[p2];
-        auto [in, w] = barycentric_weight(pp0,pp1,pp2,centroid);
+        auto [is_in, w] = barycentric_weight(pp0,pp1,pp2,centroid);
         w0 = w.x;
         w1 = w.y;
     }

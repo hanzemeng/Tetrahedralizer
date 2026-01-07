@@ -61,7 +61,7 @@ void FacetPartitionHandle::Calculate()
         }
         coplanar_constraints_groups[cg].push_back(i);
     }
-    vector<vector<uint32_t>> coplanar_constraints_split_segments;
+    unordered_map<uint32_t, vector<uint32_t>> coplanar_constraints_split_segments;
     for(uint32_t i=0; i<coplanar_constraints_groups.size(); i++)
     {
         unordered_map<pair<uint32_t,uint32_t>, uint32_t, ii32_hash> segments_cache;
@@ -87,18 +87,21 @@ void FacetPartitionHandle::Calculate()
             add_segement(c2, c0);
         }
         
-        coplanar_constraints_split_segments.push_back(vector<uint32_t>());
         for(auto [k,v] : segments_cache)
         {
             if(2 != v)
             {
                 continue;
             }
+            if(coplanar_constraints_split_segments.end() == coplanar_constraints_split_segments.find(i))
+            {
+                coplanar_constraints_split_segments[i] = vector<uint32_t>();
+            }
             coplanar_constraints_split_segments[i].push_back(k.first);
             coplanar_constraints_split_segments[i].push_back(k.second);
         }
     }
-    vector<vector<uint32_t>> coplanar_facets_groups; // only keep boundary facets
+    unordered_map<uint32_t, vector<uint32_t>> coplanar_facets_groups; // only keep boundary facets
     for(uint32_t i=0; i<m_polyhedralization.m_facets.size(); i++)
     {
         if(UNDEFINED_VALUE != m_polyhedralization.m_facets[i].ip1)
@@ -110,28 +113,35 @@ void FacetPartitionHandle::Calculate()
         uint32_t c2 = m_polyhedralization.m_facets[i].p2;
 
         uint32_t cg = search_int(c0,c1,c2,m_triangles_coplanar_groups);
-        while(coplanar_facets_groups.size() <= cg)
+        if(coplanar_facets_groups.end() == coplanar_facets_groups.find(cg))
         {
-            coplanar_facets_groups.push_back(vector<uint32_t>());
+            coplanar_facets_groups[cg] = vector<uint32_t>();
         }
         coplanar_facets_groups[cg].push_back(i);
     }
     
-    for(uint32_t i=0; i<coplanar_constraints_split_segments.size(); i++)
+    m_polyhedralization.calculate_segments_incident_facets();
+    for(auto& [cg, split_segments] : coplanar_constraints_split_segments)
     {
-        uint32_t cp0 = m_coplanar_triangles[3*i+0];
-        uint32_t cp1 = m_coplanar_triangles[3*i+1];
-        uint32_t cp2 = m_coplanar_triangles[3*i+2];
-        unordered_set<uint32_t> split_facets;
-        for(uint32_t j=0; j<coplanar_constraints_split_segments[i].size()/2; j++)
+        if(coplanar_facets_groups.end() == coplanar_facets_groups.find(cg))
         {
-            uint32_t s0 = coplanar_constraints_split_segments[i][2*j+0];
-            uint32_t s1 = coplanar_constraints_split_segments[i][2*j+1];
+            continue;
+        }
+        auto& facets = coplanar_facets_groups[cg];
+
+        uint32_t cp0 = m_coplanar_triangles[3*cg+0];
+        uint32_t cp1 = m_coplanar_triangles[3*cg+1];
+        uint32_t cp2 = m_coplanar_triangles[3*cg+2];
+        unordered_set<uint32_t> split_facets;
+        for(uint32_t j=0; j<split_segments.size()/2; j++)
+        {
+            uint32_t s0 = split_segments[2*j+0];
+            uint32_t s1 = split_segments[2*j+1];
             
             vector<uint32_t> intersect_facets;
-            for(uint32_t f : coplanar_facets_groups[i])
+            for(uint32_t f : facets)
             {
-                if(m_polyhedralization.m_facets[f].intersects_segment(s0, s1, m_coplanar_groups_normals[i], m_polyhedralization.m_vertices, m_polyhedralization.m_segments))
+                if(m_polyhedralization.m_facets[f].intersects_segment(s0, s1, m_coplanar_groups_normals[cg], m_polyhedralization.m_vertices, m_polyhedralization.m_segments))
                 {
                     intersect_facets.push_back(f);
                 }
@@ -157,7 +167,7 @@ void FacetPartitionHandle::Calculate()
             {
                 if(m_polyhedralization.slice_facet_with_plane(intersect_facets[k], s0, s1, s2))
                 {
-                    coplanar_facets_groups[i].push_back(m_polyhedralization.m_facets.size()-1);
+                    facets.push_back(m_polyhedralization.m_facets.size()-1);
                     m_facets_centroids_mapping.push_back(UNDEFINED_VALUE);
                     split_facets.insert(intersect_facets[k]);
                     split_facets.insert(m_polyhedralization.m_facets.size()-1);
@@ -169,12 +179,12 @@ void FacetPartitionHandle::Calculate()
         {
             m_polyhedralization.m_facets[f].calculate_implicit_centroid(m_approximated_vertices, m_polyhedralization.m_segments);
             m_facets_centroids_mapping[f] = UNDEFINED_VALUE;
-            for(uint32_t c : coplanar_constraints_groups[i])
+            for(uint32_t c : coplanar_constraints_groups[cg])
             {
-                uint32_t c0 = m_coplanar_triangles[3*c+0];
-                uint32_t c1 = m_coplanar_triangles[3*c+1];
-                uint32_t c2 = m_coplanar_triangles[3*c+2];
-                if(genericPoint::pointInTriangle(*m_polyhedralization.m_facets[f].get_implicit_centroid(m_polyhedralization.m_vertices),*m_polyhedralization.m_vertices[c0],*m_polyhedralization.m_vertices[c1],*m_polyhedralization.m_vertices[c2], m_coplanar_groups_normals[i]))
+                uint32_t c0 = m_constraints[3*c+0];
+                uint32_t c1 = m_constraints[3*c+1];
+                uint32_t c2 = m_constraints[3*c+2];
+                if(genericPoint::pointInTriangle(*m_polyhedralization.m_facets[f].get_implicit_centroid(m_polyhedralization.m_vertices),*m_polyhedralization.m_vertices[c0],*m_polyhedralization.m_vertices[c1],*m_polyhedralization.m_vertices[c2], m_coplanar_groups_normals[cg]))
                 {
                     m_facets_centroids_mapping[f] = c;
                     break;
