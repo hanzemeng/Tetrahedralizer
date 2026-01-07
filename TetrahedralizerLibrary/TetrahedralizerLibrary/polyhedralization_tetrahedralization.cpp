@@ -4,7 +4,6 @@ using namespace std;
 void PolyhedralizationTetrahedralizationHandle::polyhedralization_tetrahedralization()
 {
     m_triangulated_facets = vector<vector<uint32_t>>(m_facets.size(), vector<uint32_t>(0));
-    m_triangulated_facets_counters = vector<vector<uint32_t>>(m_facets.size(), vector<uint32_t>(0));
     
     // triangulate facets
     {
@@ -37,7 +36,7 @@ void PolyhedralizationTetrahedralizationHandle::polyhedralization_tetrahedraliza
             if(connect_vertex == UNDEFINED_VALUE) // add a point at the facet center
             {
                 connect_vertex = m_vertices.size();
-                m_vertices.push_back(m_facets_centroids[i]);
+                m_vertices.push_back(m_facets[i].get_implicit_centroid(m_vertices));
                 m_inserted_facets_centroids.push_back(i);
             }
             
@@ -56,7 +55,6 @@ void PolyhedralizationTetrahedralizationHandle::polyhedralization_tetrahedraliza
                 m_triangulated_facets[i].push_back(t0);
                 m_triangulated_facets[i].push_back(t1);
                 m_triangulated_facets[i].push_back(t2);
-                m_triangulated_facets_counters[i].push_back(0);
             }
         }
     }
@@ -89,11 +87,33 @@ void PolyhedralizationTetrahedralizationHandle::polyhedralization_tetrahedraliza
 
 uint32_t PolyhedralizationTetrahedralizationHandle::find_connect_vertex(uint32_t polyhedron)
 {
+    unordered_map<uint32_t,uint32_t> facets_coplanar_groups_count;
+    for(uint32_t f : m_polyhedrons[polyhedron])
+    {
+        uint32_t cg = m_facets_coplanar_group[f];
+        if(facets_coplanar_groups_count.end() == facets_coplanar_groups_count.find(cg))
+        {
+            facets_coplanar_groups_count[cg] = 1;
+        }
+        else
+        {
+            facets_coplanar_groups_count[cg]++;
+        }
+    }
+    
+    unordered_set<uint32_t> search_vertices;
     unordered_set<uint32_t> polyhedron_vertices;
     for(uint32_t f : m_polyhedrons[polyhedron])
     {
         vector<uint32_t> vs = m_facets[f].get_vertices(m_segments);
         polyhedron_vertices.insert(vs.begin(),vs.end());
+        
+        uint32_t cg = m_facets_coplanar_group[f];
+        if(1 != facets_coplanar_groups_count[cg])
+        {
+            continue;
+        }
+        search_vertices.insert(vs.begin(),vs.end());
     }
     
     unordered_set<tuple<uint32_t,uint32_t,uint32_t>, iii32_hash> polyhedron_triangles;
@@ -109,7 +129,7 @@ uint32_t PolyhedralizationTetrahedralizationHandle::find_connect_vertex(uint32_t
         }
     }
 
-    for(uint32_t v : polyhedron_vertices)
+    for(uint32_t v : search_vertices)
     {
         unordered_set<tuple<uint32_t,uint32_t,uint32_t>, iii32_hash> cur_triangles;
         
@@ -163,26 +183,6 @@ uint32_t PolyhedralizationTetrahedralizationHandle::find_connect_vertex(uint32_t
     return connect_vertex;
 }
 
-void PolyhedralizationTetrahedralizationHandle::find_connect_vertex_helper(uint32_t p, uint32_t t0,uint32_t t1,uint32_t t2)
-{
-    sort_ints(t0,t1,t2);
-    for(uint32_t i=0; i<m_polyhedrons[p].size(); i++)
-    {
-        uint32_t f = m_polyhedrons[p][i];
-        for(uint32_t j=0; j<m_triangulated_facets[f].size(); j+=3)
-        {
-            uint32_t p0 = m_triangulated_facets[f][j+0];
-            uint32_t p1 = m_triangulated_facets[f][j+1];
-            uint32_t p2 = m_triangulated_facets[f][j+2];
-            if(p0==t0 && p1==t1 && p2==t2)
-            {
-                m_triangulated_facets_counters[f][j/3]++;
-                return;
-            }
-        }
-    }
-}
-
 void PolyhedralizationTetrahedralizationHandle::add_tetrahedron(uint32_t t0,uint32_t t1,uint32_t t2,uint32_t t3)
 {
     if(-1 == orient3d(t0,t1,t2,t3,m_vertices.data()))
@@ -202,13 +202,21 @@ void PolyhedralizationTetrahedralizationHandle::Dispose()
 void PolyhedralizationTetrahedralizationHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values,
                                                          uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, FacetInteropData* facets, uint32_t segments_count, SegmentInteropData* segments)
 {
+    unordered_map<std::tuple<uint32_t, uint32_t, uint32_t>, uint32_t, iii32_hash> triangles_coplanar_groups;
+    
     m_vertices = create_vertices(explicit_count, explicit_values, implicit_count, implicit_values);
     approximate_verteices(m_approximated_vertices, m_vertices);
     m_polyhedrons = flat_array_to_nested_vector(polyhedrons, polyhedrons_count);
     for(uint32_t i=0; i<facets_count; i++)
     {
         m_facets.push_back(facets[i].to_facet());
-        m_facets_centroids.push_back(m_facets[i].get_implicit_centroid(m_vertices));
+        uint32_t cg = search_int(m_facets[i].p0, m_facets[i].p1, m_facets[i].p2, triangles_coplanar_groups);
+        if(UNDEFINED_VALUE == cg)
+        {
+            cg = triangles_coplanar_groups.size();
+            assign_int(m_facets[i].p0, m_facets[i].p1, m_facets[i].p2, cg, triangles_coplanar_groups);
+        }
+        m_facets_coplanar_group.push_back(cg);
     }
     for(uint32_t i=0; i<segments_count; i++)
     {
@@ -257,9 +265,10 @@ extern "C" LIBRARY_EXPORT void DisposePolyhedralizationTetrahedralizationHandle(
 }
 
 extern "C" LIBRARY_EXPORT void AddPolyhedralizationTetrahedralizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values,
-                                                                                                          uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, FacetInteropData* facets, uint32_t segments_count, SegmentInteropData* segments)
+                                                                           uint32_t polyhedrons_count, uint32_t* polyhedrons, uint32_t facets_count, FacetInteropData* facets, uint32_t segments_count, SegmentInteropData* segments)
 {
-    ((PolyhedralizationTetrahedralizationHandle*)handle)->AddInput(explicit_count, explicit_values, implicit_count, implicit_values, polyhedrons_count, polyhedrons, facets_count, facets, segments_count, segments);
+    ((PolyhedralizationTetrahedralizationHandle*)handle)->AddInput(explicit_count, explicit_values, implicit_count, implicit_values,
+                                                                   polyhedrons_count, polyhedrons, facets_count, facets, segments_count, segments);
 }
 
 extern "C" LIBRARY_EXPORT void CalculatePolyhedralizationTetrahedralization(void* handle)

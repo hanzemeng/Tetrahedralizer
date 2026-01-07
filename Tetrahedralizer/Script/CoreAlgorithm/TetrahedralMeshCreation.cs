@@ -90,7 +90,8 @@ namespace Hanzzz.Tetrahedralizer
             List<int> tetrahedrons;
             {
                 PolyhedralizationTetrahedralization polyhedralizationTetrahedralization = new PolyhedralizationTetrahedralization();
-                var ptRes = polyhedralizationTetrahedralization.CalculatePolyhedralizationTetrahedralization(polyhedralization.m_explicitVertices,polyhedralization.m_implicitVertices,polyhedralization.m_polyhedrons,polyhedralization.m_facets,polyhedralization.m_segments);
+                var ptRes = polyhedralizationTetrahedralization.CalculatePolyhedralizationTetrahedralization(polyhedralization.m_explicitVertices,polyhedralization.m_implicitVertices,
+                polyhedralization.m_polyhedrons,polyhedralization.m_facets,polyhedralization.m_segments);
                 foreach(int f in ptRes.insertedFacetsCentroids)
                 {
                     double w0 = polyhedralization.m_facets[f].w0;

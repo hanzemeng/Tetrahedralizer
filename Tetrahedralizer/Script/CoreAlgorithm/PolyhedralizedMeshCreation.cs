@@ -18,11 +18,11 @@ namespace Hanzzz.Tetrahedralizer
         /// <returns>
         /// A polyhedralization of the mesh.
         /// </returns>
-        public Polyhedralization Create(Mesh mesh, bool aggressivelyAddVirtualConstraints, double polyhedronInMultiplier)
+        public Polyhedralization Create(Mesh mesh, double polyhedronInMultiplier)
         {
             var syncRes = CreateInternalSync(mesh);
     
-            CreateInternal(syncRes.polyhedralization, syncRes.weldedTriangles, TetrahedralizerUtility.UnpackVector3s(syncRes.weldedVertices), aggressivelyAddVirtualConstraints, polyhedronInMultiplier);
+            CreateInternal(syncRes.polyhedralization, syncRes.weldedTriangles, TetrahedralizerUtility.UnpackVector3s(syncRes.weldedVertices), polyhedronInMultiplier);
             return syncRes.polyhedralization;
         }
         /// <summary>
@@ -34,14 +34,14 @@ namespace Hanzzz.Tetrahedralizer
         /// <returns>
         /// A polyhedralization of the mesh.
         /// </returns>
-        public Task<Polyhedralization> CreateAsync(Mesh mesh, bool aggressivelyAddVirtualConstraints, double polyhedronInMultiplier, IProgress<string> progress=null)
+        public Task<Polyhedralization> CreateAsync(Mesh mesh, double polyhedronInMultiplier, IProgress<string> progress=null)
         {
             progress?.Report("Starting.");
             var syncRes = CreateInternalSync(mesh);
     
             return Task.Run(() =>
             {
-                CreateInternal(syncRes.polyhedralization, syncRes.weldedTriangles, TetrahedralizerUtility.UnpackVector3s(syncRes.weldedVertices), aggressivelyAddVirtualConstraints, polyhedronInMultiplier, progress);
+                CreateInternal(syncRes.polyhedralization, syncRes.weldedTriangles, TetrahedralizerUtility.UnpackVector3s(syncRes.weldedVertices), polyhedronInMultiplier, progress);
                 return syncRes.polyhedralization;
             });
         }
@@ -54,7 +54,7 @@ namespace Hanzzz.Tetrahedralizer
             Polyhedralization polyhedralization = ScriptableObject.CreateInstance<Polyhedralization>();
             return (weldedVertices, weldedTriangles, polyhedralization);
         }
-        private void CreateInternal(Polyhedralization polyhedralization, int[] weldedTriangles, List<double> weldedVerticesUnpack, bool aggressivelyAddVirtualConstraints, double polyhedronInMultiplier, IProgress<string> progress=null)
+        private void CreateInternal(Polyhedralization polyhedralization, int[] weldedTriangles, List<double> weldedVerticesUnpack, double polyhedronInMultiplier, IProgress<string> progress=null)
         {
             DelaunayTetrahedralization delaunayTetrahedralization = new DelaunayTetrahedralization();
             BinarySpacePartition binarySpacePartition = new BinarySpacePartition();
@@ -65,7 +65,7 @@ namespace Hanzzz.Tetrahedralizer
             List<int> tetrahedrons = delaunayTetrahedralization.CalculateDelaunayTetrahedralization(weldedVerticesUnpack, null);
 
             progress?.Report("Cutting tetrahedrons with constraints.");
-            var bspRes = binarySpacePartition.CalculateBinarySpacePartition(weldedVerticesUnpack, tetrahedrons, weldedTriangles, aggressivelyAddVirtualConstraints);
+            var bspRes = binarySpacePartition.CalculateBinarySpacePartition(weldedVerticesUnpack, tetrahedrons, weldedTriangles);
             polyhedralization.m_polyhedrons = bspRes.polyhedrons;
             HashSet<int> convexHullFacets = polyhedralization.GetExteriorFacets().ToHashSet();
 
@@ -98,12 +98,23 @@ namespace Hanzzz.Tetrahedralizer
             progress?.Report("Removing outside polyhedrons.");
             var icRes2 = interiorCharacterization.CalculateInteriorCharacterization(polyhedralization.m_explicitVertices, polyhedralization.m_implicitVertices, chpRes.polyhedrons, chpRes.facets, chpRes.segments, bspRes.coplanarTriangles, weldedTriangles, polyhedronInMultiplier);
             polyhedralization.m_polyhedrons = TetrahedralizerUtility.NestedListToFlatList(TetrahedralizerUtility.FlatIListToNestedList(chpRes.polyhedrons).Where((i,j)=>0!=icRes2.polyhedronsLabels[j]).ToList());
-            //polyhedralization.m_polyhedrons = chpRes.polyhedrons;
             polyhedralization.m_facets = chpRes.facets;
             polyhedralization.m_facetsCentroidsMapping = icRes2.facetsCentroidsMapping;
             polyhedralization.m_segments = chpRes.segments;
+            polyhedralization.CalculateFacetsIncidentPolyhedrons();
 
-            polyhedralization.RemoveUnusedData();
+            progress?.Report("Splitting facets.");
+            {
+                FacetPartition facetPartition = new FacetPartition();
+                var fpRes = facetPartition.CalculateFacetPartition(polyhedralization.m_explicitVertices, polyhedralization.m_implicitVertices,polyhedralization.m_polyhedrons,polyhedralization.m_facets,polyhedralization.m_facetsCentroidsMapping,polyhedralization.m_segments, bspRes.coplanarTriangles, weldedTriangles);
+                polyhedralization.m_implicitVertices.AddRange(fpRes.insertedVertices);
+                polyhedralization.m_polyhedrons = fpRes.polyhedrons;
+                polyhedralization.m_facets = fpRes.facets;
+                polyhedralization.m_facetsCentroidsMapping = fpRes.facetsCentroidsMapping;
+                polyhedralization.m_segments = fpRes.segments;
+            }
+
+            polyhedralization.RemoveUnusedData(true);
             polyhedralization.CalculateFacetsOrients();
     
             progress?.Report("Finishing up.");

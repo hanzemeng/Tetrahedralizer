@@ -139,7 +139,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
     vector<uint32_t> coplanar_groups_triangles;
     auto get_coplanar_group = [&](uint32_t p0,uint32_t p1,uint32_t p2) -> uint32_t
     {
-        return search_int_check(p0,p1,p2,triangles_coplanar_groups);
+        return search_int(p0,p1,p2,triangles_coplanar_groups);
     };
     auto get_coplanar_group_triangle = [&](uint32_t p0,uint32_t p1,uint32_t p2) -> tuple<uint32_t, uint32_t, uint32_t>
     {

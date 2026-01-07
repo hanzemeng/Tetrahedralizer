@@ -360,14 +360,3 @@ bool Polyhedralization::slice_facet_with_plane(uint32_t f, uint32_t c0, uint32_t
 //    
     return true;
 }
-
-vector<uint32_t> Polyhedralization::get_polyhedron_vertices(uint32_t p)
-{
-    unordered_set<uint32_t> res;
-    for(uint32_t f : m_polyhedrons[p])
-    {
-        vector<uint32_t> vs = m_facets[f].get_vertices(m_segments);
-        res.insert(vs.begin(),vs.end());
-    }
-    return vector<uint32_t>(res.begin(),res.end());
-}

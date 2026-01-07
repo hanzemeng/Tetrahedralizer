@@ -25,13 +25,12 @@ public:
 private:
     std::vector<std::shared_ptr<genericPoint>> m_vertices;
     std::vector<double3> m_approximated_vertices;
-    std::vector<std::shared_ptr<genericPoint>> m_facets_centroids;
     std::vector<std::vector<uint32_t>> m_polyhedrons;
     std::vector<Facet> m_facets;
     std::vector<Segment> m_segments;
+    std::vector<uint32_t> m_facets_coplanar_group;
     
     std::vector<std::vector<uint32_t>> m_triangulated_facets;
-    std::vector<std::vector<uint32_t>> m_triangulated_facets_counters;
     
     std::vector<uint32_t> m_inserted_facets_centroids;
     std::vector<uint32_t> m_inserted_polyhedrons_centroids;
@@ -39,7 +38,6 @@ private:
     
     void polyhedralization_tetrahedralization();
     uint32_t find_connect_vertex(uint32_t polyhedron);
-    void find_connect_vertex_helper(uint32_t p,uint32_t t0,uint32_t t1,uint32_t t2);
     void add_tetrahedron(uint32_t t0,uint32_t t1,uint32_t t2,uint32_t t3);
 };
 

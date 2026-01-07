@@ -9,8 +9,9 @@ namespace Hanzzz.Tetrahedralizer
     using System.Threading.Tasks;
     using UnityEngine;
     using UnityEditor;
+    using UnityEditor.ShortcutManagement;
     
-    
+
     public class TetrahedralizerEditorWindow : EditorWindow
     {
         private enum Page
@@ -49,12 +50,10 @@ namespace Hanzzz.Tetrahedralizer
             public bool m_synchronizeMeshesPreviews = true;
     
             public GameObject m_gameObject;
-            public bool m_aggressivelyAddVirtualConstraints;
             public double m_polyhedronInMultiplier = 0.2d;
             public Polyhedralization m_polyhedralization;
             public TetrahedralMesh m_tetrahedralMesh;
             public Material m_material;
-    
     
             public void Load(string data)
             {
@@ -75,7 +74,6 @@ namespace Hanzzz.Tetrahedralizer
                 m_showAdditionalInputData = binaryReader.ReadBoolean();
                 m_synchronizeMeshesPreviews = binaryReader.ReadBoolean();
                 m_gameObject = LoadFromGUID<GameObject>(binaryReader.ReadString());
-                m_aggressivelyAddVirtualConstraints = binaryReader.ReadBoolean();
                 m_polyhedronInMultiplier = binaryReader.ReadDouble();
                 m_polyhedralization = LoadFromGUID<Polyhedralization>(binaryReader.ReadString());
                 m_tetrahedralMesh = LoadFromGUID<TetrahedralMesh>(binaryReader.ReadString());
@@ -103,7 +101,6 @@ namespace Hanzzz.Tetrahedralizer
                 binaryWriter.Write(m_showAdditionalInputData);
                 binaryWriter.Write(m_synchronizeMeshesPreviews);
                 binaryWriter.Write(GetGUID(m_gameObject));
-                binaryWriter.Write(m_aggressivelyAddVirtualConstraints);
                 binaryWriter.Write(m_polyhedronInMultiplier);
                 binaryWriter.Write(GetGUID(m_polyhedralization));
                 binaryWriter.Write(GetGUID(m_tetrahedralMesh));
@@ -114,7 +111,6 @@ namespace Hanzzz.Tetrahedralizer
                 binaryWriter.Dispose();
                 memoryStream.Dispose();
             }
-    
             public void Clear()
             {
                 EditorPrefs.DeleteKey(EDITOR_PREFS_KEY);
@@ -132,8 +128,9 @@ namespace Hanzzz.Tetrahedralizer
         private TetrahedralizerEditorWindowSettings m_settings;
         private Mesh m_mesh;
         private List<Material> m_meshMaterials;
-    
-        [MenuItem(TetrahedralizerConstant.TETRAHEDRALIZER_WINDOW_PATH + TetrahedralizerConstant.TETRAHEDRALIZER_NAME)]
+        
+        [MenuItem(TetrahedralizerConstant.TETRAHEDRALIZER_WINDOW_PATH+TetrahedralizerConstant.TETRAHEDRALIZER_NAME)]
+        [Shortcut(TetrahedralizerConstant.TETRAHEDRALIZER_WINDOW_PATH+TetrahedralizerConstant.TETRAHEDRALIZER_NAME+nameof(Open), KeyCode.T, ShortcutModifiers.Control)]
         public static void Open()
         {
             TetrahedralizerEditorWindow window = GetWindow<TetrahedralizerEditorWindow>();
@@ -179,7 +176,81 @@ namespace Hanzzz.Tetrahedralizer
             }
             m_settings.m_gameObject = gameObject;
             Repaint();
-            FocusWindow();
+        }
+
+        [Shortcut(TetrahedralizerConstant.TETRAHEDRALIZER_WINDOW_PATH+TetrahedralizerConstant.TETRAHEDRALIZER_NAME+nameof(TogglePage), typeof(TetrahedralizerEditorWindow), KeyCode.A, ShortcutModifiers.None)]
+        public static void TogglePageShortcut()
+        {
+            GetWindow<TetrahedralizerEditorWindow>().TogglePage();
+        }
+        public void TogglePage()
+        {
+            if(m_settings.m_currentPage == Page.POLYHEDRALIZED_MESH)
+            {
+                m_settings.m_currentPage = Page.TETRAHEDRAL_MESH;
+            }
+            else if(m_settings.m_currentPage == Page.TETRAHEDRAL_MESH || m_settings.m_currentPage == Page.OVERVIEW)
+            {
+                m_settings.m_currentPage = Page.POLYHEDRALIZED_MESH;
+            }
+            Repaint();
+        }
+        [Shortcut(TetrahedralizerConstant.TETRAHEDRALIZER_WINDOW_PATH+TetrahedralizerConstant.TETRAHEDRALIZER_NAME+nameof(ExecuteTask), typeof(TetrahedralizerEditorWindow), KeyCode.D, ShortcutModifiers.None)]
+        public static void ExecuteTaskShortcut()
+        {
+            _ = GetWindow<TetrahedralizerEditorWindow>().ExecuteTask();
+        }
+        public async Task ExecuteTask()
+        {
+            if(m_asyncTaskIsRunning)
+            {
+                return;
+            }
+
+            if(m_settings.m_currentPage == Page.POLYHEDRALIZED_MESH)
+            {
+                if(null == m_settings.m_polyhedralization)
+                {
+                    return;
+                }
+                m_asyncTaskIsRunning = true;
+                try
+                {
+                    PolyhedralizedMeshCreation polyhedralizedMeshCreation = new PolyhedralizedMeshCreation();
+                    Polyhedralization polyhedralization = await polyhedralizedMeshCreation.CreateAsync(m_mesh, m_settings.m_polyhedronInMultiplier, m_asyncTaskProgress);
+                    m_settings.m_polyhedralization.Assign(polyhedralization);
+                }
+                catch(Exception exception)
+                {
+                    Debug.LogError($"Polyhedralized Mesh Creation encountered:\n{exception}");
+                }
+                m_asyncTaskIsRunning = false;
+                EditorUtility.SetDirty(m_settings.m_polyhedralization);
+                UpdateMesh(1, null == m_settings.m_polyhedralization ? null : m_settings.m_polyhedralization.ToMesh().mesh);
+            }
+            else if(m_settings.m_currentPage == Page.TETRAHEDRAL_MESH)
+            {
+                if(null == m_settings.m_polyhedralization || null == m_settings.m_tetrahedralMesh)
+                {
+                    return;
+                }
+                m_asyncTaskIsRunning = true;
+                try
+                {
+                    TetrahedralMeshCreation tetrahedralMeshCreation = new TetrahedralMeshCreation();
+                    TetrahedralMesh tetrahedralMesh = await tetrahedralMeshCreation.CreateAsync(m_mesh, m_settings.m_polyhedralization, m_asyncTaskProgress);
+                    m_settings.m_tetrahedralMesh.Assign(tetrahedralMesh);
+                }
+                catch(Exception exception)
+                {
+                    Debug.LogError($"Tetrahedral Mesh Creation encountered:\n{exception}");
+                }
+                m_asyncTaskIsRunning = false;
+                
+                EditorUtility.SetDirty(m_settings.m_tetrahedralMesh);
+                UpdateMesh(2, null == m_settings.m_tetrahedralMesh ? null : m_settings.m_tetrahedralMesh.ToMesh().mesh);
+            }
+            Repaint();
         }
     
         private void OnGUI()
@@ -189,20 +260,9 @@ namespace Hanzzz.Tetrahedralizer
                 EditorGUILayout.HelpBox($"An async task is running. {m_asyncTaskProgressField}", MessageType.Warning);
             }
     
-            if(CurrentKeyIsDown(KeyCode.Tab))
-            {
-                if(m_settings.m_currentPage == Page.POLYHEDRALIZED_MESH)
-                {
-                    m_settings.m_currentPage = Page.TETRAHEDRAL_MESH;
-                }
-                else if(m_settings.m_currentPage == Page.TETRAHEDRAL_MESH || m_settings.m_currentPage == Page.OVERVIEW)
-                {
-                    m_settings.m_currentPage = Page.POLYHEDRALIZED_MESH;
-                }
-            }
             string[] pageNames = Enum.GetNames(typeof(Page)).Select(i=>TetrahedralizerUtility.UpperSnakeCaseToCapitalizedWords(i)).ToArray();
-            pageNames[1] += " (Tab)";
-            pageNames[2] += " (Tab)";
+            pageNames[1] += " (A)";
+            pageNames[2] += " (A)";
             m_settings.m_currentPage = (Page)GUILayout.Toolbar((int)m_settings.m_currentPage, pageNames);
     
             GUILayout.Space(TetrahedralizerEditorWindowSettings.SPACE_SIZE);
@@ -341,28 +401,12 @@ namespace Hanzzz.Tetrahedralizer
             {
                 UpdateMesh(1, null == m_settings.m_polyhedralization ? null : m_settings.m_polyhedralization.ToMesh().mesh);
             }
-            m_settings.m_aggressivelyAddVirtualConstraints = EditorGUILayout.Toggle(new GUIContent("Aggressive Cutting: ", "If true, every triangle can be represented as a union of polyhedrons facets. Otherwise, every polygon formed by coplanar triangles can be represented as a union of polyhedrons facets."), m_settings.m_aggressivelyAddVirtualConstraints);
             m_settings.m_polyhedronInMultiplier = EditorGUILayout.Slider(new GUIContent("Polyhedron In Multiplier: ", "The likelihood of considering a polyhedron to be inside the input model. A smaller value means more likely."), (float)m_settings.m_polyhedronInMultiplier, 0.01f, 1f);
     
             GUILayout.Space(TetrahedralizerEditorWindowSettings.SPACE_SIZE);
-            if(!m_asyncTaskIsRunning && null!=m_settings.m_polyhedralization && (GUILayout.Button($"Create Polyhedralized Mesh (A)") || CurrentKeyIsDown(KeyCode.A)))
+            if(!m_asyncTaskIsRunning && null!=m_settings.m_polyhedralization && GUILayout.Button($"Create Polyhedralized Mesh (D)"))
             {
-                m_asyncTaskIsRunning = true;
-                try
-                {
-                    PolyhedralizedMeshCreation polyhedralizedMeshCreation = new PolyhedralizedMeshCreation();
-                    Polyhedralization polyhedralization = await polyhedralizedMeshCreation.CreateAsync(m_mesh, m_settings.m_aggressivelyAddVirtualConstraints, m_settings.m_polyhedronInMultiplier, m_asyncTaskProgress);
-                    m_settings.m_polyhedralization.Assign(polyhedralization);
-                }
-                catch(Exception exception)
-                {
-                    Debug.LogError($"Polyhedralized Mesh Creation encountered:\n{exception}");
-                }
-                m_asyncTaskIsRunning = false;
-                
-                EditorUtility.SetDirty(m_settings.m_polyhedralization);
-                UpdateMesh(1, null == m_settings.m_polyhedralization ? null : m_settings.m_polyhedralization.ToMesh().mesh);
-                FocusWindow();
+                await ExecuteTask();
             }
     
             GUILayout.Space(TetrahedralizerEditorWindowSettings.SPACE_SIZE);
@@ -405,24 +449,9 @@ namespace Hanzzz.Tetrahedralizer
             }
     
             GUILayout.Space(TetrahedralizerEditorWindowSettings.SPACE_SIZE);
-            if(!m_asyncTaskIsRunning && null!=m_settings.m_polyhedralization && null!=m_settings.m_tetrahedralMesh && (GUILayout.Button($"Create Tetrahedral Mesh (A)") || CurrentKeyIsDown(KeyCode.A)))
+            if(!m_asyncTaskIsRunning && null!=m_settings.m_polyhedralization && null!=m_settings.m_tetrahedralMesh && GUILayout.Button($"Create Tetrahedral Mesh (D)"))
             {
-                m_asyncTaskIsRunning = true;
-                try
-                {
-                    TetrahedralMeshCreation tetrahedralMeshCreation = new TetrahedralMeshCreation();
-                    TetrahedralMesh tetrahedralMesh = await tetrahedralMeshCreation.CreateAsync(m_mesh, m_settings.m_polyhedralization, m_asyncTaskProgress);
-                    m_settings.m_tetrahedralMesh.Assign(tetrahedralMesh);
-                }
-                catch(Exception exception)
-                {
-                    Debug.LogError($"Tetrahedral Mesh Creation encountered:\n{exception}");
-                }
-                m_asyncTaskIsRunning = false;
-                
-                EditorUtility.SetDirty(m_settings.m_tetrahedralMesh);
-                UpdateMesh(2, null == m_settings.m_tetrahedralMesh ? null : m_settings.m_tetrahedralMesh.ToMesh().mesh);
-                FocusWindow();
+                await ExecuteTask();
             }
     
             GUILayout.Space(TetrahedralizerEditorWindowSettings.SPACE_SIZE);
@@ -449,26 +478,6 @@ namespace Hanzzz.Tetrahedralizer
             EditorGUILayout.EndHorizontal();
     
             m_settings.m_material = (Material)EditorGUILayout.ObjectField(new GUIContent("Interior Material:", "The TetrahedralMesh contains an additional submesh that represents the interior triangles. This material is used to render that submesh."), m_settings.m_material, typeof(Material), false);
-        }
-    
-        private void FocusWindow()
-        {
-            TetrahedralizerEditorWindow window = GetWindow<TetrahedralizerEditorWindow>();
-            window.Show();
-            window.Focus();
-        }
-    
-        private bool CurrentKeyIsDown(KeyCode keyCode)
-        {
-            return keyCode == GetCurrentKeyDown();
-        }
-        private KeyCode GetCurrentKeyDown()
-        {
-            if(null == Event.current || EventType.KeyDown != Event.current.type)
-            {
-                return KeyCode.None;
-            }
-            return Event.current.keyCode;
         }
     
         private Rect GetRect(float width, float height)

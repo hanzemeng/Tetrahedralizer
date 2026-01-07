@@ -183,6 +183,15 @@ namespace Hanzzz.Tetrahedralizer
             GetExteriorFacets().ForEach(i=>res[i]=true);
             return res;
         }
+
+        public int GetVerticesCount()
+        {
+            return m_explicitVertices.Count/3 + TetrahedralizerUtility.CountFlatIListElements(m_implicitVertices);
+        }
+        public int GetPolyhedronsCount()
+        {
+            return TetrahedralizerUtility.CountFlatIListElements(m_polyhedrons);
+        }
     
         public void CalculateFacetsOrients()
         {
@@ -205,17 +214,34 @@ namespace Hanzzz.Tetrahedralizer
                 }
             }
         }
-    
-        public int GetVerticesCount()
+
+        public void CalculateFacetsIncidentPolyhedrons()
         {
-            return m_explicitVertices.Count/3 + TetrahedralizerUtility.CountFlatIListElements(m_implicitVertices);
-        }
-        public int GetPolyhedronsCount()
-        {
-            return TetrahedralizerUtility.CountFlatIListElements(m_polyhedrons);
+            List<int> facetsIncident = Enumerable.Repeat(TetrahedralizerConstant.UNDEFINED_VALUE, 2*m_facets.Count).ToList();
+            List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedrons);
+            for(int i=0; i<polyhedrons.Count; i++)
+            {
+                List<int> polyhedron = polyhedrons[i];
+                foreach(int f in polyhedron)
+                {
+                    if(TetrahedralizerConstant.UNDEFINED_VALUE == facetsIncident[2*f+0])
+                    {
+                        facetsIncident[2*f+0] = i;
+                    }
+                    else
+                    {
+                        facetsIncident[2*f+1] = i;
+                    }
+                }
+            }
+            for(int i=0; i<facetsIncident.Count/2; i++)
+            {
+                m_facets[i].ip0 = facetsIncident[2*i+0];
+                m_facets[i].ip1 = facetsIncident[2*i+1];
+            }
         }
     
-        public void RemoveUnusedData()
+        public void RemoveUnusedData(bool removeExplicitVertices)
         {
             // remove facets
             {
@@ -310,6 +336,10 @@ namespace Hanzzz.Tetrahedralizer
                     }
                 }
                 m_implicitVertices = TetrahedralizerUtility.NestedListToFlatList(newImplicitVertices);
+            }
+            if(!removeExplicitVertices)
+            {
+                return;
             }
             //remove explicit vertices
             {

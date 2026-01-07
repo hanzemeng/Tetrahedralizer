@@ -29,14 +29,15 @@ inline void sort_ints(uint32_t& i0, uint32_t& i1, uint32_t& i2)
 inline uint32_t search_int(uint32_t i0, uint32_t i1, std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, ii32_hash>& map)
 {
     sort_ints(i0, i1);
-    return map[std::make_pair(i0,i1)];
+    auto it = map.find(std::make_pair(i0,i1));
+    if(it == map.end())
+    {
+        return UNDEFINED_VALUE;
+    }
+    return it->second;
 }
+
 inline uint32_t search_int(uint32_t i0, uint32_t i1, uint32_t i2, std::unordered_map<std::tuple<uint32_t, uint32_t, uint32_t>, uint32_t, iii32_hash>& map)
-{
-    sort_ints(i0, i1, i2);
-    return map[std::make_tuple(i0,i1,i2)];
-}
-inline uint32_t search_int_check(uint32_t i0, uint32_t i1, uint32_t i2, std::unordered_map<std::tuple<uint32_t, uint32_t, uint32_t>, uint32_t, iii32_hash>& map)
 {
     sort_ints(i0, i1, i2);
     auto it = map.find(std::make_tuple(i0,i1,i2));
@@ -45,6 +46,17 @@ inline uint32_t search_int_check(uint32_t i0, uint32_t i1, uint32_t i2, std::uno
         return UNDEFINED_VALUE;
     }
     return it->second;
+}
+
+inline void assign_int(uint32_t i0, uint32_t i1, uint32_t v, std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, ii32_hash>& map)
+{
+    sort_ints(i0, i1);
+    map[std::make_pair(i0,i1)] = v;
+}
+inline void assign_int(uint32_t i0, uint32_t i1, uint32_t i2, uint32_t v, std::unordered_map<std::tuple<uint32_t, uint32_t, uint32_t>, uint32_t, iii32_hash>& map)
+{
+    sort_ints(i0, i1, i2);
+    map[std::make_tuple(i0,i1,i2)] = v;
 }
 
 inline int double_to_int(double d)

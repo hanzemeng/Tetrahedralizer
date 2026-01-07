@@ -25,14 +25,14 @@ namespace Hanzzz.Tetrahedralizer
         /// <para><c>facetsCentroidsWeights</c>(w0,w1). w0,w1,1-w0-w1 are weights of the 3 explicit vertices defined above.</para>
         /// </returns>
         public (List<int> insertedVertices, List<int> polyhedrons, List<Facet> facets, List<Segment> segments, List<int> coplanarTriangles)
-        CalculateBinarySpacePartition(IReadOnlyList<double> explicitVertices, IReadOnlyList<int> tetrahedrons, IReadOnlyList<int> constraints, bool aggressivelyAddVirtualConstraints)
+        CalculateBinarySpacePartition(IReadOnlyList<double> explicitVertices, IReadOnlyList<int> tetrahedrons, IReadOnlyList<int> constraints)
         {
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern IntPtr CreateBinarySpacePartitionHandle();
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern void DisposeBinarySpacePartitionHandle(IntPtr handle);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
-            static extern void AddBinarySpacePartitionInput(IntPtr handle, int explicit_count, double[] explicit_values, int tetrahedron_count, int[] tetrahedrons, int constraints_count, int[] constraints, bool aggressivelyAddVirtualConstraints);
+            static extern void AddBinarySpacePartitionInput(IntPtr handle, int explicit_count, double[] explicit_values, int tetrahedron_count, int[] tetrahedrons, int constraints_count, int[] constraints);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
             static extern void CalculateBinarySpacePartition(IntPtr handle);
             [DllImport(TetrahedralizerConstant.TETRAHEDRALIZER_LIBRARY_NAME)]
@@ -62,7 +62,7 @@ namespace Hanzzz.Tetrahedralizer
             TetrahedralizerUtility.SwapElementsByInterval(tetrahedronsArray, 4);
     
             IntPtr handle = CreateBinarySpacePartitionHandle();
-            AddBinarySpacePartitionInput(handle, explicitVerticesArray.Length/3, explicitVerticesArray, tetrahedronsArray.Length/4, tetrahedronsArray, constraints.Count/3, constraints.ToArray(), aggressivelyAddVirtualConstraints);
+            AddBinarySpacePartitionInput(handle, explicitVerticesArray.Length/3, explicitVerticesArray, tetrahedronsArray.Length/4, tetrahedronsArray, constraints.Count/3, constraints.ToArray());
             CalculateBinarySpacePartition(handle);
     
             List<int> insertedVertices = InteropUtility.GetList<int>(handle, GetBinarySpacePartitionInsertedVerticesCount, GetBinarySpacePartitionInsertedVertices);
