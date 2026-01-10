@@ -87,33 +87,20 @@ void PolyhedralizationTetrahedralizationHandle::polyhedralization_tetrahedraliza
 
 uint32_t PolyhedralizationTetrahedralizationHandle::find_connect_vertex(uint32_t polyhedron)
 {
-    unordered_map<uint32_t,uint32_t> facets_coplanar_groups_count;
-    for(uint32_t f : m_polyhedrons[polyhedron])
-    {
-        uint32_t cg = m_facets_coplanar_group[f];
-        if(facets_coplanar_groups_count.end() == facets_coplanar_groups_count.find(cg))
-        {
-            facets_coplanar_groups_count[cg] = 1;
-        }
-        else
-        {
-            facets_coplanar_groups_count[cg]++;
-        }
-    }
-    
-    unordered_set<uint32_t> search_vertices;
     unordered_set<uint32_t> polyhedron_vertices;
+    unordered_map<uint32_t, unordered_set<uint32_t>> vertices_incident_coplanar_groups;
     for(uint32_t f : m_polyhedrons[polyhedron])
     {
         vector<uint32_t> vs = m_facets[f].get_vertices(m_segments);
         polyhedron_vertices.insert(vs.begin(),vs.end());
-        
-        uint32_t cg = m_facets_coplanar_group[f];
-        if(1 != facets_coplanar_groups_count[cg])
+        for(uint32_t v : vs)
         {
-            continue;
+            if(vertices_incident_coplanar_groups.end() == vertices_incident_coplanar_groups.find(v))
+            {
+                vertices_incident_coplanar_groups[v] = unordered_set<uint32_t>();
+            }
+            vertices_incident_coplanar_groups[v].insert(m_facets_coplanar_group[f]);
         }
-        search_vertices.insert(vs.begin(),vs.end());
     }
     
     unordered_set<tuple<uint32_t,uint32_t,uint32_t>, iii32_hash> polyhedron_triangles;
@@ -129,22 +116,25 @@ uint32_t PolyhedralizationTetrahedralizationHandle::find_connect_vertex(uint32_t
         }
     }
 
-    for(uint32_t v : search_vertices)
+    for(uint32_t v : polyhedron_vertices)
     {
         unordered_set<tuple<uint32_t,uint32_t,uint32_t>, iii32_hash> cur_triangles;
-        
-        for(uint32_t i=0; i<m_polyhedrons[polyhedron].size(); i++)
+        for(uint32_t f : m_polyhedrons[polyhedron])
         {
-            uint32_t f = m_polyhedrons[polyhedron][i];
+            if(vertices_incident_coplanar_groups[v].end() != vertices_incident_coplanar_groups[v].find(m_facets_coplanar_group[f]))
+            {
+                continue;
+            }
+            
             for(uint32_t j=0; j<m_triangulated_facets[f].size(); j+=3)
             {
                 uint32_t t0 = m_triangulated_facets[f][j+0];
                 uint32_t t1 = m_triangulated_facets[f][j+1];
                 uint32_t t2 = m_triangulated_facets[f][j+2];
-                if(v==t0 || v==t1 || v==t2 || 0 == orient3d(t0, t1, t2, v, m_vertices.data()))
-                {
-                    continue;
-                }
+//                if(v==t0 || v==t1 || v==t2 || 0 == orient3d(t0, t1, t2, v, m_vertices.data()))
+//                {
+//                    continue;
+//                }
                 
                 auto add_triangle = [&](uint32_t p0, uint32_t p1, uint32_t p2)
                 {

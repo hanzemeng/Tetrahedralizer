@@ -26,8 +26,7 @@ void ConvexHullPartitionHandle::AddInput(uint32_t explicit_count, double* explic
             uint32_t c0 = coplanar_groups_triangles[i][3*j+0];
             uint32_t c1 = coplanar_groups_triangles[i][3*j+1];
             uint32_t c2 = coplanar_groups_triangles[i][3*j+2];
-            sort_ints(c0, c1, c2);
-            m_triangles_coplanar_groups[make_tuple(c0,c1,c2)] = i;
+            assign_int(c0, c1, c2, i, m_triangles_coplanar_groups);
         }
     }
     
@@ -44,16 +43,14 @@ void ConvexHullPartitionHandle::AddInput(uint32_t explicit_count, double* explic
 
         auto add_segment = [&](uint32_t i0, uint32_t i1) -> uint32_t
         {
-            sort_ints(i0, i1);
-            auto it = segments_cache.find(make_pair(i0, i1));
-            if(segments_cache.end() == it)
+            uint32_t s = search_int(i0,i1,segments_cache);
+            if(UNDEFINED_VALUE == s)
             {
-                uint32_t res = m_polyhedralization.m_segments.size();
+                s = m_polyhedralization.m_segments.size();
                 m_polyhedralization.m_segments.push_back(Segment(i0,i1));
-                segments_cache[make_pair(i0, i1)] = res;
-                return res;
+                assign_int(i0,i1,s,segments_cache);
             }
-            return it->second;
+            return s;
         };
         uint32_t s0 = add_segment(p0,p1);
         uint32_t s1 = add_segment(p1,p2);
@@ -178,12 +175,6 @@ extern "C" LIBRARY_EXPORT void GetConvexHullPartitionSegments(void* handle, Segm
 
 void ConvexHullPartitionHandle::convex_hull_partition()
 {
-    auto get_coplanar_group = [&](uint32_t p0,uint32_t p1,uint32_t p2) -> uint32_t
-    {
-        sort_ints(p0,p1,p2);
-        return m_triangles_coplanar_groups[make_tuple(p0,p1,p2)];
-    };
-    
     unordered_map<uint32_t, tuple<uint32_t,uint32_t,uint32_t>> coplanar_groups_to_triangles;
     // calculate slice order
     vector<FacetOrder> facets_order;
@@ -191,7 +182,7 @@ void ConvexHullPartitionHandle::convex_hull_partition()
     {
         for(uint32_t i=0; i<m_constraints_facets.size(); i++)
         {
-            m_constraints_facets[i].ip0 = get_coplanar_group(m_constraints_facets[i].p0,m_constraints_facets[i].p1,m_constraints_facets[i].p2);
+            m_constraints_facets[i].ip0 = search_int(m_constraints_facets[i].p0,m_constraints_facets[i].p1,m_constraints_facets[i].p2,m_triangles_coplanar_groups);
             coplanar_groups_to_triangles[m_constraints_facets[i].ip0] = make_tuple(m_constraints_facets[i].p0,m_constraints_facets[i].p1,m_constraints_facets[i].p2);
         }
         facets_order = order_facets(m_polyhedralization.m_vertices, m_approximated_vertices, m_constraints_segments, m_constraints_facets);

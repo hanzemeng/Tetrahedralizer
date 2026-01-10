@@ -137,13 +137,9 @@ void BinarySpacePartitionHandle::binary_space_partition()
     // find a triangle to represent all coplanar triangles
     unordered_map<tuple<uint32_t, uint32_t, uint32_t>, uint32_t, iii32_hash> triangles_coplanar_groups;
     vector<uint32_t> coplanar_groups_triangles;
-    auto get_coplanar_group = [&](uint32_t p0,uint32_t p1,uint32_t p2) -> uint32_t
-    {
-        return search_int(p0,p1,p2,triangles_coplanar_groups);
-    };
     auto get_coplanar_group_triangle = [&](uint32_t p0,uint32_t p1,uint32_t p2) -> tuple<uint32_t, uint32_t, uint32_t>
     {
-        uint32_t c = get_coplanar_group(p0,p1,p2);
+        uint32_t c = search_int(p0,p1,p2,triangles_coplanar_groups);
         return make_tuple(coplanar_groups_triangles[3*c+0],coplanar_groups_triangles[3*c+1],coplanar_groups_triangles[3*c+2]);
     };
     
@@ -171,8 +167,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
                     c1 = nc1;
                     c2 = nc2;
                 }
-                sort_ints(nc0, nc1, nc2);
-                triangles_coplanar_groups[make_tuple(nc0,nc1,nc2)] = cg;
+                assign_int(nc0,nc1,nc2,cg,triangles_coplanar_groups);
             }
             coplanar_groups_triangles.push_back(c0);
             coplanar_groups_triangles.push_back(c1);
@@ -195,7 +190,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
                 {
                     continue;
                 }
-                if(UNDEFINED_VALUE != get_coplanar_group(s0, s1, v)) // the virtual constraints is already a constraint or tetrahedron facet
+                if(UNDEFINED_VALUE != search_int(s0,s1,v,triangles_coplanar_groups)) // the virtual constraints is already a constraint or tetrahedron facet
                 {
                     return;
                 }
@@ -241,7 +236,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
             uint32_t c0 = m_constraints[3*c+0];
             uint32_t c1 = m_constraints[3*c+1];
             uint32_t c2 = m_constraints[3*c+2];
-            uint32_t cg = get_coplanar_group(c0, c1, c2);
+            uint32_t cg = search_int(c0, c1, c2, triangles_coplanar_groups);
             bool constrains_are_coplanar = true;
             for(uint32_t i=1; i<constraints.size(); i++)
             {
@@ -249,7 +244,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
                 uint32_t nc0 = m_constraints[3*nc+0];
                 uint32_t nc1 = m_constraints[3*nc+1];
                 uint32_t nc2 = m_constraints[3*nc+2];
-                uint32_t ncg = get_coplanar_group(nc0, nc1, nc2);
+                uint32_t ncg = search_int(nc0, nc1, nc2, triangles_coplanar_groups);
                 if(cg != ncg)
                 {
                     constrains_are_coplanar = false;
@@ -323,7 +318,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
                 uint32_t c2 = triangles[3*c+2];
                 if(0==orient3d(vc0,vc1,vc2,c0,m_polyhedralization.m_vertices.data()) && 0==orient3d(vc0,vc1,vc2,c1,m_polyhedralization.m_vertices.data()) && 0==orient3d(vc0,vc1,vc2,c2,m_polyhedralization.m_vertices.data()))
                 {
-                    vcg = get_coplanar_group(c0, c1, c2);
+                    vcg = search_int(c0, c1, c2, triangles_coplanar_groups);
                     break;
                 }
             }
@@ -344,8 +339,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
                 uint32_t vc0 = virtual_constraints[3*vc+0];
                 uint32_t vc1 = virtual_constraints[3*vc+1];
                 uint32_t vc2 = virtual_constraints[3*vc+2];
-                sort_ints(vc0, vc1, vc2);
-                triangles_coplanar_groups[make_tuple(vc0, vc1, vc2)] = vcg;
+                assign_int(vc0, vc1, vc2, vcg, triangles_coplanar_groups);
             }
         }
         
@@ -365,14 +359,14 @@ void BinarySpacePartitionHandle::binary_space_partition()
             {
                 auto find_segment = [&](uint32_t p0, uint32_t p1) -> uint32_t
                 {
-                    sort_ints(p0,p1);
-                    if(segments_cache.end() == segments_cache.find(make_pair(p0,p1)))
+                    uint32_t s = search_int(p0,p1,segments_cache);
+                    if(UNDEFINED_VALUE == s)
                     {
-                        uint32_t s = m_polyhedralization.m_segments.size();
-                        segments_cache[make_pair(p0,p1)] = s;
+                        s = m_polyhedralization.m_segments.size();
                         m_polyhedralization.m_segments.push_back(Segment(p0,p1));
+                        assign_int(p0, p1, s, segments_cache);
                     }
-                    return segments_cache[make_pair(p0,p1)];
+                    return s;
                 };
                 
                 auto [p0,p1,p2] = m_tetrahedralization.get_tetrahedron_facet(i,j);
@@ -380,15 +374,14 @@ void BinarySpacePartitionHandle::binary_space_partition()
                 uint32_t s1 = find_segment(p1, p2);
                 uint32_t s2 = find_segment(p2, p0);
                 
-                sort_ints(p0,p1,p2);
-                if(facets_cache.end() == facets_cache.find(make_tuple(p0,p1,p2)))
+                uint32_t f = search_int(p0,p1,p2,facets_cache);
+                if(UNDEFINED_VALUE == f)
                 {
                     auto [cp0,cp1,cp2] = get_coplanar_group_triangle(p0,p1,p2);
-                    uint32_t f = m_polyhedralization.m_facets.size();
+                    f = m_polyhedralization.m_facets.size();
                     m_polyhedralization.m_facets.push_back(Facet(s0,s1,s2,cp0,cp1,cp2,UNDEFINED_VALUE,UNDEFINED_VALUE));
-                    facets_cache[make_tuple(p0,p1,p2)] = f;
+                    assign_int(p0, p1, p2, f, facets_cache);
                 }
-                uint32_t f = facets_cache[make_tuple(p0,p1,p2)];
                 if(UNDEFINED_VALUE == m_polyhedralization.m_facets[f].ip0)
                 {
                     m_polyhedralization.m_facets[f].ip0 = p;
@@ -408,7 +401,6 @@ void BinarySpacePartitionHandle::binary_space_partition()
         unordered_map<uint32_t, tuple<vector<shared_ptr<genericPoint>>, vector<Segment>, vector<Facet>>> polyhedrons_intersect_constraints;
         vector<uint32_t> visited_tetrahedrons = vector<uint32_t>(m_tetrahedralization.get_tetrahedrons_count(), UNDEFINED_VALUE);
         queue<uint32_t> visit_tetrahedrons;
-        std::chrono::high_resolution_clock::duration cut_time = std::chrono::high_resolution_clock::duration::zero();
         for(uint32_t i=0; i<m_constraints.size()/3; i++)
         {
             uint32_t c0 = m_constraints[3*i+0];
@@ -419,7 +411,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
                 continue;
             }
             auto [cc0, cc1, cc2] = get_coplanar_group_triangle(c0, c1, c2);
-            uint32_t cg = get_coplanar_group(c0, c1, c2);
+            uint32_t cg = search_int(c0, c1, c2, triangles_coplanar_groups);
             
             visit_tetrahedrons.push(m_tetrahedralization.get_incident_tetrahedron(c0));
             visit_tetrahedrons.push(m_tetrahedralization.get_incident_tetrahedron(c1));
@@ -457,18 +449,15 @@ void BinarySpacePartitionHandle::binary_space_partition()
                         planes.push_back(cp1);
                         planes.push_back(cp2);
                     }
-                    planes_groups.push_back(get_coplanar_group(p0, p1, p2));
+                    planes_groups.push_back(search_int(p0, p1, p2, triangles_coplanar_groups));
                 };
                 add_facet(t0,t1,t2,t3);
                 add_facet(t1,t0,t3,t2);
                 add_facet(t0,t2,t3,t1);
                 add_facet(t2,t1,t3,t0);
                 
-                auto s = std::chrono::high_resolution_clock::now();
                 uint32_t original_vertices_count = m_polyhedralization.m_vertices.size();
                 auto [int_type, top_segments] = triangle_tetrahedron_intersection(m_polyhedralization.m_vertices, segments, planes, planes_groups);
-                auto e = std::chrono::high_resolution_clock::now();
-                cut_time += (e-s);
 
                 if(2 == int_type)
                 {

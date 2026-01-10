@@ -236,8 +236,7 @@ void InteriorCharacterizationHandle::AddInput(uint32_t explicit_count, double* e
             uint32_t c0 = temp[i][3*j+0];
             uint32_t c1 = temp[i][3*j+1];
             uint32_t c2 = temp[i][3*j+2];
-            sort_ints(c0, c1, c2);
-            m_triangles_coplanar_groups[make_tuple(c0,c1,c2)] = i;
+            assign_int(c0,c1,c2,i,m_triangles_coplanar_groups);
         }
     }
     

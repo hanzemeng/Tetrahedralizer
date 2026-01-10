@@ -202,18 +202,16 @@ void DelaunayTetrahedralizationHandle::delaunay_tetrahedralization()
             unordered_map<pair<uint32_t,uint32_t>,uint32_t,ii32_hash> neighbors_cache;
             auto connect_neighbor = [&](uint32_t p0, uint32_t p1, uint32_t t)
             {
-                sort_ints(p0,p1);
-                auto it = neighbors_cache.find(make_pair(p0,p1));
-                if(neighbors_cache.end() != neighbors_cache.find(make_pair(p0,p1)))
+                uint32_t n = search_int(p0,p1, neighbors_cache);
+                if(UNDEFINED_VALUE == n)
                 {
-                    uint32_t n = it->second;
-                    m_neighbors[t] = n;
-                    m_neighbors[n] = t;
-                    neighbors_cache.erase(it);
+                    assign_int(p0, p1, t, neighbors_cache);
                 }
                 else
                 {
-                    neighbors_cache[make_pair(p0,p1)] = t;
+                    m_neighbors[t] = n;
+                    m_neighbors[n] = t;
+                    remove_int(p0, p1, neighbors_cache);
                 }
             };
             for(uint32_t t : bounding_facets)
