@@ -5,12 +5,10 @@ project(Tetrahedralizer
     LANGUAGES CXX
 )
 
-# Use C++20
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Create the executable
 add_executable(Tetrahedralizer
     src/binary_space_partition.cpp
     src/convex_hull_partition.cpp
@@ -29,7 +27,7 @@ add_executable(Tetrahedralizer
     src/polyhedralization_tetrahedralization.cpp
 )
 
-# Compiler-specific options
-target_compile_options(Tetrahedralizer PRIVATE
-    $<$<CXX_COMPILER_ID:GNU,Clang>:-ffp-model=strict>
-)
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2")
+set(CMAKE_CXX_FLAGS_MINSIZEREL "-Os")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffp-model=strict")
