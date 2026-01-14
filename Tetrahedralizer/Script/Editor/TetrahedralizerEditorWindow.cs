@@ -1,0 +1,539 @@
+namespace Hanzzz.Tetrahedralizer
+{
+    #if UNITY_EDITOR
+    
+    using System;
+    using System.IO;
+    using System.Linq;
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
+    using UnityEngine;
+    using UnityEditor;
+    using UnityEditor.ShortcutManagement;
+    
+
+    public class TetrahedralizerEditorWindow : EditorWindow
+    {
+        private enum Page
+        {
+            OVERVIEW,
+            POLYHEDRALIZED_MESH,
+            TETRAHEDRAL_MESH,
+        }
+        private class TetrahedralizerEditorWindowSettings
+        {
+            private static TetrahedralizerEditorWindowSettings m_instance;
+            public static TetrahedralizerEditorWindowSettings instance
+            {
+                get
+                {
+                    if(null == m_instance)
+                    {
+                        m_instance = new TetrahedralizerEditorWindowSettings();
+                        if(EditorPrefs.HasKey(EDITOR_PREFS_KEY))
+                        {
+                            m_instance.Load(EditorPrefs.GetString(EDITOR_PREFS_KEY));
+                        }
+                    }
+                    return m_instance;
+                }
+            }
+    
+            public const string EDITOR_PREFS_KEY = nameof(TetrahedralizerEditorWindowSettings);
+    
+            public const float SPACE_SIZE = 5f;
+            public const int MESH_PREVIEWS_COUNT = 3;
+    
+            public Page m_currentPage;
+            public bool m_autoFocusOnSelectionChange = true;
+            public bool m_showAdditionalInputData = true;
+            public bool m_synchronizeMeshesPreviews = true;
+    
+            public GameObject m_gameObject;
+            public double m_polyhedronInMultiplier = 0.2d;
+            public Polyhedralization m_polyhedralization;
+            public TetrahedralMesh m_tetrahedralMesh;
+            public Material m_material;
+    
+            public void Load(string data)
+            {
+                T LoadFromGUID<T>(string guid) where T : UnityEngine.Object
+                {
+                    if(string.IsNullOrEmpty(guid))
+                    {
+                        return null;
+                    }
+                    return (T)AssetDatabase.LoadAssetByGUID(new GUID(guid), typeof(T));
+                }
+    
+                MemoryStream memoryStream = new MemoryStream(Convert.FromBase64String(data));
+                BinaryReader binaryReader = new BinaryReader(memoryStream);
+    
+                m_currentPage = (Page)binaryReader.ReadInt32();
+                m_autoFocusOnSelectionChange = binaryReader.ReadBoolean();
+                m_showAdditionalInputData = binaryReader.ReadBoolean();
+                m_synchronizeMeshesPreviews = binaryReader.ReadBoolean();
+                m_gameObject = LoadFromGUID<GameObject>(binaryReader.ReadString());
+                m_polyhedronInMultiplier = binaryReader.ReadDouble();
+                m_polyhedralization = LoadFromGUID<Polyhedralization>(binaryReader.ReadString());
+                m_tetrahedralMesh = LoadFromGUID<TetrahedralMesh>(binaryReader.ReadString());
+                m_material = LoadFromGUID<Material>(binaryReader.ReadString());
+    
+                binaryReader.Dispose();
+                memoryStream.Dispose();
+            }
+            public void Save()
+            {
+                string GetGUID(UnityEngine.Object obj)
+                {
+                    if(null == obj)
+                    {
+                        return string.Empty;
+                    }
+                    return obj.GetGUID();
+                }
+    
+                MemoryStream memoryStream = new MemoryStream();
+                BinaryWriter binaryWriter = new BinaryWriter(memoryStream);
+    
+                binaryWriter.Write((int)m_currentPage);
+                binaryWriter.Write(m_autoFocusOnSelectionChange);
+                binaryWriter.Write(m_showAdditionalInputData);
+                binaryWriter.Write(m_synchronizeMeshesPreviews);
+                binaryWriter.Write(GetGUID(m_gameObject));
+                binaryWriter.Write(m_polyhedronInMultiplier);
+                binaryWriter.Write(GetGUID(m_polyhedralization));
+                binaryWriter.Write(GetGUID(m_tetrahedralMesh));
+                binaryWriter.Write(GetGUID(m_material));
+    
+                EditorPrefs.SetString(EDITOR_PREFS_KEY, Convert.ToBase64String(memoryStream.ToArray())) ;
+    
+                binaryWriter.Dispose();
+                memoryStream.Dispose();
+            }
+            public void Clear()
+            {
+                EditorPrefs.DeleteKey(EDITOR_PREFS_KEY);
+                m_instance = null;
+            }
+        }
+    
+    
+        private bool m_asyncTaskIsRunning;
+        private IProgress<string> m_asyncTaskProgress;
+        private string m_asyncTaskProgressField;
+        private List<Mesh> m_previewMeshes;
+        private List<MeshPreviewField> m_meshesPreviews;
+    
+        private TetrahedralizerEditorWindowSettings m_settings;
+        private Mesh m_mesh;
+        private List<Material> m_meshMaterials;
+        
+        [MenuItem(TetrahedralizerConstant.TETRAHEDRALIZER_WINDOW_PATH+TetrahedralizerConstant.TETRAHEDRALIZER_NAME)]
+        [Shortcut(TetrahedralizerConstant.TETRAHEDRALIZER_WINDOW_PATH+TetrahedralizerConstant.TETRAHEDRALIZER_NAME+nameof(Open), KeyCode.T, ShortcutModifiers.Control)]
+        public static void Open()
+        {
+            TetrahedralizerEditorWindow window = GetWindow<TetrahedralizerEditorWindow>();
+            window.titleContent = new GUIContent(TetrahedralizerConstant.TETRAHEDRALIZER_NAME);
+            window.Show();
+            window.Focus();
+        }
+        private void OnEnable()
+        {
+            m_settings = TetrahedralizerEditorWindowSettings.instance;
+    
+            m_asyncTaskIsRunning = false;
+            m_asyncTaskProgress = new Progress<string>(i=>{m_asyncTaskProgressField=i; Repaint();});
+            m_previewMeshes = Enumerable.Range(0, TetrahedralizerEditorWindowSettings.MESH_PREVIEWS_COUNT).Select(i=>(Mesh)null).ToList();
+            m_meshesPreviews = Enumerable.Range(0, TetrahedralizerEditorWindowSettings.MESH_PREVIEWS_COUNT).Select(i=>new MeshPreviewField()).ToList();
+            m_meshMaterials = new List<Material>();
+    
+            if(null != m_settings.m_polyhedralization)
+            {
+                UpdateMesh(1, m_settings.m_polyhedralization.ToMesh().mesh);
+            }
+            if(null != m_settings.m_tetrahedralMesh)
+            {
+                UpdateMesh(2, m_settings.m_tetrahedralMesh.ToMesh().mesh);
+            }
+        }
+        private void OnDisable()
+        {
+            m_settings.Save();
+            m_meshesPreviews.ForEach(i=>i.Dispose());
+            Enumerable.Range(0, TetrahedralizerEditorWindowSettings.MESH_PREVIEWS_COUNT).ToList().ForEach(i=>UpdateMesh(i,null));
+        }
+        private void OnSelectionChange()
+        {
+            if(!m_settings.m_autoFocusOnSelectionChange)
+            {
+                return;
+            }
+            GameObject gameObject = Selection.activeObject as GameObject;
+            if(null == gameObject)
+            {
+                return;
+            }
+            m_settings.m_gameObject = gameObject;
+            Repaint();
+        }
+
+        [Shortcut(TetrahedralizerConstant.TETRAHEDRALIZER_WINDOW_PATH+TetrahedralizerConstant.TETRAHEDRALIZER_NAME+nameof(TogglePage), typeof(TetrahedralizerEditorWindow), KeyCode.A, ShortcutModifiers.None)]
+        public static void TogglePageShortcut()
+        {
+            GetWindow<TetrahedralizerEditorWindow>().TogglePage();
+        }
+        public void TogglePage()
+        {
+            if(m_settings.m_currentPage == Page.POLYHEDRALIZED_MESH)
+            {
+                m_settings.m_currentPage = Page.TETRAHEDRAL_MESH;
+            }
+            else if(m_settings.m_currentPage == Page.TETRAHEDRAL_MESH || m_settings.m_currentPage == Page.OVERVIEW)
+            {
+                m_settings.m_currentPage = Page.POLYHEDRALIZED_MESH;
+            }
+            Repaint();
+        }
+        [Shortcut(TetrahedralizerConstant.TETRAHEDRALIZER_WINDOW_PATH+TetrahedralizerConstant.TETRAHEDRALIZER_NAME+nameof(ExecuteTask), typeof(TetrahedralizerEditorWindow), KeyCode.D, ShortcutModifiers.None)]
+        public static void ExecuteTaskShortcut()
+        {
+            _ = GetWindow<TetrahedralizerEditorWindow>().ExecuteTask();
+        }
+        public async Task ExecuteTask()
+        {
+            if(m_asyncTaskIsRunning)
+            {
+                return;
+            }
+
+            if(m_settings.m_currentPage == Page.POLYHEDRALIZED_MESH)
+            {
+                if(null == m_settings.m_polyhedralization)
+                {
+                    return;
+                }
+                m_asyncTaskIsRunning = true;
+                try
+                {
+                    PolyhedralizedMeshCreation polyhedralizedMeshCreation = new PolyhedralizedMeshCreation();
+                    Polyhedralization polyhedralization = await polyhedralizedMeshCreation.CreateAsync(m_mesh, m_settings.m_polyhedronInMultiplier, m_asyncTaskProgress);
+                    m_settings.m_polyhedralization.Assign(polyhedralization);
+                }
+                catch(Exception exception)
+                {
+                    Debug.LogError($"Polyhedralized Mesh Creation encountered:\n{exception}");
+                }
+                m_asyncTaskIsRunning = false;
+                EditorUtility.SetDirty(m_settings.m_polyhedralization);
+                UpdateMesh(1, null == m_settings.m_polyhedralization ? null : m_settings.m_polyhedralization.ToMesh().mesh);
+            }
+            else if(m_settings.m_currentPage == Page.TETRAHEDRAL_MESH)
+            {
+                if(null == m_settings.m_polyhedralization || null == m_settings.m_tetrahedralMesh)
+                {
+                    return;
+                }
+                m_asyncTaskIsRunning = true;
+                try
+                {
+                    TetrahedralMeshCreation tetrahedralMeshCreation = new TetrahedralMeshCreation();
+                    TetrahedralMesh tetrahedralMesh = await tetrahedralMeshCreation.CreateAsync(m_mesh, m_settings.m_polyhedralization, m_asyncTaskProgress);
+                    m_settings.m_tetrahedralMesh.Assign(tetrahedralMesh);
+                }
+                catch(Exception exception)
+                {
+                    Debug.LogError($"Tetrahedral Mesh Creation encountered:\n{exception}");
+                }
+                m_asyncTaskIsRunning = false;
+                
+                EditorUtility.SetDirty(m_settings.m_tetrahedralMesh);
+                UpdateMesh(2, null == m_settings.m_tetrahedralMesh ? null : m_settings.m_tetrahedralMesh.ToMesh().mesh);
+            }
+            Repaint();
+        }
+    
+        private void OnGUI()
+        {
+            if(m_asyncTaskIsRunning)
+            {
+                EditorGUILayout.HelpBox($"An async task is running. {m_asyncTaskProgressField}", MessageType.Warning);
+            }
+    
+            string[] pageNames = Enum.GetNames(typeof(Page)).Select(i=>TetrahedralizerUtility.UpperSnakeCaseToCapitalizedWords(i)).ToArray();
+            pageNames[1] += " (A)";
+            pageNames[2] += " (A)";
+            m_settings.m_currentPage = (Page)GUILayout.Toolbar((int)m_settings.m_currentPage, pageNames);
+    
+            GUILayout.Space(TetrahedralizerEditorWindowSettings.SPACE_SIZE);
+    
+            if(m_settings.m_currentPage == Page.OVERVIEW)
+            {
+                DrawOverviewPage();
+            }
+            else if(m_settings.m_currentPage == Page.POLYHEDRALIZED_MESH)
+            {
+                if(DrawTargetGameObjectOnGUI())
+                {
+                    _ = DrawPolyhedralizedMeshPage();
+                    DrawPreviewSettingsOnGUI();
+                }
+            }
+            else if(m_settings.m_currentPage == Page.TETRAHEDRAL_MESH)
+            {
+                if(DrawTargetGameObjectOnGUI())
+                {
+                    _ = DrawTetrahedralMeshPage();
+                    DrawPreviewSettingsOnGUI();
+                }
+            }
+        }
+    
+        private void DrawOverviewPage()
+        {
+            EditorGUILayout.LabelField("Overview", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                $"Thank you for downloading {TetrahedralizerConstant.TETRAHEDRALIZER_NAME} version {TetrahedralizerConstant.TETRAHEDRALIZER_VERSION}!\n" +
+                $"This package is about converting regular meshes into tetrahedral meshes."
+                , MessageType.Info);
+    
+            if(GUILayout.Button($"Open {TetrahedralizerConstant.TETRAHEDRALIZER_NAME}'s Documentation"))
+            {
+                Application.OpenURL(TetrahedralizerConstant.TETRAHEDRALIZER_LINK_DOCUMENTATION);
+            }
+            if(GUILayout.Button($"Open {TetrahedralizerConstant.TETRAHEDRALIZER_NAME} on Unity Asset Store"))
+            {
+                Application.OpenURL(TetrahedralizerConstant.TETRAHEDRALIZER_LINK_UNITY_ASSET_STORE);
+            }
+            if(GUILayout.Button($"Open {TetrahedralizerConstant.TETRAHEDRALIZER_NAME} on GitHub"))
+            {
+                Application.OpenURL(TetrahedralizerConstant.TETRAHEDRALIZER_LINK_GITHUB);
+            }
+    
+            if(GUILayout.Button($"Reset {TetrahedralizerConstant.TETRAHEDRALIZER_NAME} Settings"))
+            {
+                m_settings.Clear();
+                m_settings = TetrahedralizerEditorWindowSettings.instance;
+                Enumerable.Range(0, TetrahedralizerEditorWindowSettings.MESH_PREVIEWS_COUNT).ToList().ForEach(i=>UpdateMesh(i,null));
+            }
+        }
+    
+        private bool DrawTargetGameObjectOnGUI()
+        {
+            if((m_settings.m_autoFocusOnSelectionChange && GUILayout.Button($"Auto Focus On Selection Change")) || 
+               (!m_settings.m_autoFocusOnSelectionChange && GUILayout.Button($"Manual Focus")))
+            {
+                m_settings.m_autoFocusOnSelectionChange = !m_settings.m_autoFocusOnSelectionChange;
+            }
+            m_settings.m_gameObject = (GameObject)EditorGUILayout.ObjectField(new GUIContent("Target Game Object:", "The GameObject to be tetrahedralized. We only care about its Mesh in MeshFilter and Materials in MeshRenderer."), m_settings.m_gameObject, typeof(GameObject), true);
+    
+            if(null == m_settings.m_gameObject)
+            {
+                EditorGUILayout.HelpBox("The target GameObject must be assigned.", MessageType.Error);
+                return false;
+            }
+            if(!m_settings.m_gameObject.TryGetComponent(out MeshFilter meshFilter) || null == meshFilter.sharedMesh)
+            {
+                EditorGUILayout.HelpBox("The target GameObject has no MeshFilter with a valid Mesh.", MessageType.Error);
+                return false;
+            }
+            if(!m_settings.m_gameObject.TryGetComponent(out MeshRenderer meshRenderer))
+            {
+                EditorGUILayout.HelpBox("The target GameObject has no MeshRenderer.", MessageType.Error);
+                return false;
+            }
+            meshRenderer.GetSharedMaterials(m_meshMaterials);
+            if(0 == m_meshMaterials.Count || m_meshMaterials.Where(i=>null==i).Any())
+            {
+                EditorGUILayout.HelpBox("The target GameObject's MeshRenderer has no Materials or has invalid Material(s).", MessageType.Error);
+                return false;
+            }
+    
+            m_mesh = meshFilter.sharedMesh;
+    
+            m_settings.m_showAdditionalInputData = EditorGUILayout.Foldout(m_settings.m_showAdditionalInputData, "Additional Input Data");
+            if(m_settings.m_showAdditionalInputData)
+            {
+                EditorGUI.BeginDisabledGroup(true);
+                EditorGUILayout.ObjectField(new GUIContent("Input Mesh:", "The Mesh in the MeshFilter of the target GameObject."), m_mesh, typeof(Mesh), false);
+                
+                for(int i=0; i<m_meshMaterials.Count; i++)
+                {
+                    EditorGUILayout.ObjectField(new GUIContent($"Input Material {i}:", $"The {i}th Material in the MeshRenderer of the target GameObject."), m_meshMaterials[i], typeof(Material), false);
+                    
+                    //List<Texture2D> texture2Ds = m_meshMaterials[i].GetTexture2Ds().Select(i=>i.Item1).ToList();
+                    //for(int j=0; j<texture2Ds.Count; j++)
+                    //{
+                    //    EditorGUILayout.ObjectField(new GUIContent($"Input Texture {i}, {j}:", $"The {i}th Material's {j}th texture."), texture2Ds[j], typeof(Texture2D), false, GUILayout.Height(EditorGUIUtility.singleLineHeight));
+                    //}
+                }
+                EditorGUI.EndDisabledGroup();
+            }
+    
+            return true;
+        }
+    
+        private void DrawPreviewSettingsOnGUI()
+        {
+            if(!m_asyncTaskIsRunning && GUILayout.Button($"Reset Meshes Previews"))
+            {
+                ResetMeshesPreviews();
+            }
+    
+            if((m_settings.m_synchronizeMeshesPreviews && GUILayout.Button($"Synchronize Meshes Previews")) || 
+               (!m_settings.m_synchronizeMeshesPreviews && GUILayout.Button($"Unsynchronize Meshes Previews")))
+            {
+                m_settings.m_synchronizeMeshesPreviews = !m_settings.m_synchronizeMeshesPreviews;
+            }
+    
+            EditorGUILayout.LabelField("Mesh Preview Controls", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Left Drag: Rotate Mesh");
+            EditorGUILayout.LabelField("Right Drag: Rotate Lights");
+            EditorGUILayout.LabelField("Scroll Wheel Drag: Pan Camera");
+            EditorGUILayout.LabelField("Scroll Wheel Scroll: Zoom Camera");
+        }
+    
+        private async Task DrawPolyhedralizedMeshPage()
+        {
+            EditorGUI.BeginChangeCheck();
+            m_settings.m_polyhedralization = (Polyhedralization)EditorGUILayout.ObjectField(new GUIContent("Output Polyhedralization:", "The resulting Polyhedralization. It represents the input Mesh using polyhedrons. It only knows the vertices’ positions."), m_settings.m_polyhedralization, typeof(Polyhedralization), false);
+            if(EditorGUI.EndChangeCheck())
+            {
+                UpdateMesh(1, null == m_settings.m_polyhedralization ? null : m_settings.m_polyhedralization.ToMesh().mesh);
+            }
+            m_settings.m_polyhedronInMultiplier = EditorGUILayout.Slider(new GUIContent("Polyhedron In Multiplier: ", "The likelihood of considering a polyhedron to be inside the input model. A smaller value means more likely."), (float)m_settings.m_polyhedronInMultiplier, 0.01f, 1f);
+    
+            GUILayout.Space(TetrahedralizerEditorWindowSettings.SPACE_SIZE);
+            if(!m_asyncTaskIsRunning && null!=m_settings.m_polyhedralization && GUILayout.Button($"Create Polyhedralized Mesh (D)"))
+            {
+                await ExecuteTask();
+            }
+    
+            GUILayout.Space(TetrahedralizerEditorWindowSettings.SPACE_SIZE);
+            EditorGUILayout.LabelField("Input and Output Previews", GUIStyleUtility.centerBoldLabelStyle);
+    
+            EditorGUILayout.BeginHorizontal();
+            Rect imageRect0 = GetSquareRect(0.495f);
+            Rect smallRect0 = GetRect(position.width-2f*imageRect0.width,imageRect0.height);
+            Rect imageRect1 = GetSquareRect(0.495f);
+            DrawMeshPreview(m_mesh, 0, imageRect0, false);
+            EditorGUI.DrawRect(smallRect0, Color.yellow);
+            DrawMeshPreview(m_previewMeshes[1], 1, imageRect1, false);
+            EditorGUILayout.EndHorizontal();
+    
+            EditorGUILayout.BeginHorizontal();
+            string text0 = $"Input Mesh:\nVertices Count: {(null==m_mesh ? 0:m_mesh.vertexCount)}\nTriangles Count: {(null==m_mesh ? 0:m_mesh.GetIndexCount()/3)}";
+            string text1 = $"Output Polyhedralization:\nVertices Count: {(null==m_settings.m_polyhedralization ? 0:m_settings.m_polyhedralization.GetVerticesCount())}\nPolyhedrons Count: {(null==m_settings.m_polyhedralization ? 0:m_settings.m_polyhedralization.GetPolyhedronsCount())}";
+            Rect textRect0 = GetHorizontalRect(imageRect0.width, text0);
+            Rect smallRect1 = GetRect(position.width-2f*textRect0.width,textRect0.height);
+            Rect textRect1 = GetHorizontalRect(imageRect1.width, text1);
+            EditorGUI.LabelField(textRect0, text0, GUIStyleUtility.centerLabelStyle);
+            EditorGUI.DrawRect(smallRect1, Color.clear);
+            EditorGUI.LabelField(textRect1, text1, GUIStyleUtility.centerLabelStyle);
+            EditorGUILayout.EndHorizontal();
+        }
+    
+        private async Task DrawTetrahedralMeshPage()
+        {
+            EditorGUI.BeginChangeCheck();
+            m_settings.m_polyhedralization = (Polyhedralization)EditorGUILayout.ObjectField(new GUIContent("Input Polyhedralization:", "The Polyhedralization that represents the input Mesh using polyhedrons."), m_settings.m_polyhedralization, typeof(Polyhedralization), false);
+            if(EditorGUI.EndChangeCheck())
+            {
+                UpdateMesh(1, null == m_settings.m_polyhedralization ? null : m_settings.m_polyhedralization.ToMesh().mesh);
+            }
+            EditorGUI.BeginChangeCheck();
+            m_settings.m_tetrahedralMesh = (TetrahedralMesh)EditorGUILayout.ObjectField(new GUIContent("Output Tetrahedral Mesh:", "The resulting TetrahedralMesh. It represents the input Mesh using tetrahedrons. It contains every vertex attribute in the input Mesh. It contains one more submesh that is used to store tetrahedron facets that are not defined in the input Mesh."), m_settings.m_tetrahedralMesh, typeof(TetrahedralMesh), false);
+            if(EditorGUI.EndChangeCheck())
+            {
+                UpdateMesh(2, null == m_settings.m_tetrahedralMesh ? null : m_settings.m_tetrahedralMesh.ToMesh().mesh);
+            }
+    
+            GUILayout.Space(TetrahedralizerEditorWindowSettings.SPACE_SIZE);
+            if(!m_asyncTaskIsRunning && null!=m_settings.m_polyhedralization && null!=m_settings.m_tetrahedralMesh && GUILayout.Button($"Create Tetrahedral Mesh (D)"))
+            {
+                await ExecuteTask();
+            }
+    
+            GUILayout.Space(TetrahedralizerEditorWindowSettings.SPACE_SIZE);
+            EditorGUILayout.LabelField("Input and Output Previews", GUIStyleUtility.centerBoldLabelStyle);
+    
+            EditorGUILayout.BeginHorizontal();
+            Rect imageRect0 = GetSquareRect(0.495f);
+            Rect smallRect0 = GetRect(position.width-2f*imageRect0.width,imageRect0.height);
+            Rect imageRect1 = GetSquareRect(0.495f);
+            DrawMeshPreview(m_mesh, 0, imageRect0, false);
+            EditorGUI.DrawRect(smallRect0, Color.yellow);
+            DrawMeshPreview(m_previewMeshes[2], 2, imageRect1, true);
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.BeginHorizontal();
+            //string text2 = $"Input Polyhedralization:\nVertices Count: {(null==m_settings.m_polyhedralization ? 0:m_settings.m_polyhedralization.GetVerticesCount())}\nPolyhedrons Count: {(null==m_settings.m_polyhedralization ? 0:m_settings.m_polyhedralization.GetPolyhedronsCount())}";
+            string text0 = $"Input Mesh:\nVertices Count: {(null==m_mesh ? 0:m_mesh.vertexCount)}\nTriangles Count: {(null==m_mesh ? 0:m_mesh.GetIndexCount()/3)}";
+            string text1 = $"Output Tetrahedral Mesh:\nVertices Count: {(null==m_settings.m_tetrahedralMesh ? 0:m_settings.m_tetrahedralMesh.GetTetrahedronsCount()*12)}\nTetrahedrons Count: {(null==m_settings.m_tetrahedralMesh ? 0:m_settings.m_tetrahedralMesh.GetTetrahedronsCount())}";
+            Rect textRect0 = GetHorizontalRect(imageRect0.width, text0);
+            Rect smallRect1 = GetRect(position.width-2f*textRect0.width,textRect0.height);
+            Rect textRect1 = GetHorizontalRect(imageRect1.width, text1);
+            EditorGUI.LabelField(textRect0, text0, GUIStyleUtility.centerLabelStyle);
+            EditorGUI.DrawRect(smallRect1, Color.clear);
+            EditorGUI.LabelField(textRect1, text1, GUIStyleUtility.centerLabelStyle);
+            EditorGUILayout.EndHorizontal();
+    
+            m_settings.m_material = (Material)EditorGUILayout.ObjectField(new GUIContent("Interior Material:", "The TetrahedralMesh contains an additional submesh that represents the interior triangles. This material is used to render that submesh."), m_settings.m_material, typeof(Material), false);
+        }
+    
+        private Rect GetRect(float width, float height)
+        {
+            return GUILayoutUtility.GetRect(width,height, GUILayout.ExpandWidth(false), GUILayout.ExpandHeight(false));
+        }
+        private Rect GetSquareRect(float widthRatio, float maxHeightRatio=0.7f)
+        {
+            float w = Mathf.Min(position.width*widthRatio, position.height*maxHeightRatio);
+            return GetRect(w,w);
+        }
+        private Rect GetHorizontalRect(float width, string text)
+        {
+            float h = EditorStyles.label.CalcHeight(new GUIContent(text), width);
+            return GetRect(width, h);
+        }
+    
+        private void UpdateMesh(int targetIndex, Mesh source)
+        {
+            if(null != m_previewMeshes[targetIndex])
+            {
+                DestroyImmediate(m_previewMeshes[targetIndex]);
+            }
+            m_previewMeshes[targetIndex] = source;
+            if(null != m_previewMeshes[targetIndex])
+            {
+                m_previewMeshes[targetIndex].hideFlags = HideFlags.HideAndDontSave;
+            }
+        }
+        private void DrawMeshPreview(Mesh mesh, int previewIndex, Rect rect, bool useInteriorMaterial)
+        {
+            m_meshesPreviews[previewIndex].AssignMesh(mesh);
+            if(useInteriorMaterial)
+            {
+                List<Material> temp = m_meshMaterials.Select(i=>i).ToList();
+                temp.Add(m_settings.m_material);
+                m_meshesPreviews[previewIndex].AssignMaterials(temp);
+            }
+            else
+            {
+                m_meshesPreviews[previewIndex].AssignMaterials(m_meshMaterials);
+            }
+    
+            EditorGUI.BeginChangeCheck();
+            m_meshesPreviews[previewIndex].DrawOnGUI(rect);
+            if(EditorGUI.EndChangeCheck() && m_settings.m_synchronizeMeshesPreviews)
+            {
+                m_meshesPreviews.ForEach(i=>i.CopyPreviewParameters(m_meshesPreviews[previewIndex]));
+            }
+        }
+        private void ResetMeshesPreviews()
+        {
+            m_meshesPreviews.ForEach(i=>i.ResetPreviewParameters());
+        }
+    }
+    
+    #endif
+    
+}

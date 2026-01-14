@@ -1,0 +1,529 @@
+#ifndef common_function_h
+#define common_function_h
+
+#include "common_header.h"
+
+inline void sort_ints(uint32_t& i0, uint32_t& i1)
+{
+    if(i0 > i1)
+    {
+        std::swap(i0,i1);
+    }
+}
+inline void sort_ints(uint32_t& i0, uint32_t& i1, uint32_t& i2)
+{
+    if(i0 > i1)
+    {
+        std::swap(i0,i1);
+    }
+    if(i1 > i2)
+    {
+        std::swap(i1,i2);
+    }
+    if(i0 > i1)
+    {
+        std::swap(i0,i1);
+    }
+}
+
+inline uint32_t search_int(uint32_t i0, uint32_t i1, std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, ii32_hash>& map)
+{
+    sort_ints(i0, i1);
+    auto it = map.find(std::make_pair(i0,i1));
+    if(it == map.end())
+    {
+        return UNDEFINED_VALUE;
+    }
+    return it->second;
+}
+inline uint32_t search_int(uint32_t i0, uint32_t i1, uint32_t i2, std::unordered_map<std::tuple<uint32_t, uint32_t, uint32_t>, uint32_t, iii32_hash>& map)
+{
+    sort_ints(i0, i1, i2);
+    auto it = map.find(std::make_tuple(i0,i1,i2));
+    if(it == map.end())
+    {
+        return UNDEFINED_VALUE;
+    }
+    return it->second;
+}
+
+inline void assign_int(uint32_t i0, uint32_t i1, uint32_t v, std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, ii32_hash>& map)
+{
+    sort_ints(i0, i1);
+    map[std::make_pair(i0,i1)] = v;
+}
+inline void assign_int(uint32_t i0, uint32_t i1, uint32_t i2, uint32_t v, std::unordered_map<std::tuple<uint32_t, uint32_t, uint32_t>, uint32_t, iii32_hash>& map)
+{
+    sort_ints(i0, i1, i2);
+    map[std::make_tuple(i0,i1,i2)] = v;
+}
+
+inline void remove_int(uint32_t i0, uint32_t i1, std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, ii32_hash>& map)
+{
+    sort_ints(i0, i1);
+    auto it = map.find(std::make_pair(i0,i1));
+    if(it != map.end())
+    {
+        map.erase(it);
+    }
+}
+inline void remove_int(uint32_t i0, uint32_t i1, uint32_t i2, std::unordered_map<std::tuple<uint32_t, uint32_t, uint32_t>, uint32_t, iii32_hash>& map)
+{
+    sort_ints(i0, i1, i2);
+    auto it = map.find(std::make_tuple(i0,i1,i2));
+    if(it != map.end())
+    {
+        map.erase(it);
+    }
+}
+
+inline int double_to_int(double d)
+{
+    if(d < 0.0)
+    {
+        return -1;
+    }
+    if(d == 0.0)
+    {
+        return 0;
+    }
+    return 1;
+}
+inline int orient3d(uint32_t p0,uint32_t p1,uint32_t p2,uint32_t p3, std::shared_ptr<genericPoint>* m_vertices)
+{
+    return double_to_int(genericPoint::orient3D(*m_vertices[p0],*m_vertices[p1],*m_vertices[p2],*m_vertices[p3]));
+}
+inline int orient3d(std::shared_ptr<genericPoint> p0,std::shared_ptr<genericPoint> p1,std::shared_ptr<genericPoint> p2,std::shared_ptr<genericPoint> p3)
+{
+    return double_to_int(genericPoint::orient3D(*p0,*p1,*p2,*p3));
+}
+inline int in_sphere(uint32_t p0,uint32_t p1,uint32_t p2,uint32_t p3,uint32_t p4, std::shared_ptr<genericPoint>* m_vertices)
+{
+    return double_to_int(genericPoint::inSphere(*m_vertices[p0],*m_vertices[p1],*m_vertices[p2],*m_vertices[p3],*m_vertices[p4]));
+}
+inline bool is_collinear(uint32_t p0, uint32_t p1, uint32_t p2, std::shared_ptr<genericPoint>* m_vertices)
+{
+    return !genericPoint::misaligned(*m_vertices[p0],*m_vertices[p1],*m_vertices[p2]);
+}
+inline bool vertex_in_inner_segment(uint32_t p0,uint32_t s0,uint32_t s1, std::shared_ptr<genericPoint>* m_vertices)
+{
+    return genericPoint::pointInInnerSegment(*m_vertices[p0],*m_vertices[s0],*m_vertices[s1]);
+}
+inline bool vertex_in_segment(uint32_t p0,uint32_t s0,uint32_t s1, std::shared_ptr<genericPoint>* m_vertices)
+{
+    return genericPoint::pointInSegment(*m_vertices[p0],*m_vertices[s0],*m_vertices[s1]);
+}
+inline bool vertex_in_inner_triangle(uint32_t p0,uint32_t t0,uint32_t t1,uint32_t t2, std::shared_ptr<genericPoint>* m_vertices)
+{
+    return genericPoint::pointInInnerTriangle(*m_vertices[p0],*m_vertices[t0],*m_vertices[t1],*m_vertices[t2]);
+}
+inline bool vertex_in_triangle(uint32_t p0,uint32_t t0,uint32_t t1,uint32_t t2, std::shared_ptr<genericPoint>* m_vertices)
+{
+    return genericPoint::pointInTriangle(*m_vertices[p0],*m_vertices[t0],*m_vertices[t1],*m_vertices[t2]);
+}
+inline bool inner_segment_cross_inner_triangle(uint32_t s0,uint32_t s1,uint32_t t0,uint32_t t1,uint32_t t2, std::shared_ptr<genericPoint>* m_vertices)
+{
+    return genericPoint::innerSegmentCrossesInnerTriangle(*m_vertices[s0],*m_vertices[s1],*m_vertices[t0],*m_vertices[t1],*m_vertices[t2]);
+}
+inline bool inner_segment_cross_triangle(uint32_t s0,uint32_t s1,uint32_t t0,uint32_t t1,uint32_t t2, std::shared_ptr<genericPoint>* m_vertices)
+{
+    return genericPoint::innerSegmentCrossesTriangle(*m_vertices[s0],*m_vertices[s1],*m_vertices[t0],*m_vertices[t1],*m_vertices[t2]);
+}
+inline bool segment_cross_triangle(uint32_t s0,uint32_t s1,uint32_t t0,uint32_t t1, uint32_t t2, std::shared_ptr<genericPoint>* m_vertices)
+{
+    if(inner_segment_cross_triangle(s0, s1, t0, t1, t2, m_vertices))
+    {
+        return true;
+    }
+ 
+    if(0 == orient3d(s0,t0,t1,t2, m_vertices) && 0 == orient3d(s1,t0,t1,t2, m_vertices))
+    {
+        return false;
+    }
+    return
+    (0 == orient3d(s0, t0, t1, t2, m_vertices) && vertex_in_triangle(s0, t0, t1, t2, m_vertices)) ||
+    (0 == orient3d(s1, t0, t1, t2, m_vertices) && vertex_in_triangle(s1, t0, t1, t2, m_vertices));
+}
+inline bool inner_segment_cross_inner_segment(uint32_t s0,uint32_t s1,uint32_t s2,uint32_t s3, std::shared_ptr<genericPoint>* m_vertices)
+{
+    return genericPoint::innerSegmentsCross(*m_vertices[s0],*m_vertices[s1],*m_vertices[s2],*m_vertices[s3]);
+}
+inline bool segment_cross_segment(uint32_t s0,uint32_t s1,uint32_t s2,uint32_t s3, int normal, std::shared_ptr<genericPoint>* m_vertices)
+{
+    return genericPoint::segmentsCross(*m_vertices[s0],*m_vertices[s1],*m_vertices[s2],*m_vertices[s3], normal);
+}
+inline int max_component_in_triangle_normal(uint32_t t0,uint32_t t1,uint32_t t2, std::shared_ptr<genericPoint>* m_vertices)
+{
+    return genericPoint::maxComponentInTriangleNormal(
+        m_vertices[t0]->toExplicit3D().X(),m_vertices[t0]->toExplicit3D().Y(),m_vertices[t0]->toExplicit3D().Z(),
+        m_vertices[t1]->toExplicit3D().X(),m_vertices[t1]->toExplicit3D().Y(),m_vertices[t1]->toExplicit3D().Z(),
+        m_vertices[t2]->toExplicit3D().X(),m_vertices[t2]->toExplicit3D().Y(),m_vertices[t2]->toExplicit3D().Z());
+}
+inline int orient3d_ignore_axis(uint32_t p0,uint32_t p1,uint32_t p2,int axis, std::shared_ptr<genericPoint>* m_vertices)
+{
+    if(0 == axis)
+    {
+        return double_to_int(genericPoint::orient2Dyz(*m_vertices[p0],*m_vertices[p1],*m_vertices[p2]));
+    }
+    if(1 == axis)
+    {
+        return double_to_int(genericPoint::orient2Dzx(*m_vertices[p0],*m_vertices[p1],*m_vertices[p2]));
+    }
+    if(2 == axis)
+    {
+        return double_to_int(genericPoint::orient2Dxy(*m_vertices[p0],*m_vertices[p1],*m_vertices[p2]));
+    }
+    throw "wrong axis value";
+}
+
+inline double3 approximate_vertex(std::shared_ptr<genericPoint> vertices)
+{
+    double3 res;
+    vertices->getApproxXYZCoordinates(res.x, res.y, res.z, true);
+    return res;
+}
+inline void approximate_verteices(std::vector<double3>& approximated_vertices, std::vector<std::shared_ptr<genericPoint>>& vertices)
+{
+    while(approximated_vertices.size() < vertices.size())
+    {
+        approximated_vertices.push_back(approximate_vertex(vertices[approximated_vertices.size()]));
+    }
+}
+
+// return true if p is on or inside the triangle, false otherwise
+// always return false triangle is degenerate
+inline std::pair<bool, double3> barycentric_weight(double3 t0, double3 t1, double3 t2, double3 p)
+{
+    double3 v0 = t1 - t0;
+    double3 v1 = t2 - t0;
+    double3 v2 = p  - t0;
+    double d00 = v0.dot(v0);
+    double d01 = v0.dot(v1);
+    double d11 = v1.dot(v1);
+    double d20 = v2.dot(v0);
+    double d21 = v2.dot(v1);
+    double denom = d00 * d11 - d01 * d01;
+    double eps = 1e-12;
+    
+    double3 w;
+    if(std::fabs(denom) < eps)
+    {
+        w.x = 0.333;
+        w.y = 0.333;
+        w.z = 0.333;
+        return std::make_pair(false,w);
+    }
+    w.y = (d11 * d20 - d01 * d21) / denom;
+    w.z = (d00 * d21 - d01 * d20) / denom;
+    w.x = 1.0 - w.y - w.z;
+
+    double margin = -1e-12;
+    return std::make_pair(w.x>=margin && w.y>=margin && w.z>=margin, w);
+}
+inline double barycentric_weight_denom(double3 t0, double3 t1, double3 t2)
+{
+    double3 v0 = t1 - t0;
+    double3 v1 = t2 - t0;
+
+    double d00 = v0.dot(v0);
+    double d01 = v0.dot(v1);
+    double d11 = v1.dot(v1);
+
+    return d00 * d11 - d01 * d01;
+}
+
+inline std::vector<std::vector<uint32_t>> flat_array_to_nested_vector(uint32_t* data, uint32_t count)
+{
+    std::vector<std::vector<uint32_t>> res;
+    uint32_t f=0;
+    for(uint32_t i=0; i<count; i++)
+    {
+        res.push_back(std::vector<uint32_t>());
+        uint32_t n = data[f];
+        for(uint32_t j=f+1; j<f+1+n; j++)
+        {
+            res.back().push_back(data[j]);
+        }
+        f += n+1;
+    }
+    return res;
+}
+inline std::vector<uint32_t> nested_vector_to_flat_vector(std::vector<std::vector<uint32_t>>& nested_vector)
+{
+    std::vector<uint32_t> res;
+    for(uint32_t i=0; i<nested_vector.size(); i++)
+    {
+        res.push_back(nested_vector[i].size());
+        for(uint32_t j=0; j<nested_vector[i].size(); j++)
+        {
+            res.push_back(nested_vector[i][j]);
+        }
+    }
+    return res;
+}
+inline uint32_t count_flat_vector_elements(std::vector<uint32_t>& flat_vector)
+{
+    uint32_t res = 0;
+    for(uint32_t i=0; i<flat_vector.size(); i+=flat_vector[i]+1)
+    {
+        res++;
+    }
+    return res;
+}
+inline uint32_t count_nested_vector_size(std::vector<std::vector<uint32_t>>& nested_vector)
+{
+    uint32_t res = nested_vector.size();
+    for(std::vector<uint32_t>& vs : nested_vector)
+    {
+        res += vs.size();
+    }
+    return res;
+}
+inline void write_buffer_with_vector(uint32_t* buffer, std::vector<uint32_t>& vector)
+{
+    for(uint32_t i=0; i<vector.size(); i++)
+    {
+        buffer[i] = vector[i];
+    }
+}
+
+inline std::vector<std::shared_ptr<genericPoint>> create_vertices(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values)
+{
+    std::vector<std::shared_ptr<genericPoint>> vertices;
+    
+    for(uint32_t i=0; i<explicit_count; i++)
+    {
+        vertices.push_back(std::make_shared<explicitPoint3D>(explicit_values[3*i+0],explicit_values[3*i+1],explicit_values[3*i+2]));
+    }
+    uint32_t j = 0;
+    for(uint32_t i=0; i<implicit_count; i++)
+    {
+        std::shared_ptr<genericPoint> new_vertex;
+        if(5 == implicit_values[j]) // line plane
+        {
+            new_vertex = std::make_shared<implicitPoint3D_LPI>(
+                                                 vertices[implicit_values[j+1]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+2]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+3]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+4]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+5]]->toExplicit3D());
+            j += 6;
+        }
+        else if(9 == implicit_values[j]) // three planes
+        {
+            new_vertex = std::make_shared<implicitPoint3D_TPI>(
+                                                 vertices[implicit_values[j+1]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+2]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+3]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+4]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+5]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+6]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+7]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+8]]->toExplicit3D(),
+                                                 vertices[implicit_values[j+9]]->toExplicit3D());
+            j += 10;
+        }
+        else
+        {
+            throw "wrong input";
+        }
+        
+        vertices.push_back(new_vertex);
+    }
+    
+    return vertices;
+}
+inline std::vector<std::shared_ptr<genericPoint>> create_vertices(uint32_t vertices_count, uint32_t* facets_centroids, double* facets_centroids_weights, std::shared_ptr<genericPoint>* vertices)
+{
+    std::vector<std::shared_ptr<genericPoint>> res;
+    for(uint32_t i=0; i<vertices_count; i++)
+    {
+        res.push_back(std::make_shared<implicitPoint3D_BPT>
+                                                            (vertices[facets_centroids[3*i+0]]->toExplicit3D(),
+                                                             vertices[facets_centroids[3*i+1]]->toExplicit3D(),
+                                                             vertices[facets_centroids[3*i+2]]->toExplicit3D(),
+                                                             facets_centroids_weights[2*i+0],
+                                                             facets_centroids_weights[2*i+1]));
+    }
+    return res;
+}
+
+inline std::vector<uint32_t> create_constraints(uint32_t constraints_count, uint32_t* constraints, std::shared_ptr<genericPoint>* vertices, bool add_placeholder)
+{
+    std::vector<uint32_t> res;
+    std::unordered_set<std::tuple<uint32_t,uint32_t,uint32_t>,iii32_hash> unique_constraints;
+    for(uint32_t i=0; i<constraints_count; i++)
+    {
+        uint32_t c0 = constraints[3*i+0];
+        uint32_t c1 = constraints[3*i+1];
+        uint32_t c2 = constraints[3*i+2];
+        uint32_t t0 = c0;
+        uint32_t t1 = c1;
+        uint32_t t2 = c2;
+        
+        sort_ints(t0, t1, t2);
+        if(unique_constraints.end() != unique_constraints.find(std::make_tuple(t0,t1,t2)) || t0 == t1 || t0 == t2 || t1 == t2 || is_collinear(t0, t1, t2, vertices))
+        {
+            unique_constraints.insert(std::make_tuple(t0,t1,t2));
+            if(add_placeholder)
+            {
+                res.push_back(UNDEFINED_VALUE);
+                res.push_back(UNDEFINED_VALUE);
+                res.push_back(UNDEFINED_VALUE);
+            }
+            continue;
+        }
+        unique_constraints.insert(std::make_tuple(t0,t1,t2));
+        res.push_back(c0);
+        res.push_back(c1);
+        res.push_back(c2);
+    }
+    return res;
+}
+
+inline std::vector<uint32_t> vector_random_elements(const std::vector<uint32_t>& vector, size_t m)
+{
+    std::unordered_set<uint32_t> res;
+    if(0 == vector.size())
+    {
+        return std::vector<uint32_t>();
+    }
+    
+//    std::random_device rd;
+//    std::mt19937 gen(rd());
+    std::mt19937 gen(UNDEFINED_VALUE);
+    std::uniform_int_distribution<size_t> dist(0, vector.size()-1);
+    
+    for(uint32_t i=0; i<m; i++)
+    {
+        res.insert(vector[dist(gen)]);
+    }
+    return std::vector<uint32_t>(res.begin(),res.end());
+}
+
+inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>> group_coplanar_triangles(std::vector<uint32_t>& triangles, std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<double3>& approximated_vertices)
+{
+    std::unordered_map<std::tuple<uint64_t,uint64_t,uint64_t,uint64_t>,std::vector<uint32_t>, iiii64_hash> coplanar_planes;
+    std::vector<uint32_t> special_triangles;
+    for(uint32_t i=0; i<triangles.size()/3; i++)
+    {
+        uint32_t t0 = triangles[3*i+0];
+        uint32_t t1 = triangles[3*i+1];
+        uint32_t t2 = triangles[3*i+2];
+        if(UNDEFINED_VALUE == t0)
+        {
+            continue;
+        }
+        
+        double coplanar_eps = 1e-12;
+        double quantize_eps = 1e-7;
+        double3 p0 = approximated_vertices[t0];
+        double3 p1 = approximated_vertices[t1];
+        double3 p2 = approximated_vertices[t2];
+        double3 n = (p1-p0).cross(p2-p0);
+        double d = -n.dot(p0);
+        double s = std::max(std::max(std::abs(n.x),std::abs(n.y)),std::abs(n.z));
+        if(s < coplanar_eps)
+        {
+            special_triangles.push_back(i);
+            continue;
+        }
+        n /= s;
+        d /= s;
+        
+        if((n.x<0.0) ||
+           (n.x==0.0 && n.y<0.0) ||
+           (n.x==0.0 && n.y==0.0 && n.z<0.0))
+        {
+            n *= -1;
+            d *= -1;
+        }
+        coplanar_planes[std::make_tuple(std::llround(n.x/quantize_eps),
+                                        std::llround(n.y/quantize_eps),
+                                        std::llround(n.z/quantize_eps),
+                                        std::llround(d/quantize_eps))].push_back(i);
+    }
+    
+    std::vector<uint64_t> res_planes;
+    std::vector<std::vector<uint32_t>> res_groups;
+    for(auto& [plane, tris] : coplanar_planes)
+    {
+        uint32_t start_n = res_groups.size();
+        
+        for(uint32_t t : tris)
+        {
+            uint32_t cg = UNDEFINED_VALUE;
+            uint32_t t0 = triangles[3*t+0];
+            uint32_t t1 = triangles[3*t+1];
+            uint32_t t2 = triangles[3*t+2];
+            
+            for(uint32_t i=start_n; i<res_groups.size(); i++)
+            {
+                uint32_t nt = res_groups[i][0];
+                uint32_t nt0 = triangles[3*nt+0];
+                uint32_t nt1 = triangles[3*nt+1];
+                uint32_t nt2 = triangles[3*nt+2];
+                
+                if(0 == orient3d(t0,t1,t2,nt0,vertices.data()) &&
+                   0 == orient3d(t0,t1,t2,nt1,vertices.data()) &&
+                   0 == orient3d(t0,t1,t2,nt2,vertices.data()))
+                {
+                    cg = i;
+                    break;
+                }
+            }
+            
+            if(cg == UNDEFINED_VALUE)
+            {
+                cg = res_groups.size();
+                res_groups.push_back(std::vector<uint32_t>());
+                auto [p0,p1,p2,p3] = plane;
+                res_planes.push_back(p0);
+                res_planes.push_back(p1);
+                res_planes.push_back(p2);
+                res_planes.push_back(p3);
+            }
+            res_groups[cg].push_back(t);
+        }
+    }
+    
+    for(uint32_t t : special_triangles)
+    {
+        uint32_t cg = UNDEFINED_VALUE;
+        uint32_t t0 = triangles[3*t+0];
+        uint32_t t1 = triangles[3*t+1];
+        uint32_t t2 = triangles[3*t+2];
+        
+        for(uint32_t i=0; i<res_groups.size(); i++)
+        {
+            uint32_t nt = res_groups[i][0];
+            uint32_t nt0 = triangles[3*nt+0];
+            uint32_t nt1 = triangles[3*nt+1];
+            uint32_t nt2 = triangles[3*nt+2];
+            
+            if(0 == orient3d(t0,t1,t2,nt0,vertices.data()) &&
+               0 == orient3d(t0,t1,t2,nt1,vertices.data()) &&
+               0 == orient3d(t0,t1,t2,nt2,vertices.data()))
+            {
+                cg = i;
+                break;
+            }
+        }
+        
+        if(cg == UNDEFINED_VALUE)
+        {
+            cg = res_groups.size();
+            res_groups.push_back(std::vector<uint32_t>());
+            res_planes.push_back(UNDEFINED_VALUE); // just add some random value since we can't calculate the plane equation
+            res_planes.push_back(UNDEFINED_VALUE);
+            res_planes.push_back(UNDEFINED_VALUE);
+            res_planes.push_back(UNDEFINED_VALUE);
+        }
+        FOUND_GROUP:
+        res_groups[cg].push_back(t);
+    }
+    
+    return std::make_pair(res_groups, res_planes);
+}
+
+#endif
