@@ -24,7 +24,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		887F388D2E0E1F2800A37971 /* Exceptions for "TetrahedralizerLibrary" folder in "TetrahedralizerLibrary" target */ = {
+		887F388D2E0E1F2800A37971 /* Exceptions for "src" folder in "TetrahedralizerLibrary" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				binary_space_partition.cpp,
@@ -76,12 +76,12 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		887F38702E0E1DE400A37971 /* TetrahedralizerLibrary */ = {
+		887F38702E0E1DE400A37971 /* src */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				887F388D2E0E1F2800A37971 /* Exceptions for "TetrahedralizerLibrary" folder in "TetrahedralizerLibrary" target */,
+				887F388D2E0E1F2800A37971 /* Exceptions for "src" folder in "TetrahedralizerLibrary" target */,
 			);
-			path = TetrahedralizerLibrary;
+			path = src;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -107,7 +107,7 @@
 		887F38652E0E1DE400A37971 = {
 			isa = PBXGroup;
 			children = (
-				887F38702E0E1DE400A37971 /* TetrahedralizerLibrary */,
+				887F38702E0E1DE400A37971 /* src */,
 				887F386F2E0E1DE400A37971 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -147,7 +147,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				887F38702E0E1DE400A37971 /* TetrahedralizerLibrary */,
+				887F38702E0E1DE400A37971 /* src */,
 			);
 			name = TetrahedralizerMain;
 			packageProductDependencies = (

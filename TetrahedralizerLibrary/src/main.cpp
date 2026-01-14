@@ -11,7 +11,7 @@ int main(int argc, const char * argv[])
 {
     if(argc < 3)
     {
-        cerr << "Usage: TetrahedralizerMain in_file\n";
+        cerr << "Usage: Tetrahedralizer in_file\n";
         return 1;
     }
     ifstream in_file(argv[1]);
