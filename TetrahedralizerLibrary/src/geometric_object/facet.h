@@ -1,7 +1,7 @@
 #ifndef facet_h
 #define facet_h
 
-#include "common_header.h"
+#include "../common_header.h"
 #include "segment.h"
 
 class Facet

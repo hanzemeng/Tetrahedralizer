@@ -372,7 +372,11 @@ inline std::ostream& operator<<(std::ostream& os, const interval_number& p)
 struct expansionObject
 {
 public:
-	inline static thread_local MultiPool mempool = MultiPool(2048, 64);
+    static MultiPool& mempool()
+    {
+        thread_local MultiPool pool(2048, 64);
+        return pool;
+    }
 
 	// Basic error-free transformations
 	static void Quick_Two_Sum(const double a, const double b, double& x, double& y);
@@ -709,8 +713,11 @@ private:
 	void addOneMostSignificantDigit(uint32_t d);
 
 	// Memory pool for bignaturals.
-	inline static thread_local MultiPool nfgMemoryPool;
-
+    static MultiPool& nfgMemoryPool()
+    {
+        thread_local MultiPool pool;   // default constructor
+        return pool;
+    }
 	friend class bigfloat;
 	friend class bigrational;
 };
@@ -1496,8 +1503,8 @@ inline interval_number sqrt(const interval_number& p)
 // Allocate extra-memory
 //#define AllocDoubles(n) ((double *)malloc((n) * sizeof(double)))
 //#define FreeDoubles(p) (free(p))
-#define AllocDoubles(n) ((double *)expansionObject::mempool.alloc((n) * sizeof(double)))
-#define FreeDoubles(p) (expansionObject::mempool.release(p))
+#define AllocDoubles(n) ((double *)expansionObject::mempool().alloc((n) * sizeof(double)))
+#define FreeDoubles(p) (expansionObject::mempool().release(p))
 
 inline void expansionObject::Quick_Two_Sum(const double a, const double b, double& x, double& y) { x = a + b; y = b - (x - a); }
 
@@ -1958,8 +1965,8 @@ inline int expansionObject::Gen_Product_With_PreAlloc(const int alen, const doub
 
 #ifndef USE_GNU_GMP_CLASSES
 
-inline uint32_t* bignatural::BN_ALLOC(uint32_t num_bytes) { return (uint32_t*)nfgMemoryPool.alloc(num_bytes); }
-inline void bignatural::BN_FREE(uint32_t* ptr) { nfgMemoryPool.release(ptr); }
+inline uint32_t* bignatural::BN_ALLOC(uint32_t num_bytes) { return (uint32_t*)nfgMemoryPool().alloc(num_bytes); }
+inline void bignatural::BN_FREE(uint32_t* ptr) { nfgMemoryPool().release(ptr); }
 inline bignatural::bignatural() : m_capacity(0), m_size(0), digits(NULL) { }
 inline bignatural::~bignatural() { BN_FREE(digits); }
 inline bignatural::bignatural(const bignatural& m) { init(m); }

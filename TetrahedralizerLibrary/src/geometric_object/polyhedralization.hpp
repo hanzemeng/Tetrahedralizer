@@ -1,8 +1,8 @@
 #ifndef polyhedralization_hpp
 #define polyhedralization_hpp
 
-#include "common_header.h"
-#include "common_function.h"
+#include "../common_header.h"
+#include "../common_function.h"
 #include "segment.h"
 #include "facet.h"
 

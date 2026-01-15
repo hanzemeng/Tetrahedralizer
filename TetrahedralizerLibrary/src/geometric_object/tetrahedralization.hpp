@@ -1,8 +1,8 @@
 #ifndef tetrahedralization_hpp
 #define tetrahedralization_hpp
 
-#include "common_header.h"
-#include "common_function.h"
+#include "../common_header.h"
+#include "../common_function.h"
 
 class Tetrahedralization
 {

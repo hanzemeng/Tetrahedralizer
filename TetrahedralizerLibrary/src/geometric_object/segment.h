@@ -1,7 +1,7 @@
 #ifndef segment_h
 #define segment_h
 
-#include "common_header.h"
+#include "../common_header.h"
 
 class Segment
 {
