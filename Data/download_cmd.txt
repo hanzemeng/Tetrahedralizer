@@ -1,0 +1,5 @@
+ssh han118@digits.ece.ucsb.edu "awk 'FNR==1 {print; nextfile}' /home/cmuray/Tetrahedralizer/tet_output/*" > local_combined_lines.txt
+
+ssh han118@digits.ece.ucsb.edu "awk 'FNR==1 {print FILENAME \",\" \$0; nextfile}' /home/cmuray/Tetrahedralizer/tet_output/*" > local_combined_lines.txt
+
+ssh han118@digits.ece.ucsb.edu "cd /home/cmuray/Tetrahedralizer/volmesh_output/ && awk '/^[[:space:]]*Final cells/ {print FILENAME \",\" \$0; nextfile}' *" > local_combined_lines.txt

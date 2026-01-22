@@ -396,7 +396,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
     }
 
     // for every polyhedron, find the constraints that intersect it
-    unordered_map<uint32_t, vector<FacetOrder>> polyhedrons_slice_order; // first is polyhedron, second is slice order and coplanar group
+    unordered_map<uint32_t, vector<uint32_t>> polyhedrons_slice_order; // first is polyhedron, second is slice order and coplanar group
     {
         unordered_map<uint32_t, tuple<vector<shared_ptr<genericPoint>>, vector<Segment>, vector<Facet>>> polyhedrons_intersect_constraints;
         vector<uint32_t> visited_tetrahedrons = vector<uint32_t>(m_tetrahedralization.get_tetrahedrons_count(), UNDEFINED_VALUE);
@@ -510,8 +510,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
             {
                 continue;
             }
-            FacetOrder facet_order = facets_order[o];
-            uint32_t cg = facet_order.f;
+            uint32_t cg = facets_order[o];
             uint32_t c0 = coplanar_groups_triangles[3*cg+0];
             uint32_t c1 = coplanar_groups_triangles[3*cg+1];
             uint32_t c2 = coplanar_groups_triangles[3*cg+2];
@@ -519,16 +518,16 @@ void BinarySpacePartitionHandle::binary_space_partition()
             int slice_res = m_polyhedralization.slice_polyhedron_with_plane(p, c0, c1, c2);
             if(1 == slice_res)
             {
-                slice_order.push(make_pair(p, facet_order.top));
+                slice_order.push(make_pair(p, facets_order[o+1]));
             }
             else if(-1 == slice_res)
             {
-                slice_order.push(make_pair(p, facet_order.bot));
+                slice_order.push(make_pair(p, facets_order[o+2]));
             }
             else
             {
-                slice_order.push(make_pair(p, facet_order.top));
-                slice_order.push(make_pair(m_polyhedralization.m_polyhedrons.size()-1, facet_order.bot));
+                slice_order.push(make_pair(p, facets_order[o+1]));
+                slice_order.push(make_pair(m_polyhedralization.m_polyhedrons.size()-1, facets_order[o+2]));
             }
         }
     }

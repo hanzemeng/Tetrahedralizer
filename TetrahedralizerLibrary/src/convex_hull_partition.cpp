@@ -177,7 +177,7 @@ void ConvexHullPartitionHandle::convex_hull_partition()
 {
     unordered_map<uint32_t, tuple<uint32_t,uint32_t,uint32_t>> coplanar_groups_to_triangles;
     // calculate slice order
-    vector<FacetOrder> facets_order;
+    vector<uint32_t> facets_order;
     if(0 != m_constraints_facets.size())
     {
         for(uint32_t i=0; i<m_constraints_facets.size(); i++)
@@ -201,22 +201,21 @@ void ConvexHullPartitionHandle::convex_hull_partition()
         {
             continue;
         }
-        FacetOrder facet_order = facets_order[i];
-        auto [c0,c1,c2] = coplanar_groups_to_triangles[facet_order.f];
+        auto [c0,c1,c2] = coplanar_groups_to_triangles[facets_order[i]];
         
         int slice_res = m_polyhedralization.slice_polyhedron_with_plane(p, c0, c1, c2);
         if(1 == slice_res)
         {
-            slice_order.push(make_pair(p, facet_order.top));
+            slice_order.push(make_pair(p, facets_order[i+1]));
         }
         else if(-1 == slice_res)
         {
-            slice_order.push(make_pair(p, facet_order.bot));
+            slice_order.push(make_pair(p, facets_order[i+2]));
         }
         else
         {
-            slice_order.push(make_pair(p, facet_order.top));
-            slice_order.push(make_pair(m_polyhedralization.m_polyhedrons.size()-1, facet_order.bot));
+            slice_order.push(make_pair(p, facets_order[i+1]));
+            slice_order.push(make_pair(m_polyhedralization.m_polyhedrons.size()-1, facets_order[i+2]));
         }
     }
     
