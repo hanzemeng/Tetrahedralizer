@@ -30,4 +30,4 @@ add_executable(Tetrahedralizer
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2")
 set(CMAKE_CXX_FLAGS_MINSIZEREL "-Os")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffp-model=strict")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frounding-math")
