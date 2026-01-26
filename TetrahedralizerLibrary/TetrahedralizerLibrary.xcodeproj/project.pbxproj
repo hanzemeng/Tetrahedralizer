@@ -67,6 +67,8 @@
 				interior_characterization.cpp,
 				interior_characterization.hpp,
 				main.cpp,
+				polyhedralization_creation.cpp,
+				polyhedralization_creation.hpp,
 				polyhedralization_tetrahedralization.cpp,
 				polyhedralization_tetrahedralization.hpp,
 				triangle_tetrahedron_intersection.h,

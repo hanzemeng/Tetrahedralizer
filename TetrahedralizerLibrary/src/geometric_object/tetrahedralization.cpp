@@ -1,26 +1,26 @@
 #include "tetrahedralization.hpp"
 using namespace std;
 
-void Tetrahedralization::assign_tetrahedrons(uint32_t* tetrahedrons, uint32_t tetrahedrons_count)
+void Tetrahedralization::assign_tetrahedrons(const std::vector<uint32_t>& tetrahedrons)
 {
     uint32_t vertices_count = tetrahedrons[0];
-    m_tetrahedrons.resize(4*tetrahedrons_count);
-    m_neighbors.resize(4*tetrahedrons_count);
-    for(uint32_t i=0; i<4*tetrahedrons_count; i++)
+    m_tetrahedrons.resize(tetrahedrons.size());
+    m_neighbors.resize(tetrahedrons.size());
+    for(uint32_t i=0; i<tetrahedrons.size(); i++)
     {
         vertices_count = max(vertices_count, tetrahedrons[i]);
         m_tetrahedrons[i] = tetrahedrons[i];
         m_neighbors[i] = UNDEFINED_VALUE;
     }
     m_vertices_incidents.resize(vertices_count+1);
-    for(uint32_t i=0; i<4*tetrahedrons_count; i++)
+    for(uint32_t i=0; i<tetrahedrons.size(); i++)
     {
         m_vertices_incidents[m_tetrahedrons[i]] = i/4;
     }
 
     // calculate neighbors and vertices incidents
     unordered_map<tuple<uint32_t,uint32_t,uint32_t>,uint32_t,iii32_hash> neighbor_cache;
-    for(uint32_t i=0; i<tetrahedrons_count; i++)
+    for(uint32_t i=0; i<tetrahedrons.size()/4; i++)
     {
         for(uint32_t f=0; f<4; f++)
         {
@@ -41,7 +41,7 @@ void Tetrahedralization::assign_tetrahedrons(uint32_t* tetrahedrons, uint32_t te
         }
     }
     
-    m_visited = vector<uint32_t>(tetrahedrons_count, UNDEFINED_VALUE);
+    m_visited = vector<uint32_t>(tetrahedrons.size()/4, UNDEFINED_VALUE);
     m_visited_index = 0;
 }
 

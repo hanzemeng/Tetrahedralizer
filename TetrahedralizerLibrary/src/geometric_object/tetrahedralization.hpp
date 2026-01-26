@@ -7,7 +7,7 @@
 class Tetrahedralization
 {
 public:
-    void assign_tetrahedrons(uint32_t* tetrahedrons, uint32_t tetrahedrons_count);
+    void assign_tetrahedrons(const std::vector<uint32_t>& tetrahedrons);
     
     uint32_t get_tetrahedrons_count();
     std::vector<uint32_t> get_all_facets();

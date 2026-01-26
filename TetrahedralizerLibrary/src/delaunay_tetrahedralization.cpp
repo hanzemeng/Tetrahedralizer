@@ -1,59 +1,9 @@
 #include "delaunay_tetrahedralization.hpp"
 using namespace std;
 
-void DelaunayTetrahedralizationHandle::Dispose()
-{}
-void DelaunayTetrahedralizationHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values)
+Tetrahedralization DelaunayTetrahedralizationHandle::calculate(const vector<shared_ptr<genericPoint>>& vertices)
 {
-    m_vertices = create_vertices(explicit_count, explicit_values, implicit_count, implicit_values);
-}
-
-void DelaunayTetrahedralizationHandle::Calculate()
-{
-    delaunay_tetrahedralization();
-}
-
-uint32_t DelaunayTetrahedralizationHandle::GetTetrahedronsCount()
-{
-    return m_tetrahedrons.size();
-}
-void DelaunayTetrahedralizationHandle::GetTetrahedrons(uint32_t* out)
-{
-    write_buffer_with_vector(out, m_tetrahedrons);
-}
-
-extern "C" LIBRARY_EXPORT void* CreateDelaunayTetrahedralizationHandle()
-{
-    return new DelaunayTetrahedralizationHandle();
-}
-extern "C" LIBRARY_EXPORT void DisposeDelaunayTetrahedralizationHandle(void* handle)
-{
-    ((DelaunayTetrahedralizationHandle*)handle)->Dispose();
-    delete (DelaunayTetrahedralizationHandle*)handle;
-}
-
-extern "C" LIBRARY_EXPORT void AddDelaunayTetrahedralizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values)
-{
-    ((DelaunayTetrahedralizationHandle*)handle)->AddInput(explicit_count, explicit_values, implicit_count, implicit_values);
-}
-
-extern "C" LIBRARY_EXPORT void CalculateDelaunayTetrahedralization(void* handle)
-{
-    ((DelaunayTetrahedralizationHandle*)handle)->Calculate();
-}
-
-extern "C" LIBRARY_EXPORT uint32_t GetDelaunayTetrahedralizationTetrahedronsCount(void* handle)
-{
-    return ((DelaunayTetrahedralizationHandle*)handle)->GetTetrahedronsCount();
-}
-void GetDelaunayTetrahedralizationTetrahedrons(void* handle, uint32_t* out)
-{
-    ((DelaunayTetrahedralizationHandle*)handle)->GetTetrahedrons(out);
-}
-
-
-void DelaunayTetrahedralizationHandle::delaunay_tetrahedralization()
-{
+    m_vertices = vertices;
     uint32_t op2, op3;
     // find op2 and op3, and build the first tetrahedron
     {
@@ -249,6 +199,15 @@ void DelaunayTetrahedralizationHandle::delaunay_tetrahedralization()
         
         i-=4;
     }
+    
+    Tetrahedralization tetrahedralization;
+    tetrahedralization.assign_tetrahedrons(m_tetrahedrons);
+    return tetrahedralization;
+}
+
+void DelaunayTetrahedralizationHandle::delaunay_tetrahedralization()
+{
+    
 }
 
 uint32_t DelaunayTetrahedralizationHandle::get_tetrahedron_neighbor(uint32_t t, uint32_t i)
@@ -407,3 +366,33 @@ void DelaunayTetrahedralizationHandle::remove_tetrahedron(uint32_t t)
         m_neighbors[t+i] = UNDEFINED_VALUE;
     }
 }
+
+//
+//extern "C" LIBRARY_EXPORT void* CreateDelaunayTetrahedralizationHandle()
+//{
+//    return new DelaunayTetrahedralizationHandle();
+//}
+//extern "C" LIBRARY_EXPORT void DisposeDelaunayTetrahedralizationHandle(void* handle)
+//{
+//    ((DelaunayTetrahedralizationHandle*)handle)->Dispose();
+//    delete (DelaunayTetrahedralizationHandle*)handle;
+//}
+//
+//extern "C" LIBRARY_EXPORT void AddDelaunayTetrahedralizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values)
+//{
+//    ((DelaunayTetrahedralizationHandle*)handle)->AddInput(explicit_count, explicit_values, implicit_count, implicit_values);
+//}
+//
+//extern "C" LIBRARY_EXPORT void CalculateDelaunayTetrahedralization(void* handle)
+//{
+//    ((DelaunayTetrahedralizationHandle*)handle)->Calculate();
+//}
+//
+//extern "C" LIBRARY_EXPORT uint32_t GetDelaunayTetrahedralizationTetrahedronsCount(void* handle)
+//{
+//    return ((DelaunayTetrahedralizationHandle*)handle)->GetTetrahedronsCount();
+//}
+//void GetDelaunayTetrahedralizationTetrahedrons(void* handle, uint32_t* out)
+//{
+//    ((DelaunayTetrahedralizationHandle*)handle)->GetTetrahedrons(out);
+//}

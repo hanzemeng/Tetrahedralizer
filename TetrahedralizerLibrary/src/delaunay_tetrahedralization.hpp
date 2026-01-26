@@ -3,18 +3,12 @@
 
 #include "common_header.h"
 #include "common_function.h"
+#include "geometric_object/tetrahedralization.hpp"
 
 class DelaunayTetrahedralizationHandle
 {
 public:
-    void Dispose();
-    void AddInput(uint32_t, double*, uint32_t, uint32_t*);
-    
-    void Calculate();
-    
-    uint32_t GetTetrahedronsCount();
-    void GetTetrahedrons(uint32_t* out);
-    
+    Tetrahedralization calculate(const std::vector<std::shared_ptr<genericPoint>>& vertices);
     
 private:
     uint32_t INFINITE_VERTEX = UNDEFINED_VALUE - 1;
@@ -33,14 +27,14 @@ private:
 };
 
 
-extern "C" LIBRARY_EXPORT void* CreateDelaunayTetrahedralizationHandle();
-extern "C" LIBRARY_EXPORT void DisposeDelaunayTetrahedralizationHandle(void* handle);
-
-extern "C" LIBRARY_EXPORT void AddDelaunayTetrahedralizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values);
-
-extern "C" LIBRARY_EXPORT void CalculateDelaunayTetrahedralization(void* handle);
-
-extern "C" LIBRARY_EXPORT uint32_t GetDelaunayTetrahedralizationTetrahedronsCount(void* handle);
-extern "C" LIBRARY_EXPORT void GetDelaunayTetrahedralizationTetrahedrons(void* handle, uint32_t* out);
+//extern "C" LIBRARY_EXPORT void* CreateDelaunayTetrahedralizationHandle();
+//extern "C" LIBRARY_EXPORT void DisposeDelaunayTetrahedralizationHandle(void* handle);
+//
+//extern "C" LIBRARY_EXPORT void AddDelaunayTetrahedralizationInput(void* handle, uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values);
+//
+//extern "C" LIBRARY_EXPORT void CalculateDelaunayTetrahedralization(void* handle);
+//
+//extern "C" LIBRARY_EXPORT uint32_t GetDelaunayTetrahedralizationTetrahedronsCount(void* handle);
+//extern "C" LIBRARY_EXPORT void GetDelaunayTetrahedralizationTetrahedrons(void* handle, uint32_t* out);
 
 #endif
