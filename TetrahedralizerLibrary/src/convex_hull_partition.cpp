@@ -3,6 +3,8 @@ using namespace std;
 
 Polyhedralization ConvexHullPartitionHandle::calculate(vector<shared_ptr<genericPoint>>& vertices, vector<uint32_t>& convex_hull, vector<uint32_t>& constraints)
 {
+    vector<chrono::steady_clock::time_point> times;
+    times.push_back(chrono::steady_clock::now());
     vector<double3> approximated_vertices;
     approximate_verteices(approximated_vertices, vertices);
     vector<vector<uint32_t>> coplanar_triangles;
@@ -284,13 +286,13 @@ Polyhedralization ConvexHullPartitionHandle::calculate(vector<shared_ptr<generic
             polyhedralization.m_polyhedrons[0].push_back(f);
         }
     }
-    
+    times.push_back(chrono::steady_clock::now());
     vector<uint32_t> facets_order;
     if(0 != constraints_facets.size())
     {
         facets_order = order_facets(vertices, approximated_vertices, constraints_segments, constraints_facets);
     }
-    
+    times.push_back(chrono::steady_clock::now());
     queue<pair<uint32_t, uint32_t>> slice_order; // polyhedron, facets order index
     if(!facets_order.empty())
     {
@@ -323,11 +325,18 @@ Polyhedralization ConvexHullPartitionHandle::calculate(vector<shared_ptr<generic
             slice_order.push(make_pair(polyhedralization.m_polyhedrons.size()-1, facets_order[i+2]));
         }
     }
+    times.push_back(chrono::steady_clock::now());
     
     approximate_verteices(approximated_vertices, polyhedralization.m_vertices);
     for(uint32_t i=0; i<polyhedralization.m_facets.size(); i++)
     {
         polyhedralization.m_facets[i].calculate_implicit_centroid(approximated_vertices, polyhedralization.m_segments);
+    }
+    times.push_back(chrono::steady_clock::now());
+    
+    for (uint32_t i=1; i<times.size(); i++)
+    {
+        cout << chrono::duration_cast<std::chrono::milliseconds>(times[i] - times[i-1]).count() << "\n";
     }
     
     return polyhedralization;

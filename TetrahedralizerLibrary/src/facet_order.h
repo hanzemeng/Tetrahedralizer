@@ -69,6 +69,8 @@ inline void order_facets(std::vector<uint32_t>& all_facets_indexes, std::vector<
             order_tree[parent] = cur_order_tree_node;
         }
         
+        uint32_t change_scheme_threshold = 1<<9;
+        
         uint32_t best_c = UNDEFINED_VALUE;
         std::vector<uint32_t> best_top;
         std::vector<uint32_t> best_bot;
@@ -178,20 +180,55 @@ inline void order_facets(std::vector<uint32_t>& all_facets_indexes, std::vector<
                 {
                     bot.push_back(nc);
                 }
-                if(UNDEFINED_VALUE!=best_c && both.size()>=best_both.size())
+                
+                if(UNDEFINED_VALUE!=best_c)
                 {
-                    break;
+                    if(cur_facets.size()<change_scheme_threshold)
+                    {
+                        if(both.size()>=best_both.size())
+                        {
+                            break;
+                        }
+                    }
                 }
             }
-            if(UNDEFINED_VALUE==best_c || best_both.size() > both.size())
+            if(UNDEFINED_VALUE==best_c)
             {
                 best_c = c;
                 best_top = std::move(top);
                 best_bot = std::move(bot);
                 best_both = std::move(both);
-                if(0 == best_both.size())
+                if(cur_facets.size()<change_scheme_threshold && 0==best_both.size())
                 {
                     break;
+                }
+            }
+            else
+            {
+                if(cur_facets.size()<change_scheme_threshold && best_both.size()>both.size())
+                {
+                    best_c = c;
+                    best_top = std::move(top);
+                    best_bot = std::move(bot);
+                    best_both = std::move(both);
+                    if(0==best_both.size())
+                    {
+                        break;
+                    }
+                }
+                else if(cur_facets.size()>=change_scheme_threshold)
+                {
+                    if(abs((int32_t)top.size()-(int32_t)bot.size()) < abs((int32_t)best_top.size()-(int32_t)best_bot.size()))
+                    {
+                        best_c = c;
+                        best_top = std::move(top);
+                        best_bot = std::move(bot);
+                        best_both = std::move(both);
+                        if(0==abs((int32_t)best_top.size()-(int32_t)best_bot.size()))
+                        {
+                            break;
+                        }
+                    }
                 }
             }
         }

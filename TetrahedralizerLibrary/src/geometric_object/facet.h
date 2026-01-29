@@ -61,6 +61,23 @@ class Facet
         this->ip1 = other.ip1;
     }
     
+    uint32_t write_to_byte_buffer_size()
+    {
+        return write_vector_to_byte_buffer_size(segments) + 3*4 + 2*8 + 2*4;
+    }
+    void write_to_byte_buffer(uint8_t* buffer)
+    {
+        uint32_t sn = write_vector_to_byte_buffer_size(segments);
+        write_vector_to_byte_buffer(segments, buffer);
+        memcpy(buffer+sn+0*4, &p0, 4);
+        memcpy(buffer+sn+1*4, &p1, 4);
+        memcpy(buffer+sn+2*4, &p2, 4);
+        memcpy(buffer+sn+3*4, &w0, 8);
+        memcpy(buffer+sn+5*4, &w1, 8);
+        memcpy(buffer+sn+7*4, &ip0, 4);
+        memcpy(buffer+sn+8*4, &ip1, 4);
+    }
+    
     void increase_segments_indexes(uint32_t n)
     {
         for(uint32_t i=0; i<segments.size(); i++)

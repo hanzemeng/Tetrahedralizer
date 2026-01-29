@@ -61,6 +61,22 @@ class Segment
         return *this;
     }
     
+    uint32_t write_to_byte_buffer_size()
+    {
+        return 32;
+    }
+    void write_to_byte_buffer(uint8_t* buffer)
+    {
+        memcpy(buffer+0, &e0, 4);
+        memcpy(buffer+4, &e1, 4);
+        memcpy(buffer+8, &p0, 4);
+        memcpy(buffer+12, &p1, 4);
+        memcpy(buffer+16, &p2, 4);
+        memcpy(buffer+20, &p3, 4);
+        memcpy(buffer+24, &p4, 4);
+        memcpy(buffer+28, &p5, 4);
+    }
+    
     void increase_vertices_indexes(uint32_t threshold, uint32_t amount)
     {
         auto increase = [&](uint32_t o) -> uint32_t

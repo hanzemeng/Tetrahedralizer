@@ -21,6 +21,8 @@ public:
     int slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint32_t c1, uint32_t c2);
     bool slice_facet_with_plane(uint32_t f, uint32_t c0, uint32_t c1, uint32_t c2);
     
+    std::vector<uint8_t> to_bytes();
+    
 private:
     uint32_t m_visit_index;
     std::vector<uint32_t> m_visited_polyhedrons;

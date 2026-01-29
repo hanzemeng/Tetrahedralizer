@@ -360,3 +360,58 @@ bool Polyhedralization::slice_facet_with_plane(uint32_t f, uint32_t c0, uint32_t
 //    
     return true;
 }
+
+std::vector<uint8_t> Polyhedralization::to_bytes()
+{
+    uint32_t explicit_count = m_vertices.size()-m_inserted_vertices.size();
+    vector<uint32_t> inserted_vertices = nested_vector_to_flat_vector(m_inserted_vertices);
+    vector<uint32_t> polyhedrons = nested_vector_to_flat_vector(m_polyhedrons);
+    uint32_t facets_count = m_facets.size();
+    uint32_t segments_count = m_segments.size();
+    
+    uint32_t buffer_size = 0;
+    buffer_size += 4 + explicit_count*24;
+    buffer_size += write_vector_to_byte_buffer_size(inserted_vertices);
+    buffer_size += write_vector_to_byte_buffer_size(polyhedrons);
+    buffer_size += 4;
+    for(uint32_t i=0; i<facets_count; i++)
+    {
+        buffer_size += m_facets[i].write_to_byte_buffer_size();
+    }
+    buffer_size += 4 + segments_count*m_segments[0].write_to_byte_buffer_size();
+    
+    vector<uint8_t> buffer(buffer_size);
+    uint32_t offset = 0;
+    
+    memcpy(buffer.data()+offset, &explicit_count, 4);
+    offset+=4;
+    for(uint32_t i=0; i<explicit_count; i++)
+    {
+        double3 p = approximate_vertex(m_vertices[i]);
+        p.write_to_byte_buffer(buffer.data()+offset);
+        offset += p.write_to_byte_buffer_size();
+    }
+    
+    write_vector_to_byte_buffer(inserted_vertices, buffer.data()+offset);
+    offset += write_vector_to_byte_buffer_size(inserted_vertices);
+    write_vector_to_byte_buffer(polyhedrons, buffer.data()+offset);
+    offset += write_vector_to_byte_buffer_size(polyhedrons);
+    
+    memcpy(buffer.data()+offset, &facets_count, 4);
+    offset+=4;
+    for(uint32_t i=0; i<facets_count; i++)
+    {
+        m_facets[i].write_to_byte_buffer(buffer.data()+offset);
+        offset += m_facets[i].write_to_byte_buffer_size();
+    }
+    
+    memcpy(buffer.data()+offset, &segments_count, 4);
+    offset+=4;
+    for(uint32_t i=0; i<segments_count; i++)
+    {
+        m_segments[i].write_to_byte_buffer(buffer.data()+offset);
+        offset += m_segments[i].write_to_byte_buffer_size();
+    }
+    
+    return buffer;
+}

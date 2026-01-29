@@ -12,6 +12,17 @@ public:
     double3() : x(0.0), y(0.0), z(0.0) {}
     double3(double x, double y, double z) : x(x), y(y), z(z) {}
     
+    uint32_t write_to_byte_buffer_size()
+    {
+        return 24;
+    }
+    void write_to_byte_buffer(uint8_t* buffer)
+    {
+        memcpy(buffer+0, &x, 8);
+        memcpy(buffer+8, &y, 8);
+        memcpy(buffer+16, &z, 8);
+    }
+    
     double& operator[](uint32_t i) {
         switch (i) {
             case 0: return x;

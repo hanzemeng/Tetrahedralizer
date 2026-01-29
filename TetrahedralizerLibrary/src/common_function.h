@@ -291,6 +291,20 @@ inline void write_buffer_with_vector(uint32_t* buffer, std::vector<uint32_t>& ve
     }
 }
 
+inline uint32_t write_vector_to_byte_buffer_size(std::vector<uint32_t>& vec)
+{
+    return 4*(vec.size()+1);
+}
+inline void write_vector_to_byte_buffer(std::vector<uint32_t>& vec, uint8_t* buffer)
+{
+    uint32_t n = vec.size();
+    std::memcpy(buffer, &n, 4);
+    for(uint32_t i=0; i<n; i++)
+    {
+        std::memcpy(buffer+4+4*i, &vec[i], 4);
+    }
+}
+
 inline std::vector<std::shared_ptr<genericPoint>> create_vertices(uint32_t explicit_count, double* explicit_values, uint32_t implicit_count, uint32_t* implicit_values)
 {
     std::vector<std::shared_ptr<genericPoint>> vertices;
@@ -336,20 +350,6 @@ inline std::vector<std::shared_ptr<genericPoint>> create_vertices(uint32_t expli
     }
     
     return vertices;
-}
-inline std::vector<std::shared_ptr<genericPoint>> create_vertices(uint32_t vertices_count, uint32_t* facets_centroids, double* facets_centroids_weights, std::shared_ptr<genericPoint>* vertices)
-{
-    std::vector<std::shared_ptr<genericPoint>> res;
-    for(uint32_t i=0; i<vertices_count; i++)
-    {
-        res.push_back(std::make_shared<implicitPoint3D_BPT>
-                                                            (vertices[facets_centroids[3*i+0]]->toExplicit3D(),
-                                                             vertices[facets_centroids[3*i+1]]->toExplicit3D(),
-                                                             vertices[facets_centroids[3*i+2]]->toExplicit3D(),
-                                                             facets_centroids_weights[2*i+0],
-                                                             facets_centroids_weights[2*i+1]));
-    }
-    return res;
 }
 
 inline std::vector<uint32_t> create_constraints(uint32_t constraints_count, uint32_t* constraints, std::shared_ptr<genericPoint>* vertices, bool add_placeholder)
