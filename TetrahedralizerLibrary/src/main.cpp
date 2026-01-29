@@ -25,28 +25,49 @@ int main(int argc, const char * argv[])
     
     vector<double> explicit_vertices;
     vector<uint32_t> constraints;
+    
     {
+        using point = tuple<double, double, double>;
+        map<point, uint32_t> unique_vertices;
+        unordered_map<uint32_t, uint32_t> duplicate_indices; // duplicate -> original
+        uint32_t index = 0; // tracks how many unique vertices we've encountered
+        
         uint32_t vn, cn;
         in_file >> vn >> cn >> not_used;
         explicit_vertices.reserve(3*vn);
         constraints.reserve(3*cn);
         for(uint32_t i=0; i<vn; i++)
         {
-            double x,y,z;
-            in_file >> x >> y >> z;
-            explicit_vertices.push_back(x);
-            explicit_vertices.push_back(y);
-            explicit_vertices.push_back(z);
+            // If we have already seen this point, don't add to vertex vector and track relation
+            point p;
+            in_file >> get<0>(p) >> get<1>(p) >> get<2>(p);
+            auto it = unique_vertices.find(p);
+            if (it==unique_vertices.end()) {
+                // New point
+                unique_vertices[p] = index; 
+                duplicate_indices[i] = index; // map original indices to themselves
+                index++;
+            } else {
+                duplicate_indices[i] = it->second;
+                continue;
+            }
+            explicit_vertices.push_back(get<0>(p));
+            explicit_vertices.push_back(get<1>(p));
+            explicit_vertices.push_back(get<2>(p));
         }
         
         for(uint32_t i=0; i<cn; i++)
         {
-            uint32_t c0,c1,c2;
-            in_file >> not_used;
+            uint32_t point_count,c0,c1,c2;
+            in_file >> point_count;
+            if (point_count != 3) {
+                cerr << "Input constraint not a triangle\n";
+                return 1;
+            }
             in_file >> c0 >> c1 >> c2;
-            constraints.push_back(c0);
-            constraints.push_back(c1);
-            constraints.push_back(c2);
+            constraints.push_back(duplicate_indices[c0]);
+            constraints.push_back(duplicate_indices[c1]);
+            constraints.push_back(duplicate_indices[c2]);
         }
     }
     in_file.close();
@@ -66,7 +87,7 @@ int main(int argc, const char * argv[])
     vector<uint32_t> tetrahedrons(GetDelaunayTetrahedralizationTetrahedronsCount(DT));
     GetDelaunayTetrahedralizationTetrahedrons(DT, tetrahedrons.data());
     
-    AddBinarySpacePartitionInput(BSP, explicit_vertices.size()/3, explicit_vertices.data(), tetrahedrons.size()/4, tetrahedrons.data(), constraints.size()/3, constraints.data());
+    AddBinarySpacePartitionInput(BSP, explicit_vertices.size()/3, explicit_vertices.data(), tetrahedrons.size()/4, tetrahedrons.data(), explicit_vertices.size()/3, constraints.data());
     times.push_back(chrono::steady_clock::now());
     CalculateBinarySpacePartition(BSP);
     times.push_back(chrono::steady_clock::now());
