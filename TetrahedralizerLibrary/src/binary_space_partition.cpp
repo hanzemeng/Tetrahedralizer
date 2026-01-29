@@ -5,10 +5,10 @@ void BinarySpacePartitionHandle::Dispose()
 {}
 void BinarySpacePartitionHandle::AddInput(uint32_t explicit_count, double* explicit_values, uint32_t tetrahedrons_count, uint32_t* tetrahedrons, uint32_t constraints_count, uint32_t* constraints)
 {
-    m_polyhedralization.m_vertices = create_vertices(explicit_count, explicit_values, 0, nullptr);
-    approximate_verteices(m_approximated_vertices, m_polyhedralization.m_vertices);
-    m_tetrahedralization.assign_tetrahedrons(tetrahedrons, tetrahedrons_count);
-    m_constraints = create_constraints(constraints_count, constraints, m_polyhedralization.m_vertices.data(), true);
+//    m_polyhedralization.m_vertices = create_vertices(explicit_count, explicit_values, 0, nullptr);
+//    approximate_verteices(m_approximated_vertices, m_polyhedralization.m_vertices);
+//    m_tetrahedralization.assign_tetrahedrons(tetrahedrons, tetrahedrons_count);
+//    m_constraints = create_constraints(constraints_count, constraints, m_polyhedralization.m_vertices.data(), true);
 }
 void BinarySpacePartitionHandle::Calculate()
 {

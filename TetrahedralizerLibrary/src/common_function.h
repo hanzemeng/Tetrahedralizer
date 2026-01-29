@@ -105,6 +105,10 @@ inline bool is_collinear(uint32_t p0, uint32_t p1, uint32_t p2, std::shared_ptr<
 {
     return !genericPoint::misaligned(*m_vertices[p0],*m_vertices[p1],*m_vertices[p2]);
 }
+inline bool is_coplanar(uint32_t c0, uint32_t c1, uint32_t c2, uint32_t nc0, uint32_t nc1, uint32_t nc2, std::shared_ptr<genericPoint>* m_vertices)
+{
+    return 0==orient3d(c0,c1,c2,nc0,m_vertices) && 0==orient3d(c0,c1,c2,nc1,m_vertices) && 0==orient3d(c0,c1,c2,nc2,m_vertices);
+}
 inline bool vertex_in_inner_segment(uint32_t p0,uint32_t s0,uint32_t s1, std::shared_ptr<genericPoint>* m_vertices)
 {
     return genericPoint::pointInInnerSegment(*m_vertices[p0],*m_vertices[s0],*m_vertices[s1]);
@@ -401,6 +405,33 @@ inline std::vector<uint32_t> vector_random_elements(const std::vector<uint32_t>&
     return std::vector<uint32_t>(res.begin(),res.end());
 }
 
+inline std::tuple<uint64_t,uint64_t,uint64_t,uint64_t> get_plane_equation(double3 p0, double3 p1, double3 p2)
+{
+    double coplanar_eps = 1e-12;
+    double quantize_eps = 1e-7;
+    double3 n = (p1-p0).cross(p2-p0);
+    double d = -n.dot(p0);
+    double s = std::max(std::max(std::abs(n.x),std::abs(n.y)),std::abs(n.z));
+    if(s < coplanar_eps)
+    {
+        return std::make_tuple(UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE);
+    }
+    n /= s;
+    d /= s;
+    
+    if((n.x<0.0) ||
+       (n.x==0.0 && n.y<0.0) ||
+       (n.x==0.0 && n.y==0.0 && n.z<0.0))
+    {
+        n *= -1;
+        d *= -1;
+    }
+    return std::make_tuple(std::llround(n.x/quantize_eps),
+                           std::llround(n.y/quantize_eps),
+                           std::llround(n.z/quantize_eps),
+                           std::llround(d/quantize_eps));
+}
+
 inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>> group_coplanar_triangles(std::vector<uint32_t>& triangles, std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<double3>& approximated_vertices)
 {
     std::unordered_map<std::tuple<uint64_t,uint64_t,uint64_t,uint64_t>,std::vector<uint32_t>, iiii64_hash> coplanar_planes;
@@ -415,33 +446,15 @@ inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>> grou
             continue;
         }
         
-        double coplanar_eps = 1e-12;
-        double quantize_eps = 1e-7;
-        double3 p0 = approximated_vertices[t0];
-        double3 p1 = approximated_vertices[t1];
-        double3 p2 = approximated_vertices[t2];
-        double3 n = (p1-p0).cross(p2-p0);
-        double d = -n.dot(p0);
-        double s = std::max(std::max(std::abs(n.x),std::abs(n.y)),std::abs(n.z));
-        if(s < coplanar_eps)
+        auto plane_equation = get_plane_equation(approximated_vertices[t0],approximated_vertices[t1],approximated_vertices[t2]);
+        if(UNDEFINED_VALUE == get<0>(plane_equation))
         {
             special_triangles.push_back(i);
-            continue;
         }
-        n /= s;
-        d /= s;
-        
-        if((n.x<0.0) ||
-           (n.x==0.0 && n.y<0.0) ||
-           (n.x==0.0 && n.y==0.0 && n.z<0.0))
+        else
         {
-            n *= -1;
-            d *= -1;
+            coplanar_planes[plane_equation].push_back(i);
         }
-        coplanar_planes[std::make_tuple(std::llround(n.x/quantize_eps),
-                                        std::llround(n.y/quantize_eps),
-                                        std::llround(n.z/quantize_eps),
-                                        std::llround(d/quantize_eps))].push_back(i);
     }
     
     std::vector<uint64_t> res_planes;
@@ -483,7 +496,9 @@ inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>> grou
                 res_planes.push_back(p2);
                 res_planes.push_back(p3);
             }
-            res_groups[cg].push_back(t);
+            res_groups[cg].push_back(t0);
+            res_groups[cg].push_back(t1);
+            res_groups[cg].push_back(t2);
         }
     }
     
@@ -520,7 +535,9 @@ inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>> grou
             res_planes.push_back(UNDEFINED_VALUE);
         }
         FOUND_GROUP:
-        res_groups[cg].push_back(t);
+        res_groups[cg].push_back(t0);
+        res_groups[cg].push_back(t1);
+        res_groups[cg].push_back(t2);
     }
     
     return std::make_pair(res_groups, res_planes);
