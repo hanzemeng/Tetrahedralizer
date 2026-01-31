@@ -1,5 +1,5 @@
 using System;
-using System.Linq;
+using System.IO;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
@@ -12,6 +12,23 @@ namespace Hanzzz.Tetrahedralizer
         public int p0,p1,p2; // three explicit vetices that define the facet
         public double w0,w1; // w0+w1+w2==1 and w0*p0+w1*p1+w2*p2 is the facet centroid
         public int ip0, ip1; // two incident polyhedrons
+
+        public Facet(BinaryReader reader)
+        {
+            int segmentsCount = reader.ReadInt32();
+            segments = new List<int>(segmentsCount);
+            for(int i=0; i<segmentsCount; i++)
+            {
+                segments.Add(reader.ReadInt32());
+            }
+            p0 = reader.ReadInt32();
+            p1 = reader.ReadInt32();
+            p2 = reader.ReadInt32();
+            w0 = reader.ReadDouble();
+            w1 = reader.ReadDouble();
+            ip0 = reader.ReadInt32();
+            ip1 = reader.ReadInt32();
+        }
 
         public Facet(FacetInteropData facetInteropData)
         {

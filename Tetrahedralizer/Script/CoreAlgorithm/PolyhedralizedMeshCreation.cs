@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.IO;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -91,6 +92,7 @@ namespace Hanzzz.Tetrahedralizer
 
             progress?.Report("Cutting convex hull with constraints.");
             var chpRes = convexHullPartition.CalculateConvexHullPartition(weldedVerticesUnpack, bspRes.insertedVertices, tetrahedrons, constraintsFacets, bspRes.segments, bspRes.coplanarTriangles);
+            Debug.Log(TetrahedralizerUtility.CountFlatIListElements(chpRes.polyhedrons));
 
             polyhedralization.m_explicitVertices = weldedVerticesUnpack;
             polyhedralization.m_implicitVertices = bspRes.insertedVertices;
@@ -103,16 +105,16 @@ namespace Hanzzz.Tetrahedralizer
             polyhedralization.m_segments = chpRes.segments;
             polyhedralization.CalculateFacetsIncidentPolyhedrons();
 
-            progress?.Report("Splitting facets.");
-            {
-                FacetPartition facetPartition = new FacetPartition();
-                var fpRes = facetPartition.CalculateFacetPartition(polyhedralization.m_explicitVertices, polyhedralization.m_implicitVertices,polyhedralization.m_polyhedrons,polyhedralization.m_facets,polyhedralization.m_facetsCentroidsMapping,polyhedralization.m_segments, bspRes.coplanarTriangles, weldedTriangles);
-                polyhedralization.m_implicitVertices.AddRange(fpRes.insertedVertices);
-                polyhedralization.m_polyhedrons = fpRes.polyhedrons;
-                polyhedralization.m_facets = fpRes.facets;
-                polyhedralization.m_facetsCentroidsMapping = fpRes.facetsCentroidsMapping;
-                polyhedralization.m_segments = fpRes.segments;
-            }
+            //progress?.Report("Splitting facets.");
+            //{
+            //    FacetPartition facetPartition = new FacetPartition();
+            //    var fpRes = facetPartition.CalculateFacetPartition(polyhedralization.m_explicitVertices, polyhedralization.m_implicitVertices,polyhedralization.m_polyhedrons,polyhedralization.m_facets,polyhedralization.m_facetsCentroidsMapping,polyhedralization.m_segments, bspRes.coplanarTriangles, weldedTriangles);
+            //    polyhedralization.m_implicitVertices.AddRange(fpRes.insertedVertices);
+            //    polyhedralization.m_polyhedrons = fpRes.polyhedrons;
+            //    polyhedralization.m_facets = fpRes.facets;
+            //    polyhedralization.m_facetsCentroidsMapping = fpRes.facetsCentroidsMapping;
+            //    polyhedralization.m_segments = fpRes.segments;
+            //}
 
             polyhedralization.RemoveUnusedData(true);
             polyhedralization.CalculateFacetsOrients();

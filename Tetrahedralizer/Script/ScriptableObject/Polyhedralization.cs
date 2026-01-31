@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
@@ -22,6 +23,49 @@ namespace Hanzzz.Tetrahedralizer
         public List<int> m_facetsCentroidsMapping; // for every facet centroid, record an incident constraint, UNDEFINED_VALUE if no such constraint
         public List<bool> m_facetsPointOut; // only defined for exterior facets, true if the facet points out of its polyhedron
     
+        public void LoadFromBinaryReader(BinaryReader reader)
+        {
+            int explicitCount = reader.ReadInt32();
+            m_explicitVertices = new List<double>(3*explicitCount);
+            for(int i=0; i<explicitCount; i++)
+            {
+                double x,y,z;
+                x = reader.ReadDouble();
+                y = reader.ReadDouble();
+                z = reader.ReadDouble();
+                m_explicitVertices.Add(x);
+                m_explicitVertices.Add(z); // right to left hand
+                m_explicitVertices.Add(y); // right to left hand
+            }
+
+            int implicitCount = reader.ReadInt32();
+            m_implicitVertices = new List<int>(implicitCount);
+            for(int i=0; i<implicitCount; i++)
+            {
+                m_implicitVertices.Add(reader.ReadInt32());
+            }
+
+            int polyhedronsCount = reader.ReadInt32();
+            m_polyhedrons = new List<int>(polyhedronsCount);
+            for(int i=0; i<polyhedronsCount; i++)
+            {
+                m_polyhedrons.Add(reader.ReadInt32());
+            }
+
+            int facetsCount = reader.ReadInt32();
+            m_facets = new List<Facet>(facetsCount);
+            for(int i=0; i<facetsCount; i++)
+            {
+                m_facets.Add(new Facet(reader));
+            }
+
+            int segmentsCount = reader.ReadInt32();
+            m_segments = new List<Segment>(segmentsCount);
+            for(int i=0; i<segmentsCount; i++)
+            {
+                m_segments.Add(new Segment(reader));
+            }
+        }
     
         public List<(Mesh mesh, Vector3 center)> ToMeshes()
         {

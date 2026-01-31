@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -10,6 +11,19 @@ namespace Hanzzz.Tetrahedralizer
     {
         public int e0, e1; // two endpoints
         public int p0, p1, p2, p3, p4, p5; // p0, p1, p2 is a plane, p3, p4, p5 is a plane. The line is the intersection of the two plane. Only use p0, p1 if both are explicit points.
+
+        public Segment(BinaryReader reader)
+        {
+            e0 = reader.ReadInt32();
+            e1 = reader.ReadInt32();
+            p0 = reader.ReadInt32();
+            p1 = reader.ReadInt32();
+            p2 = reader.ReadInt32();
+            p3 = reader.ReadInt32();
+            p4 = reader.ReadInt32();
+            p5 = reader.ReadInt32();
+        }
+        
 
         public Segment(SegmentInteropData segmentInteropData)
         {

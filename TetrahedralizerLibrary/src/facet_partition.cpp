@@ -120,7 +120,7 @@ void FacetPartitionHandle::Calculate()
         coplanar_facets_groups[cg].push_back(i);
     }
     
-    m_polyhedralization.calculate_segments_incident_facets();
+    m_polyhedralization.prepare_to_slice();
     for(auto& [cg, split_segments] : coplanar_constraints_split_segments)
     {
         if(coplanar_facets_groups.end() == coplanar_facets_groups.find(cg))

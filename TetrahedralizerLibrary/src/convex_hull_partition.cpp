@@ -286,6 +286,8 @@ std::tuple<Polyhedralization, std::vector<double3>, std::vector<std::vector<uint
             polyhedralization.m_polyhedrons[0].push_back(f);
         }
     }
+    polyhedralization.prepare_to_slice();
+    
     times.push_back(chrono::steady_clock::now());
     vector<uint32_t> facets_order;
     if(0 != constraints_facets.size())

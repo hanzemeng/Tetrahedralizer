@@ -176,6 +176,13 @@ class Segment
         }
         int o0 = orientation_cache[e0];
         int o1 = orientation_cache[e1];
+        return slice_segment_with_plane(s,c0,c1,c2,vertices,segments,o0,o1,modify_same_segment);
+    }
+    // return intersection, top segment, bot segment, vertices made up the intersection (if any).
+    static std::tuple<uint32_t, uint32_t, uint32_t, std::vector<uint32_t>> slice_segment_with_plane(uint32_t s, uint32_t c0,uint32_t c1,uint32_t c2, std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<Segment>& segments, int o0, int o1, bool modify_same_segment=true)
+    {
+        uint32_t e0 = segments[s].e0;
+        uint32_t e1 = segments[s].e1;
         
         if(0 == o0)
         {
