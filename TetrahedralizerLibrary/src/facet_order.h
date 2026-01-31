@@ -186,6 +186,7 @@ inline void order_facets(std::vector<uint32_t>& all_facets_indexes, std::vector<
                     if(cur_facets.size()<change_scheme_threshold)
                     {
                         if(both.size()>=best_both.size())
+//                        if(2*both.size()+top.size()+bot.size() >= 2*best_both.size()+best_top.size()+best_bot.size())
                         {
                             break;
                         }
@@ -198,25 +199,32 @@ inline void order_facets(std::vector<uint32_t>& all_facets_indexes, std::vector<
                 best_top = std::move(top);
                 best_bot = std::move(bot);
                 best_both = std::move(both);
-                if(cur_facets.size()<change_scheme_threshold && 0==best_both.size())
+                if(cur_facets.size()<change_scheme_threshold)
                 {
-                    break;
-                }
-            }
-            else
-            {
-                if(cur_facets.size()<change_scheme_threshold && best_both.size()>both.size())
-                {
-                    best_c = c;
-                    best_top = std::move(top);
-                    best_bot = std::move(bot);
-                    best_both = std::move(both);
-                    if(0==best_both.size())
+                    if(0 == best_both.size())
                     {
                         break;
                     }
                 }
-                else if(cur_facets.size()>=change_scheme_threshold)
+            }
+            else
+            {
+                if(cur_facets.size()<change_scheme_threshold)
+                {
+                    if(both.size()<best_both.size())
+//                    if(2*both.size()+top.size()+bot.size() < 2*best_both.size()+best_top.size()+best_bot.size())
+                    {
+                        best_c = c;
+                        best_top = std::move(top);
+                        best_bot = std::move(bot);
+                        best_both = std::move(both);
+                        if(0==best_both.size())
+                        {
+                            break;
+                        }
+                    }
+                }
+                else
                 {
                     if(abs((int32_t)top.size()-(int32_t)bot.size()) < abs((int32_t)best_top.size()-(int32_t)best_bot.size()))
                     {

@@ -472,10 +472,9 @@ inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>> grou
             
             for(uint32_t i=start_n; i<res_groups.size(); i++)
             {
-                uint32_t nt = res_groups[i][0];
-                uint32_t nt0 = triangles[3*nt+0];
-                uint32_t nt1 = triangles[3*nt+1];
-                uint32_t nt2 = triangles[3*nt+2];
+                uint32_t nt0 = res_groups[i][0];
+                uint32_t nt1 = res_groups[i][1];
+                uint32_t nt2 = res_groups[i][2];
                 
                 if(0 == orient3d(t0,t1,t2,nt0,vertices.data()) &&
                    0 == orient3d(t0,t1,t2,nt1,vertices.data()) &&
@@ -511,10 +510,9 @@ inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>> grou
         
         for(uint32_t i=0; i<res_groups.size(); i++)
         {
-            uint32_t nt = res_groups[i][0];
-            uint32_t nt0 = triangles[3*nt+0];
-            uint32_t nt1 = triangles[3*nt+1];
-            uint32_t nt2 = triangles[3*nt+2];
+            uint32_t nt0 = res_groups[i][0];
+            uint32_t nt1 = res_groups[i][1];
+            uint32_t nt2 = res_groups[i][2];
             
             if(0 == orient3d(t0,t1,t2,nt0,vertices.data()) &&
                0 == orient3d(t0,t1,t2,nt1,vertices.data()) &&

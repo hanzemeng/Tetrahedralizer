@@ -7,6 +7,7 @@
 #include "geometric_object/segment.h"
 #include "delaunay_tetrahedralization.hpp"
 #include "convex_hull_partition.hpp"
+#include "interior_characterization.hpp"
 
 class PolyhedralizationCreationHandle
 {

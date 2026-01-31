@@ -20,6 +20,7 @@ void Polyhedralization::calculate_segments_incident_facets()
 
 int Polyhedralization::slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint32_t c1, uint32_t c2)
 {
+    auto t0 = chrono::steady_clock::now();
     unordered_map<uint32_t,int> orient_cache;
     vector<uint32_t> top_facets;
     vector<uint32_t> bot_facets;
@@ -127,6 +128,8 @@ int Polyhedralization::slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint
         throw "wtf";
     }
     
+    auto t1 = chrono::steady_clock::now();
+    
     uint32_t b_p = m_polyhedrons.size();
     m_polyhedrons.push_back(vector<uint32_t>());
     
@@ -224,6 +227,9 @@ int Polyhedralization::slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint
         m_visit_index++;
     }
     
+    auto t2 = chrono::steady_clock::now();
+    
+    cout << chrono::duration_cast<std::chrono::microseconds>(t1-t0).count() << ", " << chrono::duration_cast<std::chrono::microseconds>(t2-t1).count() << "\n";
     return 0;
 }
 

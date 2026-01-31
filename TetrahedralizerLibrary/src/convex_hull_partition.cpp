@@ -1,7 +1,7 @@
 #include "convex_hull_partition.hpp"
 using namespace std;
 
-Polyhedralization ConvexHullPartitionHandle::calculate(vector<shared_ptr<genericPoint>>& vertices, vector<uint32_t>& convex_hull, vector<uint32_t>& constraints)
+std::tuple<Polyhedralization, std::vector<double3>, std::vector<std::vector<uint32_t>>> ConvexHullPartitionHandle::calculate(vector<shared_ptr<genericPoint>>& vertices, vector<uint32_t>& convex_hull, vector<uint32_t>& constraints)
 {
     vector<chrono::steady_clock::time_point> times;
     times.push_back(chrono::steady_clock::now());
@@ -314,10 +314,12 @@ Polyhedralization ConvexHullPartitionHandle::calculate(vector<shared_ptr<generic
         if(1 == slice_res)
         {
             slice_order.push(make_pair(p, facets_order[i+1]));
+//            throw "wtf";
         }
         else if(-1 == slice_res)
         {
             slice_order.push(make_pair(p, facets_order[i+2]));
+//            throw "wtf";
         }
         else
         {
@@ -339,7 +341,7 @@ Polyhedralization ConvexHullPartitionHandle::calculate(vector<shared_ptr<generic
         cout << chrono::duration_cast<std::chrono::milliseconds>(times[i] - times[i-1]).count() << "\n";
     }
     
-    return polyhedralization;
+    return make_tuple(polyhedralization, approximated_vertices, coplanar_triangles);
 }
 
 

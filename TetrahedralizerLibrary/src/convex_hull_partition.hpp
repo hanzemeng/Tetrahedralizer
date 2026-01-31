@@ -14,7 +14,7 @@ class ConvexHullPartitionHandle
 {
 public:
     // convex_hull are triangles that may be coplanar
-    Polyhedralization calculate(std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<uint32_t>& convex_hull, std::vector<uint32_t>& constraints);
+    std::tuple<Polyhedralization, std::vector<double3>, std::vector<std::vector<uint32_t>>> calculate(std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<uint32_t>& convex_hull, std::vector<uint32_t>& constraints);
 };
 
 //extern "C" LIBRARY_EXPORT void* CreateConvexHullPartitionHandle();
