@@ -196,12 +196,11 @@ void FacetPartitionHandle::Calculate()
 
 uint32_t FacetPartitionHandle::GetInsertedVerticesCount()
 {
-    return count_nested_vector_size(m_polyhedralization.m_inserted_vertices);
+    return m_polyhedralization.m_inserted_vertices.size();
 }
 void FacetPartitionHandle::GetInsertedVertices(uint32_t* out)
 {
-    vector<uint32_t> temp = nested_vector_to_flat_vector(m_polyhedralization.m_inserted_vertices);
-    write_buffer_with_vector(out, temp);
+    write_buffer_with_vector(out, m_polyhedralization.m_inserted_vertices);
 }
 
 uint32_t FacetPartitionHandle::GetPolyhedronsCount()

@@ -130,7 +130,7 @@ std::tuple<Polyhedralization, std::vector<double3>, std::vector<std::vector<uint
             uint32_t c0 = coplanar_triangles[i][0];
             uint32_t c1 = coplanar_triangles[i][1];
             uint32_t c2 = coplanar_triangles[i][2];
-            convex_hull_planes[get_plane_equation(approximated_vertices[c0], approximated_vertices[c1], approximated_vertices[c2])].push_back(i);
+            convex_hull_planes[get_plane_equation_bucket(approximated_vertices[c0], approximated_vertices[c1], approximated_vertices[c2])].push_back(i);
         }
         
         unordered_map<pair<uint32_t,uint32_t>, uint32_t, ii32_hash> constraints_segments_cache;

@@ -92,11 +92,12 @@ inline void order_facets(std::vector<uint32_t>& all_facets_indexes, std::vector<
             uint32_t c0 = facets[c].p0;
             uint32_t c1 = facets[c].p1;
             uint32_t c2 = facets[c].p2;
-            if(constraints_facets_cache.end() == constraints_facets_cache.find(cg))
+            if(constraints_facets_cache.end() != constraints_facets_cache.find(cg)) // checked a coplanar facet
             {
-                constraints_facets_cache[cg] = std::unordered_map<uint32_t, int>();
-                constraints_vertices_cache[cg] = std::unordered_map<uint32_t, int>();
+                continue;
             }
+            constraints_facets_cache[cg] = std::unordered_map<uint32_t, int>();
+            constraints_vertices_cache[cg] = std::unordered_map<uint32_t, int>();
             
             std::vector<uint32_t> top;
             std::vector<uint32_t> bot;
@@ -186,7 +187,6 @@ inline void order_facets(std::vector<uint32_t>& all_facets_indexes, std::vector<
                     if(cur_facets.size()<change_scheme_threshold)
                     {
                         if(both.size()>=best_both.size())
-//                        if(2*both.size()+top.size()+bot.size() >= 2*best_both.size()+best_top.size()+best_bot.size())
                         {
                             break;
                         }
@@ -201,7 +201,7 @@ inline void order_facets(std::vector<uint32_t>& all_facets_indexes, std::vector<
                 best_both = std::move(both);
                 if(cur_facets.size()<change_scheme_threshold)
                 {
-                    if(0 == best_both.size())
+                    if(0==best_both.size())
                     {
                         break;
                     }
@@ -212,7 +212,6 @@ inline void order_facets(std::vector<uint32_t>& all_facets_indexes, std::vector<
                 if(cur_facets.size()<change_scheme_threshold)
                 {
                     if(both.size()<best_both.size())
-//                    if(2*both.size()+top.size()+bot.size() < 2*best_both.size()+best_top.size()+best_bot.size())
                     {
                         best_c = c;
                         best_top = std::move(top);

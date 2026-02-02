@@ -405,7 +405,13 @@ inline std::vector<uint32_t> vector_random_elements(const std::vector<uint32_t>&
     return std::vector<uint32_t>(res.begin(),res.end());
 }
 
-inline std::tuple<uint64_t,uint64_t,uint64_t,uint64_t> get_plane_equation(double3 p0, double3 p1, double3 p2)
+inline std::pair<double3,double> get_plane_equation(double3 t0, double3 t1, double3 t2)
+{
+    double3 n = ((t1-t0).cross(t2-t0)).normalized();
+    double d = -n.dot(t0);
+    return std::make_pair(n,d);
+}
+inline std::tuple<uint64_t,uint64_t,uint64_t,uint64_t> get_plane_equation_bucket(double3 p0, double3 p1, double3 p2)
 {
     double coplanar_eps = 1e-12;
     double quantize_eps = 1e-7;
@@ -446,7 +452,7 @@ inline std::pair<std::vector<std::vector<uint32_t>>, std::vector<uint64_t>> grou
             continue;
         }
         
-        auto plane_equation = get_plane_equation(approximated_vertices[t0],approximated_vertices[t1],approximated_vertices[t2]);
+        auto plane_equation = get_plane_equation_bucket(approximated_vertices[t0],approximated_vertices[t1],approximated_vertices[t2]);
         if(UNDEFINED_VALUE == get<0>(plane_equation))
         {
             special_triangles.push_back(i);

@@ -3,6 +3,11 @@ using namespace std;
 
 void Polyhedralization::prepare_to_slice()
 {
+    m_slice_index = 0;
+    m_slice_facets_cache = vector<uint32_t>(m_facets.size(), UNDEFINED_VALUE);
+    m_slice_segments_cache = vector<tuple<uint32_t,int32_t,int32_t,int32_t>>(m_segments.size(), make_tuple(UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE));
+    m_slice_vertices_cache = vector<pair<uint32_t,int>>(m_vertices.size(), make_pair(UNDEFINED_VALUE,0));
+    
     m_segments_incident_facets = vector<vector<uint32_t>>(m_segments.size());
     for(uint32_t i=0; i<m_facets.size(); i++)
     {
@@ -11,10 +16,6 @@ void Polyhedralization::prepare_to_slice()
             m_segments_incident_facets[s].push_back(i);
         }
     }
-    m_slice_index = 0;
-    m_slice_facets_cache = vector<uint32_t>(m_facets.size(), UNDEFINED_VALUE);
-    m_slice_segments_cache = vector<tuple<uint32_t,int32_t,int32_t,int32_t>>(m_segments.size(), make_tuple(UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE));
-    m_slice_vertices_cache = vector<pair<uint32_t,int>>(m_vertices.size(), make_pair(UNDEFINED_VALUE,0));
 }
 
 int Polyhedralization::slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint32_t c1, uint32_t c2)
@@ -51,7 +52,8 @@ int Polyhedralization::slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint
                 m_slice_segments_cache[s] = make_tuple(m_slice_index,i_p,top_s,bot_s);
                 if(0 != vs.size())
                 {
-                    m_inserted_vertices.push_back(vs);
+                    m_inserted_vertices.push_back(vs.size());
+                    m_inserted_vertices.insert(m_inserted_vertices.end(), vs.begin(),vs.end());
                     split_segments[s] = bot_s;
                     m_segments_incident_facets.push_back(m_segments_incident_facets[s]);
                 }
@@ -106,8 +108,8 @@ int Polyhedralization::slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint
             m_facets[f].segments.clear();
             uint32_t b_f = m_facets.size();
             m_facets.push_back(Facet(m_facets[f]));
-            m_facets[f].segments = top_segments;
-            m_facets[b_f].segments = bot_segments;
+            m_facets[f].segments = std::move(top_segments);
+            m_facets[b_f].segments = std::move(bot_segments);
             for(uint32_t s : m_facets[b_f].segments)
             {
                 *find(m_segments_incident_facets[s].begin(), m_segments_incident_facets[s].end(), f) = b_f;
@@ -115,9 +117,9 @@ int Polyhedralization::slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint
             m_facets[f].segments.push_back(i_e);
             m_facets[b_f].segments.push_back(i_e);
             m_segments_incident_facets.push_back(vector<uint32_t>{f,b_f});
+            
             top_facets.push_back(f);
             bot_facets.push_back(b_f);
-            
             m_slice_facets_cache[f] = m_slice_index;
             m_slice_facets_cache.push_back(m_slice_index);
         }
@@ -158,7 +160,7 @@ int Polyhedralization::slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint
     {
         m_segments_incident_facets[s].push_back(common_facet);
     }
-
+    
     for(uint32_t f : m_polyhedrons[b_p])
     {
         uint32_t n;
@@ -356,15 +358,14 @@ bool Polyhedralization::slice_facet_with_plane(uint32_t f, uint32_t c0, uint32_t
 
 std::vector<uint8_t> Polyhedralization::to_bytes()
 {
-    uint32_t explicit_count = m_vertices.size()-m_inserted_vertices.size();
-    vector<uint32_t> inserted_vertices = nested_vector_to_flat_vector(m_inserted_vertices);
+    uint32_t explicit_count = m_vertices.size()-count_flat_vector_elements(m_inserted_vertices);
     vector<uint32_t> polyhedrons = nested_vector_to_flat_vector(m_polyhedrons);
     uint32_t facets_count = m_facets.size();
     uint32_t segments_count = m_segments.size();
     
     uint32_t buffer_size = 0;
     buffer_size += 4 + explicit_count*24;
-    buffer_size += write_vector_to_byte_buffer_size(inserted_vertices);
+    buffer_size += write_vector_to_byte_buffer_size(m_inserted_vertices);
     buffer_size += write_vector_to_byte_buffer_size(polyhedrons);
     buffer_size += 4;
     for(uint32_t i=0; i<facets_count; i++)
@@ -385,8 +386,8 @@ std::vector<uint8_t> Polyhedralization::to_bytes()
         offset += p.write_to_byte_buffer_size();
     }
     
-    write_vector_to_byte_buffer(inserted_vertices, buffer.data()+offset);
-    offset += write_vector_to_byte_buffer_size(inserted_vertices);
+    write_vector_to_byte_buffer(m_inserted_vertices, buffer.data()+offset);
+    offset += write_vector_to_byte_buffer_size(m_inserted_vertices);
     write_vector_to_byte_buffer(polyhedrons, buffer.data()+offset);
     offset += write_vector_to_byte_buffer_size(polyhedrons);
     
