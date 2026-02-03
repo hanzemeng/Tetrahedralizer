@@ -286,13 +286,33 @@ std::tuple<Polyhedralization, std::vector<double3>, std::vector<std::vector<uint
             polyhedralization.m_polyhedrons[0].push_back(f);
         }
     }
+    
     polyhedralization.prepare_to_slice();
     
     times.push_back(chrono::steady_clock::now());
     vector<uint32_t> facets_order;
     if(0 != constraints_facets.size())
     {
+//        ifstream in_file("996816_slice_data.txt");
+//        uint32_t n;
+//        in_file >> n;
+//        facets_order.resize(n);
+//        for(uint32_t i=0; i<n; i++)
+//        {
+//            uint32_t t;
+//            in_file >> t;
+//            facets_order[i] = t;
+//        }
+//        
         facets_order = order_facets(vertices, approximated_vertices, constraints_segments, constraints_facets);
+        
+//        ofstream out_file("test.txt");
+//        out_file << facets_order.size() << " ";
+//        for(uint32_t i=0; i<facets_order.size(); i++)
+//        {
+//            out_file << facets_order[i] << " ";
+//        }
+//        out_file.close();
     }
     times.push_back(chrono::steady_clock::now());
     queue<pair<uint32_t, uint32_t>> slice_order; // polyhedron, facets order index
@@ -308,6 +328,7 @@ std::tuple<Polyhedralization, std::vector<double3>, std::vector<std::vector<uint
         {
             continue;
         }
+        
         uint32_t cg0 = coplanar_triangles[facets_order[i]][0];
         uint32_t cg1 = coplanar_triangles[facets_order[i]][1];
         uint32_t cg2 = coplanar_triangles[facets_order[i]][2];

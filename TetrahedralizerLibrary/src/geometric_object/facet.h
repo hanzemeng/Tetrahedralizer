@@ -152,6 +152,43 @@ class Facet
         Segment::sort_segments(res);
         return Segment::get_segments_vertices(res);
     }
+    
+    bool check_validity(std::vector<std::shared_ptr<genericPoint>>& all_vertices, std::vector<Segment>& all_segments)
+    {
+        std::vector<uint32_t> vs = get_sorted_vertices(all_segments);
+        int max_norm = max_component_in_triangle_normal(p0,p1,p2,all_vertices.data());
+        int o = 0;
+        for(uint32_t j=0; j<vs.size(); j++)
+        {
+            if(0 != orient3d(p0,p1,p2,vs[j],all_vertices.data()))
+            {
+                throw "wtf";
+            }
+            uint32_t p0 = vs[j];
+            uint32_t p1 = vs[(j+1)%vs.size()];
+            uint32_t p2 = vs[(j+2)%vs.size()];
+
+            int new_o = orient3d_ignore_axis(p0, p1, p2, max_norm, all_vertices.data());
+            if(0 == new_o)
+            {
+                continue;
+            }
+            if(0 == o)
+            {
+                o = new_o;
+                continue;
+            }
+            if(new_o != o)
+            {
+                throw "wtf";
+            }
+        }
+        if(0 == o)
+        {
+            throw "wtf";
+        }
+        return true;
+    }
     std::vector<uint32_t> get_vertices(std::vector<Segment>& all_segments)
     {
         std::unordered_set<uint32_t> res;

@@ -3,9 +3,67 @@ using namespace std;
 
 void Polyhedralization::prepare_to_slice()
 {
+//    for(uint32_t i=0; i<m_facets.size(); i++)
+//    {
+//        vector<uint32_t> vs = m_facets[i].get_sorted_vertices(m_segments);
+//        if(is_collinear(m_facets[i].p0,m_facets[i].p1,m_facets[i].p2,m_vertices.data()))
+//        {
+//            throw "wtf";
+//        }
+//        int max_norm = max_component_in_triangle_normal(m_facets[i].p0,m_facets[i].p1,m_facets[i].p2,m_vertices.data());
+//        
+//        for(uint32_t s0 : m_facets[i].segments)
+//        {
+//            uint32_t p0 = m_segments[s0].e0;
+//            uint32_t p1 = m_segments[s0].e1;
+//            for(uint32_t s1 : m_facets[i].segments)
+//            {
+//                if(s0 == s1)
+//                {
+//                    continue;
+//                }
+//                
+//                uint32_t p2 = m_segments[s1].e0;
+//                uint32_t p3 = m_segments[s1].e1;
+//                
+//                if(inner_segment_cross_inner_segment(p0, p1, p2, p3, m_vertices.data()))
+//                {
+//                    throw "wtf";
+//                }
+//            }
+//        }
+//        
+//        int o = 0;
+//        for(uint32_t j=0; j<vs.size(); j++)
+//        {
+//            uint32_t p0 = vs[j];
+//            uint32_t p1 = vs[(j+1)%vs.size()];
+//            uint32_t p2 = vs[(j+2)%vs.size()];
+//            
+//            int new_o = orient3d_ignore_axis(p0, p1, p2, max_norm, m_vertices.data());
+//            if(0 == new_o)
+//            {
+//                continue;
+//            }
+//            if(0 == o)
+//            {
+//                o = new_o;
+//                continue;
+//            }
+//            if(new_o != o)
+//            {
+//                throw "wtf";
+//            }
+//        }
+//        if(0 == o)
+//        {
+//            throw "wtf";
+//        }
+//    }
+    
     m_slice_index = 0;
     m_slice_facets_cache = vector<uint32_t>(m_facets.size(), UNDEFINED_VALUE);
-    m_slice_segments_cache = vector<tuple<uint32_t,int32_t,int32_t,int32_t>>(m_segments.size(), make_tuple(UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE));
+    m_slice_segments_cache = vector<tuple<uint32_t,uint32_t,uint32_t,uint32_t>>(m_segments.size(), make_tuple(UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE));
     m_slice_vertices_cache = vector<pair<uint32_t,int>>(m_vertices.size(), make_pair(UNDEFINED_VALUE,0));
     
     m_segments_incident_facets = vector<vector<uint32_t>>(m_segments.size());
@@ -73,9 +131,14 @@ int Polyhedralization::slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint
                 {
                     i0 = i_p;
                 }
-                else
+                else if(UNDEFINED_VALUE == i1 || i_p == i1)
                 {
                     i1 = i_p;
+                }
+                else
+                {
+                    cerr << p << " " << c0 << " " << c1 << " "<< c2 << "\n";
+                    throw "wtf";
                 }
             }
             if(UNDEFINED_VALUE != top_s)
@@ -128,6 +191,7 @@ int Polyhedralization::slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint
     // constraint does not slice the polyhedron
     if(0 == top_facets.size() || 0 == bot_facets.size())
     {
+        m_slice_index++;
         if(0 != top_facets.size())
         {
             return 1;
@@ -139,6 +203,7 @@ int Polyhedralization::slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint
     }
     if(top_facets.size()<3 || bot_facets.size()<3 || on_segments.size()<3)
     {
+        cerr << p << " " << c0 << " " << c1 << " "<< c2 << "\n";
         throw "wtf";
     }
     
@@ -199,19 +264,13 @@ int Polyhedralization::slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint
         }
     }
     
-//    for(uint32_t i=0; i<m_facets.size(); i++)
+//    for(uint32_t f : m_polyhedrons[p])
 //    {
-//        m_facets[i].get_sorted_vertices(m_segments);
+//        m_facets[f].check_validity(m_vertices, m_segments);
 //    }
-//    for(uint32_t i=0; i<m_segments_incident_facets.size(); i++)
+//    for(uint32_t f : m_polyhedrons[b_p])
 //    {
-//        for(uint32_t j=0; j<m_segments_incident_facets[i].size(); j++)
-//        {
-//            if(!m_facets[m_segments_incident_facets[i][j]].contains_segment(i))
-//            {
-//                throw "wtf";
-//            }
-//        }
+//        m_facets[f].check_validity(m_vertices, m_segments);
 //    }
     
     m_slice_index++;

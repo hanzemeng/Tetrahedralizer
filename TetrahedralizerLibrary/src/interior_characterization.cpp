@@ -3,6 +3,9 @@ using namespace std;
 
 std::vector<uint32_t> InteriorCharacterizationHandle::calculate(Polyhedralization& polyhedralization, std::vector<uint32_t>& constraints, std::vector<double3>& approximated_vertices, std::vector<std::vector<uint32_t>>& coplanar_triangles, double polyhedron_in_multiplier)
 {
+    vector<chrono::steady_clock::time_point> times;
+    times.push_back(chrono::steady_clock::now());
+    
     unordered_map<tuple<uint32_t,uint32_t,uint32_t>, uint32_t,iii32_hash> triangles_coplanar_groups;
     for(uint32_t i=0; i<coplanar_triangles.size(); i++)
     {
@@ -52,12 +55,19 @@ std::vector<uint32_t> InteriorCharacterizationHandle::calculate(Polyhedralizatio
         constraints_coplanar_groups[cg].push_back(i);
     }
     
+    times.push_back(chrono::steady_clock::now());
+    
     vector<uint32_t> facets_centroids_mapping = vector<uint32_t>(polyhedralization.m_facets.size(), UNDEFINED_VALUE);
     for(uint32_t i=0; i<polyhedralization.m_facets.size(); i++)
     {
         uint32_t cg = search_int(polyhedralization.m_facets[i].p0, polyhedralization.m_facets[i].p1, polyhedralization.m_facets[i].p2,triangles_coplanar_groups);
 
         shared_ptr<genericPoint> centroid = polyhedralization.m_facets[i].get_implicit_centroid(polyhedralization.m_vertices);
+//        if(constraints_coplanar_groups[cg].size() > 1)
+//        {
+//            cout << constraints_coplanar_groups[cg].size() << "\n";
+//        }
+        
         for(uint32_t j=0; j<constraints_coplanar_groups[cg].size(); j++)
         {
             uint32_t c = constraints_coplanar_groups[cg][j];
@@ -71,6 +81,7 @@ std::vector<uint32_t> InteriorCharacterizationHandle::calculate(Polyhedralizatio
             }
         }
     }
+    times.push_back(chrono::steady_clock::now());
 
     GCoptimizationGeneralGraph gc((GCoptimization::SiteID)polyhedralization.m_polyhedrons.size()+1, 2);
     {
@@ -138,8 +149,14 @@ std::vector<uint32_t> InteriorCharacterizationHandle::calculate(Polyhedralizatio
                 }
             }
         }
+        times.push_back(chrono::steady_clock::now());
         
         // polyhedron cost
+        vector<vector<uint32_t>> facets_vertices = vector<vector<uint32_t>>(polyhedralization.m_facets.size());
+        for(uint32_t i=0; i<polyhedralization.m_facets.size(); i++)
+        {
+            facets_vertices[i] = polyhedralization.m_facets[i].get_vertices(polyhedralization.m_segments);
+        }
         gc.setDataCost((GCoptimization::SiteID)polyhedralization.m_polyhedrons.size(), 1, 1.0); // ghost polyhedron
         for(uint32_t i=0; i<polyhedralization.m_polyhedrons.size(); i++)
         {
@@ -166,14 +183,15 @@ std::vector<uint32_t> InteriorCharacterizationHandle::calculate(Polyhedralizatio
                         continue;
                     }
                     uint32_t nf = polyhedralization.m_polyhedrons[i][k];
-                    for(uint32_t v : polyhedralization.m_facets[nf].get_vertices(polyhedralization.m_segments))
+                    for(uint32_t v : facets_vertices[nf])
                     {
                         if(0 != (orient=orient3d(t0,t1,t2,v, polyhedralization.m_vertices.data())))
                         {
-                            break;
+                            goto HAS_ORIENT;
                         }
                     }
                 }
+                HAS_ORIENT:
                 if(orient > 0)
                 {
                     in_area += facets_approximated_areas[f];
@@ -199,8 +217,9 @@ std::vector<uint32_t> InteriorCharacterizationHandle::calculate(Polyhedralizatio
                 gc.setDataCost((GCoptimization::SiteID)i, 1, 0.0);
             }
         }
-        
+        times.push_back(chrono::steady_clock::now());
         gc.swap();
+        times.push_back(chrono::steady_clock::now());
     }
     
     vector<uint32_t> polyhedrons_labels = vector<uint32_t>(polyhedralization.m_polyhedrons.size());
@@ -208,5 +227,11 @@ std::vector<uint32_t> InteriorCharacterizationHandle::calculate(Polyhedralizatio
     {
         polyhedrons_labels[i] = gc.whatLabel((GCoptimization::SiteID)i);
     }
+    
+    for (uint32_t i=1; i<times.size(); i++)
+    {
+        cout << chrono::duration_cast<std::chrono::milliseconds>(times[i] - times[i-1]).count() << "\n";
+    }
+    
     return polyhedrons_labels;
 }
