@@ -7,8 +7,7 @@
 #include "geometric_object/tetrahedralization.hpp"
 #include "geometric_object/segment.h"
 #include "geometric_object/facet.h"
-#include "triangle_tetrahedron_intersection.h"
-#include "facet_order.h"
+#include "facets_ordering.hpp"
 
 class ConvexHullPartitionHandle
 {

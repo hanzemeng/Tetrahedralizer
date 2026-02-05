@@ -10,7 +10,7 @@ void PolyhedralizationCreationHandle::calculate(vector<shared_ptr<genericPoint>>
     vector<uint32_t> convex_hull = tetrahedralization.get_bounding_facets();
     auto t1 = chrono::steady_clock::now();
     cout << chrono::duration_cast<std::chrono::milliseconds>(t1-t0).count() << "\n";
-    cout << "convex hull tirangles: " << convex_hull.size()/3 << "\n";
+    cout << "convex hull triangles: " << convex_hull.size()/3 << "\n";
     
     ConvexHullPartitionHandle CHP;
     auto [polyhedralization, approximated_vertices, coplanar_tirangles] = CHP.calculate(vertices, convex_hull, constraints);
@@ -30,8 +30,8 @@ void PolyhedralizationCreationHandle::calculate(vector<shared_ptr<genericPoint>>
     polyhedralization.m_polyhedrons = new_polyhedrons;
     cout << "inside polyhedrons count: " << polyhedralization.m_polyhedrons.size() << "\n";
     
-//    vector<uint8_t> polyhedralization_bytes = polyhedralization.to_bytes();
-//    ofstream out_file("test.txt", std::ios::binary);
-//    out_file.write((char*)polyhedralization_bytes.data(), polyhedralization_bytes.size());
-//    out_file.close();
+    vector<uint8_t> polyhedralization_bytes = polyhedralization.to_bytes();
+    ofstream out_file("test.txt", std::ios::binary);
+    out_file.write((char*)polyhedralization_bytes.data(), polyhedralization_bytes.size());
+    out_file.close();
 }

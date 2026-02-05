@@ -303,8 +303,8 @@ std::tuple<Polyhedralization, std::vector<double3>, std::vector<std::vector<uint
 //            in_file >> t;
 //            facets_order[i] = t;
 //        }
-//        
-        facets_order = order_facets(vertices, approximated_vertices, constraints_segments, constraints_facets);
+        FacetsOrderingHandle FO(16,1024,512,42);
+        facets_order = FO.order_facets(vertices, approximated_vertices, constraints_segments, constraints_facets);
         
 //        ofstream out_file("test.txt");
 //        out_file << facets_order.size() << " ";

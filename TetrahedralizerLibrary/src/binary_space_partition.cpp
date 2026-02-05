@@ -489,7 +489,7 @@ void BinarySpacePartitionHandle::binary_space_partition()
             uint32_t original_vertices_count = m_polyhedralization.m_vertices.size();
             m_polyhedralization.m_vertices.insert(m_polyhedralization.m_vertices.end(), all_vertices.begin(), all_vertices.end());
             approximate_verteices(m_approximated_vertices, m_polyhedralization.m_vertices);
-            polyhedrons_slice_order[p] = order_facets(m_polyhedralization.m_vertices,m_approximated_vertices, all_segments,all_facets);
+//            polyhedrons_slice_order[p] = order_facets(m_polyhedralization.m_vertices,m_approximated_vertices, all_segments,all_facets);
             m_polyhedralization.m_vertices.resize(original_vertices_count);
             m_approximated_vertices.resize(original_vertices_count);
         }
