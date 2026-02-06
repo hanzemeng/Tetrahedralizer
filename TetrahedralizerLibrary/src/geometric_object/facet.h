@@ -189,15 +189,43 @@ class Facet
         }
         return true;
     }
+    
+    inline static std::vector<uint8_t> m_get_vertices_cache;
     std::vector<uint32_t> get_vertices(std::vector<Segment>& all_segments)
     {
-        std::unordered_set<uint32_t> res;
+        std::vector<uint32_t> res;
+        res.reserve(segments.size());
+        
         for(uint32_t s : segments)
         {
-            res.insert(all_segments[s].e0);
-            res.insert(all_segments[s].e1);
+            uint32_t v0 = all_segments[s].e0;
+            uint32_t v1 = all_segments[s].e1;
+            if(m_get_vertices_cache.size()<=v0)
+            {
+                m_get_vertices_cache.resize(v0+1,0);
+            }
+            if(m_get_vertices_cache.size()<=v1)
+            {
+                m_get_vertices_cache.resize(v1+1,0);
+            }
+            
+            if(0 == m_get_vertices_cache[v0])
+            {
+                res.push_back(v0);
+                m_get_vertices_cache[v0] = 1;
+            }
+            if(0 == m_get_vertices_cache[v1])
+            {
+                res.push_back(v1);
+                m_get_vertices_cache[v1] = 1;
+            }
         }
-        return std::vector<uint32_t>(res.begin(),res.end());
+        
+        for(uint32_t v : res)
+        {
+            m_get_vertices_cache[v] = 0;
+        }
+        return res;
     }
     void calculate_implicit_centroid(std::vector<double3>& approximated_vertices, std::vector<Segment>& segments)
     {

@@ -38,6 +38,7 @@ std::vector<uint32_t> FacetsOrderingHandle::order_facets(std::vector<std::shared
         planes_equations[cg] = facets[i].get_plane_equation(approximated_vertices);
     }
     
+    shuffle(facets_indexes.begin(),facets_indexes.end(),m_gen);
     order_facets(facets_indexes, vertices, approximated_vertices, segments, facets, res, facets_spheres, planes_equations);
     
     vertices.resize(vn);
@@ -113,7 +114,6 @@ void FacetsOrderingHandle::order_facets(std::vector<uint32_t>& all_facets_indexe
         std::vector<uint32_t> best_top;
         std::vector<uint32_t> best_bot;
         std::vector<uint32_t> best_both;
-        shuffle_indexes(cur_facets, m_examine_facets_count);
         
         uint32_t i_n = std::min(m_candidate_facets_count, (uint32_t)cur_facets.size());
         uint32_t j_n = std::min(m_examine_facets_count, (uint32_t)cur_facets.size());
