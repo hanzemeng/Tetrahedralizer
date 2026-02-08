@@ -3,64 +3,6 @@ using namespace std;
 
 void Polyhedralization::prepare_to_slice()
 {
-//    for(uint32_t i=0; i<m_facets.size(); i++)
-//    {
-//        vector<uint32_t> vs = m_facets[i].get_sorted_vertices(m_segments);
-//        if(is_collinear(m_facets[i].p0,m_facets[i].p1,m_facets[i].p2,m_vertices.data()))
-//        {
-//            throw "wtf";
-//        }
-//        int max_norm = max_component_in_triangle_normal(m_facets[i].p0,m_facets[i].p1,m_facets[i].p2,m_vertices.data());
-//        
-//        for(uint32_t s0 : m_facets[i].segments)
-//        {
-//            uint32_t p0 = m_segments[s0].e0;
-//            uint32_t p1 = m_segments[s0].e1;
-//            for(uint32_t s1 : m_facets[i].segments)
-//            {
-//                if(s0 == s1)
-//                {
-//                    continue;
-//                }
-//                
-//                uint32_t p2 = m_segments[s1].e0;
-//                uint32_t p3 = m_segments[s1].e1;
-//                
-//                if(inner_segment_cross_inner_segment(p0, p1, p2, p3, m_vertices.data()))
-//                {
-//                    throw "wtf";
-//                }
-//            }
-//        }
-//        
-//        int o = 0;
-//        for(uint32_t j=0; j<vs.size(); j++)
-//        {
-//            uint32_t p0 = vs[j];
-//            uint32_t p1 = vs[(j+1)%vs.size()];
-//            uint32_t p2 = vs[(j+2)%vs.size()];
-//            
-//            int new_o = orient3d_ignore_axis(p0, p1, p2, max_norm, m_vertices.data());
-//            if(0 == new_o)
-//            {
-//                continue;
-//            }
-//            if(0 == o)
-//            {
-//                o = new_o;
-//                continue;
-//            }
-//            if(new_o != o)
-//            {
-//                throw "wtf";
-//            }
-//        }
-//        if(0 == o)
-//        {
-//            throw "wtf";
-//        }
-//    }
-    
     m_slice_index = 0;
     m_slice_facets_cache = vector<uint32_t>(m_facets.size(), UNDEFINED_VALUE);
     m_slice_segments_cache = vector<tuple<uint32_t,uint32_t,uint32_t,uint32_t>>(m_segments.size(), make_tuple(UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE));
@@ -81,15 +23,17 @@ int Polyhedralization::slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint
     auto t0 = chrono::steady_clock::now();
     vector<uint32_t> top_facets;
     vector<uint32_t> bot_facets;
-    unordered_set<uint32_t> on_segments;
-    unordered_map<uint32_t,uint32_t> split_segments;
+    vector<uint32_t> on_segments;
+    vector<uint32_t> split_segments;
     
+    vector<uint32_t> top_segments;
+    vector<uint32_t> bot_segments;
     m_slice_segments_cache.resize(m_segments.size(), make_tuple(UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE));
     m_slice_vertices_cache.resize(m_vertices.size(), make_pair(UNDEFINED_VALUE,0));
     for(uint32_t f : m_polyhedrons[p])
     {
-        vector<uint32_t> top_segments;
-        vector<uint32_t> bot_segments;
+        top_segments.clear();
+        bot_segments.clear();
         bool has_edge_on_constraint = false;
         uint32_t i0(UNDEFINED_VALUE), i1(UNDEFINED_VALUE);
         for(uint32_t s : m_facets[f].segments)
@@ -108,19 +52,22 @@ int Polyhedralization::slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint
                 }
                 auto [i_p,top_s,bot_s,vs] = Segment::slice_segment_with_plane(s, c0, c1, c2, m_vertices, m_segments, m_slice_vertices_cache[e0].second, m_slice_vertices_cache[e1].second);
                 m_slice_segments_cache[s] = make_tuple(m_slice_index,i_p,top_s,bot_s);
-                if(0 != vs.size())
+                if(UNDEFINED_VALUE != vs.p0)
                 {
-                    m_inserted_vertices.push_back(vs.size());
-                    m_inserted_vertices.insert(m_inserted_vertices.end(), vs.begin(),vs.end());
-                    split_segments[s] = bot_s;
+                    vs.push_back_to_vector(m_inserted_vertices);
+                    split_segments.push_back(bot_s);
                     m_segments_incident_facets.push_back(m_segments_incident_facets[s]);
+                }
+                else if(UNDEFINED_VALUE == i_p && top_s == UNDEFINED_VALUE && bot_s == UNDEFINED_VALUE)
+                {
+                    on_segments.push_back(s);
+                    has_edge_on_constraint = true;
                 }
             }
             
             auto [_,i_p,top_s,bot_s] = m_slice_segments_cache[s];
             if(UNDEFINED_VALUE == i_p && top_s == UNDEFINED_VALUE && bot_s == UNDEFINED_VALUE)
             {
-                on_segments.insert(s);
                 has_edge_on_constraint = true;
                 continue;
             }
@@ -166,13 +113,13 @@ int Polyhedralization::slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint
         {
             uint32_t i_e = m_segments.size();
             m_segments.push_back(Segment(i0,i1,m_facets[f].p0,m_facets[f].p1,m_facets[f].p2,c0,c1,c2));
-            on_segments.insert(i_e);
+            on_segments.push_back(i_e);
             
             m_facets[f].segments.clear();
             uint32_t b_f = m_facets.size();
             m_facets.push_back(Facet(m_facets[f]));
-            m_facets[f].segments = std::move(top_segments);
-            m_facets[b_f].segments = std::move(bot_segments);
+            m_facets[f].segments = top_segments;
+            m_facets[b_f].segments = bot_segments;
             for(uint32_t s : m_facets[b_f].segments)
             {
                 *find(m_segments_incident_facets[s].begin(), m_segments_incident_facets[s].end(), f) = b_f;
@@ -220,8 +167,8 @@ int Polyhedralization::slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint
     m_facets[common_facet].p2 = c2;
     m_facets[common_facet].ip0 = p;
     m_facets[common_facet].ip1 = b_p;
-    m_facets[common_facet].segments = vector<uint32_t>(on_segments.begin(),on_segments.end());
-    for(uint32_t s : on_segments)
+    m_facets[common_facet].segments = std::move(on_segments);
+    for(uint32_t s : m_facets[common_facet].segments)
     {
         m_segments_incident_facets[s].push_back(common_facet);
     }
@@ -251,7 +198,7 @@ int Polyhedralization::slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint
     m_polyhedrons[b_p].push_back(common_facet);
     
     m_slice_facets_cache.resize(m_facets.size(), UNDEFINED_VALUE);
-    for(auto [ori_s, new_s] : split_segments)
+    for(uint32_t new_s : split_segments)
     {
         for(uint32_t i=0; i<m_segments_incident_facets[new_s].size(); i++)
         {

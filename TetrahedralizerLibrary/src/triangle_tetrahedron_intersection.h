@@ -33,48 +33,48 @@ inline std::pair<int, std::vector<uint32_t>> triangle_tetrahedron_intersection(s
         bool has_coplanar_segment = false;
         uint32_t i0(UNDEFINED_VALUE), i1(UNDEFINED_VALUE);
         std::vector<uint32_t> new_facet;
-        for(uint32_t s : facet)
-        {
-            auto [i_p, top_s, bot_s, vs] = Segment::slice_segment_with_plane(s, c0, c1, c2, vertices, segments, orientation_cache);
-            
-            if(UNDEFINED_VALUE == i_p && top_s == UNDEFINED_VALUE && bot_s == UNDEFINED_VALUE)
-            {
-                has_coplanar_segment = true;
-                new_facet.push_back(s);
-                continue;
-            }
-            
-            if(UNDEFINED_VALUE != i_p)
-            {
-                if(UNDEFINED_VALUE == i0 || i_p == i0)
-                {
-                    i0 = i_p;
-                }
-                else
-                {
-                    i1 = i_p;
-                }
-            }
-            if(UNDEFINED_VALUE != top_s)
-            {
-                new_facet.push_back(top_s);
-            }
-        }
-        
-        if(!has_coplanar_segment && i1 != UNDEFINED_VALUE)
-        {
-            uint32_t i_e = segments.size();
-            segments.push_back(Segment(i0,i1,t0,t1,t2,c0,c1,c2));
-            new_facet.push_back(i_e);
-        }
-        else
-        {
-            if(0 == new_facet.size())
-            {
-                top_vertex = i0;
-            }
-        }
-        facet = std::move(new_facet);
+//        for(uint32_t s : facet)
+//        {
+//            auto [i_p, top_s, bot_s, vs] = Segment::slice_segment_with_plane(s, c0, c1, c2, vertices, segments, orientation_cache);
+//            
+//            if(UNDEFINED_VALUE == i_p && top_s == UNDEFINED_VALUE && bot_s == UNDEFINED_VALUE)
+//            {
+//                has_coplanar_segment = true;
+//                new_facet.push_back(s);
+//                continue;
+//            }
+//            
+//            if(UNDEFINED_VALUE != i_p)
+//            {
+//                if(UNDEFINED_VALUE == i0 || i_p == i0)
+//                {
+//                    i0 = i_p;
+//                }
+//                else
+//                {
+//                    i1 = i_p;
+//                }
+//            }
+//            if(UNDEFINED_VALUE != top_s)
+//            {
+//                new_facet.push_back(top_s);
+//            }
+//        }
+//        
+//        if(!has_coplanar_segment && i1 != UNDEFINED_VALUE)
+//        {
+//            uint32_t i_e = segments.size();
+//            segments.push_back(Segment(i0,i1,t0,t1,t2,c0,c1,c2));
+//            new_facet.push_back(i_e);
+//        }
+//        else
+//        {
+//            if(0 == new_facet.size())
+//            {
+//                top_vertex = i0;
+//            }
+//        }
+//        facet = std::move(new_facet);
     }
     
     if(UNDEFINED_VALUE != top_vertex)

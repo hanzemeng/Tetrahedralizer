@@ -108,24 +108,24 @@ void FacetsOrderingHandle::order_facets(std::vector<uint32_t>& all_facets_indexe
             order_tree[parent] = cur_order_tree_node;
         }
         
-        m_vertices_cache.clear();
+//        m_vertices_cache.clear();
         bool use_bisecting_sheme = cur_facets.size() >= m_change_scheme_threshold;
         uint32_t best_c = UNDEFINED_VALUE;
         std::vector<uint32_t> best_top;
         std::vector<uint32_t> best_bot;
         std::vector<uint32_t> best_both;
         
-        uint32_t i_n = std::min(m_candidate_facets_count, (uint32_t)cur_facets.size());
-        uint32_t j_n = std::min(m_examine_facets_count, (uint32_t)cur_facets.size());
+        uint32_t i_n = min(m_candidate_facets_count, (uint32_t)cur_facets.size());
+        uint32_t j_n = min(m_examine_facets_count, (uint32_t)cur_facets.size());
         for(uint32_t i=0; i<i_n; i++)
         {
             uint32_t c = cur_facets[i];
             uint32_t cg = facets[c].ip0;
-            if(m_vertices_cache.end() != m_vertices_cache.find(cg)) // checked a coplanar facet
-            {
-                continue;
-            }
-            m_vertices_cache[cg] = std::unordered_map<uint32_t, int>();
+//            if(m_vertices_cache.end() != m_vertices_cache.find(cg)) // checked a coplanar facet
+//            {
+//                continue;
+//            }
+//            m_vertices_cache[cg] = std::unordered_map<uint32_t, int>();
             
             std::vector<uint32_t> top;
             std::vector<uint32_t> bot;
@@ -252,9 +252,11 @@ void FacetsOrderingHandle::order_facets(std::vector<uint32_t>& all_facets_indexe
             {
                 if(split_segments.end() == split_segments.find(s))
                 {
-                    auto [i_p,top_e,bot_e,vs] = Segment::slice_segment_with_plane(s, c0, c1, c2, vertices, segments, m_vertices_cache[cg], false);
+                    int o0 = orient3d(c0,c1,c2,segments[s].e0,vertices.data());
+                    int o1 = orient3d(c0,c1,c2,segments[s].e1,vertices.data());
+                    auto [i_p,top_e,bot_e,vs] = Segment::slice_segment_with_plane(s, c0, c1, c2, vertices, segments, o0,o1, false);
                     split_segments[s] = std::make_tuple(i_p,top_e,bot_e);
-                    if(0 != vs.size())
+                    if(UNDEFINED_VALUE != vs.p0)
                     {
                         depth_inserted_count[3*depth+0]++;
                         depth_inserted_count[3*depth+1] += 2;
@@ -351,17 +353,17 @@ int FacetsOrderingHandle::check_plane_facet_intersection(uint32_t c, uint32_t nc
     std::vector<uint32_t> vs = facets[nc].get_vertices(segments);
     for(uint32_t v : vs)
     {
-        int o;
-        auto it = m_vertices_cache[cg].find(v);
-        if(it == m_vertices_cache[cg].end())
-        {
-            o = orient3d(c0,c1,c2,v,vertices.data());
-            m_vertices_cache[cg][v] = o;
-        }
-        else
-        {
-            o = it->second;
-        }
+        int o = orient3d(c0,c1,c2,v,vertices.data());;
+//        auto it = m_vertices_cache[cg].find(v);
+//        if(it == m_vertices_cache[cg].end())
+//        {
+//            o = orient3d(c0,c1,c2,v,vertices.data());
+//            m_vertices_cache[cg][v] = o;
+//        }
+//        else
+//        {
+//            o = it->second;
+//        }
         
         has_top |= 1==o;
         has_bot |= -1==o;

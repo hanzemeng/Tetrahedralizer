@@ -67,6 +67,42 @@ struct iiii64_hash
 
 const uint32_t UNDEFINED_VALUE = 0xFFFFFFFF;
 
+class uint32_t9
+{
+public:
+    uint32_t p0,p1,p2,p3,p4,p5,p6,p7,p8;
+
+    
+    uint32_t9()
+    {
+        p0 = UNDEFINED_VALUE;
+    }
+    void push_back_to_vector(std::vector<uint32_t>& vec)
+    {
+        if(UNDEFINED_VALUE != p5)
+        {
+            vec.push_back(9);
+            vec.push_back(p0);
+            vec.push_back(p1);
+            vec.push_back(p2);
+            vec.push_back(p3);
+            vec.push_back(p4);
+            vec.push_back(p5);
+            vec.push_back(p6);
+            vec.push_back(p7);
+            vec.push_back(p8);
+        }
+        return;
+        
+        vec.push_back(5);
+        vec.push_back(p0);
+        vec.push_back(p1);
+        vec.push_back(p2);
+        vec.push_back(p3);
+        vec.push_back(p4);
+    }
+};
+
 #ifdef _WIN32
     #define LIBRARY_EXPORT __declspec(dllexport)
 #else

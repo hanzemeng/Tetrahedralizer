@@ -28,7 +28,7 @@ private:
     uint32_t m_change_scheme_threshold; // If facets count is above, choose a bisecting plane. Otherwise, choose a least intersecting plane.
     
 //    std::unordered_map<uint32_t, std::unordered_map<uint32_t, int>> m_facets_cache;
-    std::unordered_map<uint32_t, std::unordered_map<uint32_t, int>> m_vertices_cache;
+//    std::unordered_map<uint32_t, std::unordered_map<uint32_t, int>> m_vertices_cache;
 };
 
 #endif 
