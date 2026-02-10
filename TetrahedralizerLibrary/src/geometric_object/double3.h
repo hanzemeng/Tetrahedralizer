@@ -1,5 +1,5 @@
-#ifndef numeric_array_h
-#define numeric_array_h
+#ifndef double3_h
+#define double3_h
 
 #include <cmath>
 

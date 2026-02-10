@@ -43,6 +43,7 @@
 				generic_point_approximation.hpp,
 				generic_point_predicate.cpp,
 				generic_point_predicate.hpp,
+				geometric_object/bounding_volume_hierarchy_2d.hpp,
 				geometric_object/double3.h,
 				geometric_object/facet.h,
 				geometric_object/polyhedralization.cpp,
