@@ -168,7 +168,7 @@ public:
         build_recursive(triangles_indexes);
     }
 
-    bool has_intersection(std::vector<std::shared_ptr<genericPoint>>& vertices, int ignore_axis, std::vector<Segment>& segments, Facet& facet, std::vector<uint32_t>& triangles)
+    uint32_t get_intersection(std::vector<std::shared_ptr<genericPoint>>& vertices, int ignore_axis, std::vector<Segment>& segments, Facet& facet, std::vector<uint32_t>& triangles)
     {
         std::vector<uint32_t> facet_vertices = facet.get_vertices(segments);
         AABB2D facet_aabb = AABB2D(m_approximated_vertices[facet_vertices[0]]);
@@ -205,7 +205,7 @@ public:
                     std::shared_ptr<genericPoint> centroid = facet.get_implicit_centroid(vertices);
                     if(genericPoint::pointInTriangle(*centroid,*vertices[c0],*vertices[c1],*vertices[c2]))
                     {
-                        return true;
+                        return t;
                     }
                 }
             }
@@ -216,7 +216,7 @@ public:
             }
         }
         
-        return false;
+        return UNDEFINED_VALUE;
     }
 };
 

@@ -41,7 +41,7 @@ std::vector<uint32_t> InteriorCharacterizationHandle::calculate(Polyhedralizatio
         }
     }
     
-    vector<vector<uint32_t>> constraints_coplanar_groups = vector<vector<uint32_t>>(coplanar_triangles.size());
+    vector<vector<uint32_t>> coplanar_constraints = vector<vector<uint32_t>>(coplanar_triangles.size());
     for(uint32_t i=0; i<constraints.size()/3; i++)
     {
         uint32_t c0 = constraints[3*i+0];
@@ -52,32 +52,68 @@ std::vector<uint32_t> InteriorCharacterizationHandle::calculate(Polyhedralizatio
             continue;
         }
         uint32_t cg = search_int(c0,c1,c2,triangles_coplanar_groups);
-        constraints_coplanar_groups[cg].push_back(i);
+        coplanar_constraints[cg].push_back(i);
+    }
+    vector<vector<uint32_t>> coplanar_facets = vector<vector<uint32_t>>(coplanar_triangles.size());
+    for(uint32_t i=0; i<polyhedralization.m_facets.size(); i++)
+    {
+        uint32_t c0 = polyhedralization.m_facets[i].p0;
+        uint32_t c1 = polyhedralization.m_facets[i].p1;
+        uint32_t c2 = polyhedralization.m_facets[i].p2;
+        if(UNDEFINED_VALUE == c0)
+        {
+            continue;
+        }
+        uint32_t cg = search_int(c0,c1,c2,triangles_coplanar_groups);
+        coplanar_facets[cg].push_back(i);
     }
     
     times.push_back(chrono::steady_clock::now());
     
+    uint32_t bvh_threshold=2048;
     vector<uint32_t> facets_centroids_mapping = vector<uint32_t>(polyhedralization.m_facets.size(), UNDEFINED_VALUE);
-    for(uint32_t i=0; i<polyhedralization.m_facets.size(); i++)
+    for(uint32_t cg=0; cg<coplanar_triangles.size(); cg++)
     {
-        uint32_t cg = search_int(polyhedralization.m_facets[i].p0, polyhedralization.m_facets[i].p1, polyhedralization.m_facets[i].p2,triangles_coplanar_groups);
-
-        shared_ptr<genericPoint> centroid = polyhedralization.m_facets[i].get_implicit_centroid(polyhedralization.m_vertices);
-//        if(constraints_coplanar_groups[cg].size() > 1)
-//        {
-//            cout << constraints_coplanar_groups[cg].size() << "\n";
-//        }
-        
-        for(uint32_t j=0; j<constraints_coplanar_groups[cg].size(); j++)
+        if(coplanar_facets[cg].size()>1 && coplanar_facets[cg].size()*coplanar_constraints[cg].size()>bvh_threshold)
         {
-            uint32_t c = constraints_coplanar_groups[cg][j];
-            uint32_t c0 = constraints[3*c+0];
-            uint32_t c1 = constraints[3*c+1];
-            uint32_t c2 = constraints[3*c+2];
-            if(genericPoint::pointInTriangle(*centroid,*polyhedralization.m_vertices[c0],*polyhedralization.m_vertices[c1],*polyhedralization.m_vertices[c2]))
+            int ignore_axis = max_component_in_triangle_normal(coplanar_triangles[cg][0], coplanar_triangles[cg][1], coplanar_triangles[cg][2], polyhedralization.m_vertices.data());
+            vector<uint32_t> constraints_triangles;
+            constraints_triangles.reserve(3*coplanar_constraints[cg].size());
+            for(uint32_t i=0; i<coplanar_constraints[cg].size(); i++)
             {
-                facets_centroids_mapping[i] = c;
-                break;
+                uint32_t c = coplanar_constraints[cg][i];
+                constraints_triangles.push_back(constraints[3*c+0]);
+                constraints_triangles.push_back(constraints[3*c+1]);
+                constraints_triangles.push_back(constraints[3*c+2]);
+            }
+            BoundingVolumeHierarchy2D bvh;
+            bvh.build(approximated_vertices, ignore_axis, constraints_triangles);
+            for(uint32_t f : coplanar_facets[cg])
+            {
+                uint32_t i = bvh.get_intersection(polyhedralization.m_vertices, ignore_axis, polyhedralization.m_segments, polyhedralization.m_facets[f], constraints_triangles);
+                if(UNDEFINED_VALUE==i)
+                {
+                    continue;
+                }
+                facets_centroids_mapping[f] = coplanar_constraints[cg][i];
+            }
+        }
+        else
+        {
+            for(uint32_t f : coplanar_facets[cg])
+            {
+                shared_ptr<genericPoint> centroid = polyhedralization.m_facets[f].get_implicit_centroid(polyhedralization.m_vertices);
+                for(uint32_t c : coplanar_constraints[cg])
+                {
+                    uint32_t c0 = constraints[3*c+0];
+                    uint32_t c1 = constraints[3*c+1];
+                    uint32_t c2 = constraints[3*c+2];
+                    if(genericPoint::pointInTriangle(*centroid,*polyhedralization.m_vertices[c0],*polyhedralization.m_vertices[c1],*polyhedralization.m_vertices[c2]))
+                    {
+                        facets_centroids_mapping[f] = c;
+                        break;
+                    }
+                }
             }
         }
     }
