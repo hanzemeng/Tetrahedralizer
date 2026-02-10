@@ -170,11 +170,11 @@ public:
 
     uint32_t get_intersection(std::vector<std::shared_ptr<genericPoint>>& vertices, int ignore_axis, std::vector<Segment>& segments, Facet& facet, std::vector<uint32_t>& triangles)
     {
-        std::vector<uint32_t> facet_vertices = facet.get_vertices(segments);
-        AABB2D facet_aabb = AABB2D(m_approximated_vertices[facet_vertices[0]]);
-        for(uint32_t i=1; i<facet_vertices.size(); i++)
+        facet.get_vertices(segments, Facet::m_get_vertices_res);
+        AABB2D facet_aabb = AABB2D(m_approximated_vertices[Facet::m_get_vertices_res[0]]);
+        for(uint32_t i=1; i<Facet::m_get_vertices_res.size(); i++)
         {
-            facet_aabb.merge(m_approximated_vertices[facet_vertices[i]]);
+            facet_aabb.merge(m_approximated_vertices[Facet::m_get_vertices_res[i]]);
         }
         facet_aabb.add_margin();
         

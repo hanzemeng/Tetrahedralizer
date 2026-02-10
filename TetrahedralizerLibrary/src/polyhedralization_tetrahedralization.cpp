@@ -87,90 +87,91 @@ void PolyhedralizationTetrahedralizationHandle::polyhedralization_tetrahedraliza
 
 uint32_t PolyhedralizationTetrahedralizationHandle::find_connect_vertex(uint32_t polyhedron)
 {
-    unordered_set<uint32_t> polyhedron_vertices;
-    unordered_map<uint32_t, unordered_set<uint32_t>> vertices_incident_coplanar_groups;
-    for(uint32_t f : m_polyhedrons[polyhedron])
-    {
-        vector<uint32_t> vs = m_facets[f].get_vertices(m_segments);
-        polyhedron_vertices.insert(vs.begin(),vs.end());
-        for(uint32_t v : vs)
-        {
-            if(vertices_incident_coplanar_groups.end() == vertices_incident_coplanar_groups.find(v))
-            {
-                vertices_incident_coplanar_groups[v] = unordered_set<uint32_t>();
-            }
-            vertices_incident_coplanar_groups[v].insert(m_facets_coplanar_group[f]);
-        }
-    }
-    
-    unordered_set<tuple<uint32_t,uint32_t,uint32_t>, iii32_hash> polyhedron_triangles;
-    for(uint32_t f : m_polyhedrons[polyhedron])
-    {
-        for(uint32_t j=0; j<m_triangulated_facets[f].size(); j+=3)
-        {
-            uint32_t t0 = m_triangulated_facets[f][j+0];
-            uint32_t t1 = m_triangulated_facets[f][j+1];
-            uint32_t t2 = m_triangulated_facets[f][j+2];
-            sort_ints(t0,t1,t2);
-            polyhedron_triangles.insert(make_tuple(t0,t1,t2));
-        }
-    }
-
-    for(uint32_t v : polyhedron_vertices)
-    {
-        unordered_set<tuple<uint32_t,uint32_t,uint32_t>, iii32_hash> cur_triangles;
-        for(uint32_t f : m_polyhedrons[polyhedron])
-        {
-            if(vertices_incident_coplanar_groups[v].end() != vertices_incident_coplanar_groups[v].find(m_facets_coplanar_group[f]))
-            {
-                continue;
-            }
-            
-            for(uint32_t j=0; j<m_triangulated_facets[f].size(); j+=3)
-            {
-                uint32_t t0 = m_triangulated_facets[f][j+0];
-                uint32_t t1 = m_triangulated_facets[f][j+1];
-                uint32_t t2 = m_triangulated_facets[f][j+2];
-//                if(v==t0 || v==t1 || v==t2 || 0 == orient3d(t0, t1, t2, v, m_vertices.data()))
+//    unordered_set<uint32_t> polyhedron_vertices;
+//    unordered_map<uint32_t, unordered_set<uint32_t>> vertices_incident_coplanar_groups;
+//    for(uint32_t f : m_polyhedrons[polyhedron])
+//    {
+//        vector<uint32_t> vs = m_facets[f].get_vertices(m_segments);
+//        polyhedron_vertices.insert(vs.begin(),vs.end());
+//        for(uint32_t v : vs)
+//        {
+//            if(vertices_incident_coplanar_groups.end() == vertices_incident_coplanar_groups.find(v))
+//            {
+//                vertices_incident_coplanar_groups[v] = unordered_set<uint32_t>();
+//            }
+//            vertices_incident_coplanar_groups[v].insert(m_facets_coplanar_group[f]);
+//        }
+//    }
+//    
+//    unordered_set<tuple<uint32_t,uint32_t,uint32_t>, iii32_hash> polyhedron_triangles;
+//    for(uint32_t f : m_polyhedrons[polyhedron])
+//    {
+//        for(uint32_t j=0; j<m_triangulated_facets[f].size(); j+=3)
+//        {
+//            uint32_t t0 = m_triangulated_facets[f][j+0];
+//            uint32_t t1 = m_triangulated_facets[f][j+1];
+//            uint32_t t2 = m_triangulated_facets[f][j+2];
+//            sort_ints(t0,t1,t2);
+//            polyhedron_triangles.insert(make_tuple(t0,t1,t2));
+//        }
+//    }
+//
+//    for(uint32_t v : polyhedron_vertices)
+//    {
+//        unordered_set<tuple<uint32_t,uint32_t,uint32_t>, iii32_hash> cur_triangles;
+//        for(uint32_t f : m_polyhedrons[polyhedron])
+//        {
+//            if(vertices_incident_coplanar_groups[v].end() != vertices_incident_coplanar_groups[v].find(m_facets_coplanar_group[f]))
+//            {
+//                continue;
+//            }
+//            
+//            for(uint32_t j=0; j<m_triangulated_facets[f].size(); j+=3)
+//            {
+//                uint32_t t0 = m_triangulated_facets[f][j+0];
+//                uint32_t t1 = m_triangulated_facets[f][j+1];
+//                uint32_t t2 = m_triangulated_facets[f][j+2];
+////                if(v==t0 || v==t1 || v==t2 || 0 == orient3d(t0, t1, t2, v, m_vertices.data()))
+////                {
+////                    continue;
+////                }
+//                
+//                auto add_triangle = [&](uint32_t p0, uint32_t p1, uint32_t p2)
 //                {
-//                    continue;
-//                }
-                
-                auto add_triangle = [&](uint32_t p0, uint32_t p1, uint32_t p2)
-                {
-                    sort_ints(p0,p1,p2);
-                    cur_triangles.insert(make_tuple(p0,p1,p2));
-                };
-                add_triangle(t0,t1,t2);
-                add_triangle(t0,t1,v);
-                add_triangle(t1,t2,v);
-                add_triangle(t2,t0,v);
-            }
-        }
-        
-        for(auto k : polyhedron_triangles)
-        {
-            if(cur_triangles.end() == cur_triangles.find(k))
-            {
-                goto NEXT_VERTEX;
-            }
-        }
-        return v;
-        NEXT_VERTEX:
-        continue;
-    }
-    
-    // if polyhedron can't be tetrahedralized by connecting a vertex to every triangulated facet
-    double3 center(0.0,0.0,0.0);
-    for(uint32_t v : polyhedron_vertices)
-    {
-        center += m_approximated_vertices[v];
-    }
-    center /= (double)polyhedron_vertices.size();
-    uint32_t connect_vertex = m_vertices.size();
-    m_vertices.push_back(std::make_shared<explicitPoint3D> (center.x, center.y, center.z));
-    m_inserted_polyhedrons_centroids.push_back(polyhedron);
-    return connect_vertex;
+//                    sort_ints(p0,p1,p2);
+//                    cur_triangles.insert(make_tuple(p0,p1,p2));
+//                };
+//                add_triangle(t0,t1,t2);
+//                add_triangle(t0,t1,v);
+//                add_triangle(t1,t2,v);
+//                add_triangle(t2,t0,v);
+//            }
+//        }
+//        
+//        for(auto k : polyhedron_triangles)
+//        {
+//            if(cur_triangles.end() == cur_triangles.find(k))
+//            {
+//                goto NEXT_VERTEX;
+//            }
+//        }
+//        return v;
+//        NEXT_VERTEX:
+//        continue;
+//    }
+//    
+//    // if polyhedron can't be tetrahedralized by connecting a vertex to every triangulated facet
+//    double3 center(0.0,0.0,0.0);
+//    for(uint32_t v : polyhedron_vertices)
+//    {
+//        center += m_approximated_vertices[v];
+//    }
+//    center /= (double)polyhedron_vertices.size();
+//    uint32_t connect_vertex = m_vertices.size();
+//    m_vertices.push_back(std::make_shared<explicitPoint3D> (center.x, center.y, center.z));
+//    m_inserted_polyhedrons_centroids.push_back(polyhedron);
+//    return connect_vertex;
+    return UNDEFINED_VALUE;
 }
 
 void PolyhedralizationTetrahedralizationHandle::add_tetrahedron(uint32_t t0,uint32_t t1,uint32_t t2,uint32_t t3)

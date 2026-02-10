@@ -177,8 +177,8 @@ std::vector<uint32_t> InteriorCharacterizationHandle::calculate(Polyhedralizatio
                     }
                     
                     int orient = 0;
-                    vector<uint32_t> vs = polyhedralization.m_facets[f].get_vertices(polyhedralization.m_segments);
-                    for(uint32_t v : vs)
+                    polyhedralization.m_facets[f].get_vertices(polyhedralization.m_segments, Facet::m_get_vertices_res);
+                    for(uint32_t v : Facet::m_get_vertices_res)
                     {
                         if(0 != (orient=orient3d(c0,c1,c2,v, polyhedralization.m_vertices.data())))
                         {

@@ -350,8 +350,8 @@ int FacetsOrderingHandle::check_plane_facet_intersection(uint32_t c, uint32_t nc
     uint32_t c2 = facets[c].p2;
     bool has_top = false;
     bool has_bot = false;
-    std::vector<uint32_t> vs = facets[nc].get_vertices(segments);
-    for(uint32_t v : vs)
+    facets[nc].get_vertices(segments, Facet::m_get_vertices_res);
+    for(uint32_t v : Facet::m_get_vertices_res)
     {
         int o = orient3d(c0,c1,c2,v,vertices.data());;
 //        auto it = m_vertices_cache[cg].find(v);

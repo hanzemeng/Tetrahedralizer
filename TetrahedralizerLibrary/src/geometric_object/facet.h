@@ -191,10 +191,10 @@ class Facet
     }
     
     inline static std::vector<uint8_t> m_get_vertices_cache;
-    std::vector<uint32_t> get_vertices(std::vector<Segment>& all_segments)
+    inline static std::vector<uint32_t> m_get_vertices_res;
+    void get_vertices(std::vector<Segment>& all_segments, std::vector<uint32_t>& res)
     {
-        std::vector<uint32_t> res;
-        res.reserve(segments.size());
+        res.clear();
         
         for(uint32_t s : segments)
         {
@@ -225,17 +225,16 @@ class Facet
         {
             m_get_vertices_cache[v] = 0;
         }
-        return res;
     }
     void calculate_implicit_centroid(std::vector<double3>& approximated_vertices, std::vector<Segment>& segments)
     {
-        std::vector<uint32_t> vs = get_vertices(segments);
+        get_vertices(segments, m_get_vertices_res);
         double3 centroid;
-        for(uint32_t v : vs)
+        for(uint32_t v : m_get_vertices_res)
         {
             centroid += approximated_vertices[v];
         }
-        centroid /= (double)vs.size();
+        centroid /= (double)m_get_vertices_res.size();
         double3 pp0 = approximated_vertices[p0];
         double3 pp1 = approximated_vertices[p1];
         double3 pp2 = approximated_vertices[p2];
@@ -257,18 +256,18 @@ class Facet
         double d = -n.dot(t0);
         return std::make_pair(n,d);
     }
-    std::pair<double3, double> get_bounding_sphere(std::vector<double3>& approximated_vertices, std::vector<Segment>& segments, bool square_radius=true, double padding=1.05)
+    std::pair<double3, double> get_bounding_sphere(std::vector<double3>& approximated_vertices, std::vector<Segment>& segments, bool square_radius=true, double padding=0.05)
     {
-        std::vector<uint32_t> vs = get_vertices(segments);
+        get_vertices(segments, m_get_vertices_res);
         double3 centroid(0.0,0.0,0.0);
-        for(uint32_t i : vs)
+        for(uint32_t i : m_get_vertices_res)
         {
             centroid += approximated_vertices[i];
         }
-        centroid /= (double)vs.size();
+        centroid /= (double)m_get_vertices_res.size();
         
         double radius = -1.0;
-        for(uint32_t i : vs)
+        for(uint32_t i : m_get_vertices_res)
         {
             radius = std::max(radius, (centroid-approximated_vertices[i]).length_squared());
         }
@@ -276,7 +275,7 @@ class Facet
         {
             radius = std::sqrt(radius);
         }
-        return std::make_pair(centroid, padding*radius);
+        return std::make_pair(centroid, padding*radius+radius);
     }
 };
 
