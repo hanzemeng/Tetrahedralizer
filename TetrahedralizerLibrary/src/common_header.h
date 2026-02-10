@@ -76,6 +76,14 @@ public:
     uint32_t9()
     {
         p0 = UNDEFINED_VALUE;
+        p1 = UNDEFINED_VALUE;
+        p2 = UNDEFINED_VALUE;
+        p3 = UNDEFINED_VALUE;
+        p4 = UNDEFINED_VALUE;
+        p5 = UNDEFINED_VALUE;
+        p6 = UNDEFINED_VALUE;
+        p7 = UNDEFINED_VALUE;
+        p8 = UNDEFINED_VALUE;
     }
     void push_back_to_vector(std::vector<uint32_t>& vec)
     {
@@ -92,14 +100,15 @@ public:
             vec.push_back(p7);
             vec.push_back(p8);
         }
-        return;
-        
-        vec.push_back(5);
-        vec.push_back(p0);
-        vec.push_back(p1);
-        vec.push_back(p2);
-        vec.push_back(p3);
-        vec.push_back(p4);
+        else
+        {
+            vec.push_back(5);
+            vec.push_back(p0);
+            vec.push_back(p1);
+            vec.push_back(p2);
+            vec.push_back(p3);
+            vec.push_back(p4);
+        }
     }
 };
 
