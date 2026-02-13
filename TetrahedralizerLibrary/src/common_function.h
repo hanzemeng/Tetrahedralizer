@@ -165,19 +165,7 @@ inline int max_component_in_triangle_normal(uint32_t t0,uint32_t t1,uint32_t t2,
 }
 inline int orient3d_ignore_axis(uint32_t p0,uint32_t p1,uint32_t p2,int axis, std::shared_ptr<genericPoint>* m_vertices)
 {
-    if(0 == axis)
-    {
-        return double_to_int(genericPoint::orient2Dyz(*m_vertices[p0],*m_vertices[p1],*m_vertices[p2]));
-    }
-    if(1 == axis)
-    {
-        return double_to_int(genericPoint::orient2Dzx(*m_vertices[p0],*m_vertices[p1],*m_vertices[p2]));
-    }
-    if(2 == axis)
-    {
-        return double_to_int(genericPoint::orient2Dxy(*m_vertices[p0],*m_vertices[p1],*m_vertices[p2]));
-    }
-    throw "wrong axis value";
+    return double_to_int(genericPoint::orient2D(*m_vertices[p0],*m_vertices[p1],*m_vertices[p2],axis));
 }
 
 inline double3 approximate_vertex(std::shared_ptr<genericPoint> vertices)

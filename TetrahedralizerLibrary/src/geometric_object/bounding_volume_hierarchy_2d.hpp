@@ -202,8 +202,8 @@ public:
                     uint32_t c0 = triangles[3*t+0];
                     uint32_t c1 = triangles[3*t+1];
                     uint32_t c2 = triangles[3*t+2];
-                    std::shared_ptr<genericPoint> centroid = facet.get_implicit_centroid(vertices);
-                    if(genericPoint::pointInTriangle(*centroid,*vertices[c0],*vertices[c1],*vertices[c2]))
+                    
+                    if(facet.intersects_coplanar_triangle(c0, c1, c2, ignore_axis, vertices, segments))
                     {
                         return t;
                     }

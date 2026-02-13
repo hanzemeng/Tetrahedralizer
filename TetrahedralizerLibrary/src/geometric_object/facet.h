@@ -142,6 +142,8 @@ class Facet
         return b0 || b1;
     }
     
+    inline static std::vector<uint8_t> m_get_vertices_cache;
+    inline static std::vector<uint32_t> m_get_vertices_res;
     std::vector<uint32_t> get_sorted_vertices(std::vector<Segment>& all_segments)
     {
         std::vector<Segment> res;
@@ -152,46 +154,6 @@ class Facet
         Segment::sort_segments(res);
         return Segment::get_segments_vertices(res);
     }
-    
-    bool check_validity(std::vector<std::shared_ptr<genericPoint>>& all_vertices, std::vector<Segment>& all_segments)
-    {
-        std::vector<uint32_t> vs = get_sorted_vertices(all_segments);
-        int max_norm = max_component_in_triangle_normal(p0,p1,p2,all_vertices.data());
-        int o = 0;
-        for(uint32_t j=0; j<vs.size(); j++)
-        {
-            if(0 != orient3d(p0,p1,p2,vs[j],all_vertices.data()))
-            {
-                throw "wtf";
-            }
-            uint32_t p0 = vs[j];
-            uint32_t p1 = vs[(j+1)%vs.size()];
-            uint32_t p2 = vs[(j+2)%vs.size()];
-
-            int new_o = orient3d_ignore_axis(p0, p1, p2, max_norm, all_vertices.data());
-            if(0 == new_o)
-            {
-                continue;
-            }
-            if(0 == o)
-            {
-                o = new_o;
-                continue;
-            }
-            if(new_o != o)
-            {
-                throw "wtf";
-            }
-        }
-        if(0 == o)
-        {
-            throw "wtf";
-        }
-        return true;
-    }
-    
-    inline static std::vector<uint8_t> m_get_vertices_cache;
-    inline static std::vector<uint32_t> m_get_vertices_res;
     void get_vertices(std::vector<Segment>& all_segments, std::vector<uint32_t>& res)
     {
         res.clear();
@@ -276,6 +238,148 @@ class Facet
             radius = std::sqrt(radius);
         }
         return std::make_pair(centroid, padding*radius+radius);
+    }
+    
+    bool intersects_coplanar_triangle(uint32_t c0,uint32_t c1,uint32_t c2, int ignore_axis, std::vector<std::shared_ptr<genericPoint>>& all_vertices, std::vector<Segment>& all_segments)
+    {
+        if(0 == orient3d_ignore_axis(c0, c1, c2, ignore_axis, all_vertices.data()))
+        {
+            return false; // should never happen
+        }
+        uint32_t vn = all_vertices.size();
+        uint32_t sn = all_segments.size();
+        
+        uint32_t c3 = UNDEFINED_VALUE;
+        for(uint32_t i=0; i<all_vertices.size(); i++)
+        {
+            if(!all_vertices[i]->isExplicit3D())
+            {
+                continue;
+            }
+            int o = orient3d(c0,c1,c2,i,all_vertices.data());
+            if(0 != o)
+            {
+                c3 = i;
+                if(-1 == o)
+                {
+                    std::swap(c1,c2);
+                }
+                break;
+            }
+        }
+        if(UNDEFINED_VALUE == c3)
+        {
+            throw "wtf";
+        }
+        
+        std::vector<uint32_t> active_segments = segments;
+        std::vector<uint32_t> active_segments_temp;
+        
+        auto slice_with_plane = [&](uint32_t p0, uint32_t p1, uint32_t p2)
+        {
+            bool has_edge_on_constraint = false;
+            uint32_t i0(UNDEFINED_VALUE), i1(UNDEFINED_VALUE);
+            for(uint32_t s : active_segments)
+            {
+                int o0 = orient3d(p0, p1, p2, all_segments[s].e0, all_vertices.data());
+                int o1 = orient3d(p0, p1, p2, all_segments[s].e1, all_vertices.data());
+                auto [i_p,top_s,bot_s,vs] = Segment::slice_segment_with_plane(s, p0, p1, p2, all_vertices, all_segments, o0, o1, false);
+                
+                if(UNDEFINED_VALUE == i_p && top_s == UNDEFINED_VALUE && bot_s == UNDEFINED_VALUE)
+                {
+                    has_edge_on_constraint = true;
+                    active_segments_temp.push_back(s);
+                    continue;
+                }
+                
+                if(UNDEFINED_VALUE != i_p)
+                {
+                    if(UNDEFINED_VALUE == i0 || i_p == i0)
+                    {
+                        i0 = i_p;
+                    }
+                    else
+                    {
+                        i1 = i_p;
+                    }
+                }
+                if(UNDEFINED_VALUE != top_s)
+                {
+                    active_segments_temp.push_back(top_s);
+                }
+            }
+            
+            if(!has_edge_on_constraint && i1 != UNDEFINED_VALUE)
+            {
+                uint32_t i_e = all_segments.size();
+                all_segments.push_back(Segment(i0,i1,this->p0,this->p1,this->p2,p0,p1,p2));
+                active_segments_temp.push_back(i_e);
+            }
+            active_segments = active_segments_temp;
+            active_segments_temp.clear();
+        };
+        
+        bool res = true;
+        slice_with_plane(c0,c3,c1);
+        if(active_segments.size()<=2)
+        {
+            res = false;
+            goto RETURN;
+        }
+        slice_with_plane(c1,c3,c2);
+        if(active_segments.size()<=2)
+        {
+            res = false;
+            goto RETURN;
+        }
+        slice_with_plane(c2,c3,c0);
+        if(active_segments.size()<=2)
+        {
+            res = false;
+            goto RETURN;
+        }
+        
+        RETURN:
+        all_vertices.resize(vn);
+        all_segments.resize(sn);
+        return res;
+    }
+    
+    bool check_validity(std::vector<std::shared_ptr<genericPoint>>& all_vertices, std::vector<Segment>& all_segments)
+    {
+        std::vector<uint32_t> vs = get_sorted_vertices(all_segments);
+        int max_norm = max_component_in_triangle_normal(p0,p1,p2,all_vertices.data());
+        int o = 0;
+        for(uint32_t j=0; j<vs.size(); j++)
+        {
+            if(0 != orient3d(p0,p1,p2,vs[j],all_vertices.data()))
+            {
+                throw "wtf";
+            }
+            uint32_t p0 = vs[j];
+            uint32_t p1 = vs[(j+1)%vs.size()];
+            uint32_t p2 = vs[(j+2)%vs.size()];
+
+            int new_o = orient3d_ignore_axis(p0, p1, p2, max_norm, all_vertices.data());
+            if(0 == new_o)
+            {
+                continue;
+            }
+            if(0 == o)
+            {
+                o = new_o;
+                continue;
+            }
+            if(new_o != o)
+            {
+                throw "wtf";
+            }
+        }
+        if(0 == o)
+        {
+            throw "wtf";
+        }
+        return true;
     }
 };
 

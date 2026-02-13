@@ -4,7 +4,7 @@
 #include "common_header.h"
 #include "common_function.h"
 #include "geometric_object/polyhedralization.hpp"
-#include "geometric_object/bounding_volume_hierarchy_2d.hpp"
+#include "winding_number_approximation.hpp"
 #include "graph_cut/GCoptimization.h"
 
 

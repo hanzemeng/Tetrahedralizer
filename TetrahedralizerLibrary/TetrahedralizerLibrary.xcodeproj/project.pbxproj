@@ -27,8 +27,6 @@
 		887F388D2E0E1F2800A37971 /* Exceptions for "src" folder in "TetrahedralizerLibrary" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				binary_space_partition.cpp,
-				binary_space_partition.hpp,
 				common_function.h,
 				common_header.h,
 				convex_hull_partition.cpp,
@@ -73,7 +71,8 @@
 				polyhedralization_creation.hpp,
 				polyhedralization_tetrahedralization.cpp,
 				polyhedralization_tetrahedralization.hpp,
-				triangle_tetrahedron_intersection.h,
+				winding_number_approximation.cpp,
+				winding_number_approximation.hpp,
 			);
 			target = 887F387B2E0E1F1F00A37971 /* TetrahedralizerLibrary */;
 		};

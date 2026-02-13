@@ -17,7 +17,7 @@ void PolyhedralizationCreationHandle::calculate(vector<shared_ptr<genericPoint>>
     cout << "polyhedrons count: " << polyhedralization.m_polyhedrons.size() << "\n";
     
     InteriorCharacterizationHandle IC;
-    vector<uint32_t> polyhedrons_labels = IC.calculate(polyhedralization, constraints, approximated_vertices, coplanar_tirangles, 0.1);
+    vector<uint32_t> polyhedrons_labels = IC.calculate(polyhedralization, constraints, approximated_vertices, coplanar_tirangles, 1.0);
     vector<vector<uint32_t>> new_polyhedrons;
     for(uint32_t i=0; i<polyhedrons_labels.size(); i++)
     {
@@ -30,8 +30,8 @@ void PolyhedralizationCreationHandle::calculate(vector<shared_ptr<genericPoint>>
     polyhedralization.m_polyhedrons = new_polyhedrons;
     cout << "inside polyhedrons count: " << polyhedralization.m_polyhedrons.size() << "\n";
     
-//    vector<uint8_t> polyhedralization_bytes = polyhedralization.to_bytes();
-//    ofstream out_file("test.txt", std::ios::binary);
-//    out_file.write((char*)polyhedralization_bytes.data(), polyhedralization_bytes.size());
-//    out_file.close();
+    vector<uint8_t> polyhedralization_bytes = polyhedralization.to_bytes();
+    ofstream out_file("test.txt", std::ios::binary);
+    out_file.write((char*)polyhedralization_bytes.data(), polyhedralization_bytes.size());
+    out_file.close();
 }
