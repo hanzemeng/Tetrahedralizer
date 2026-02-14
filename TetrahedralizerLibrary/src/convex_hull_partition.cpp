@@ -351,12 +351,7 @@ std::tuple<Polyhedralization, std::vector<double3>, std::vector<std::vector<uint
         }
     }
     times.push_back(chrono::steady_clock::now());
-    
     approximate_verteices(approximated_vertices, polyhedralization.m_vertices);
-    for(uint32_t i=0; i<polyhedralization.m_facets.size(); i++)
-    {
-        polyhedralization.m_facets[i].calculate_implicit_centroid(approximated_vertices, polyhedralization.m_segments);
-    }
     times.push_back(chrono::steady_clock::now());
     
     for (uint32_t i=1; i<times.size(); i++)

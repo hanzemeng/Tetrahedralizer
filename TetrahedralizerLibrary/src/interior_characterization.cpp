@@ -1,7 +1,7 @@
 #include "interior_characterization.hpp"
 using namespace std;
 
-std::vector<uint32_t> InteriorCharacterizationHandle::calculate(Polyhedralization& polyhedralization, std::vector<uint32_t>& constraints, std::vector<double3>& approximated_vertices, std::vector<std::vector<uint32_t>>& coplanar_triangles, double polyhedron_in_multiplier)
+std::vector<uint32_t> InteriorCharacterizationHandle::calculate(Polyhedralization& polyhedralization, std::vector<uint32_t>& constraints, std::vector<double3>& approximated_vertices)
 {
     vector<chrono::steady_clock::time_point> times;
     times.push_back(chrono::steady_clock::now());

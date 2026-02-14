@@ -177,19 +177,19 @@ void FacetPartitionHandle::Calculate()
         approximate_verteices(m_approximated_vertices, m_polyhedralization.m_vertices);
         for(uint32_t f : split_facets)
         {
-            m_polyhedralization.m_facets[f].calculate_implicit_centroid(m_approximated_vertices, m_polyhedralization.m_segments);
-            m_facets_centroids_mapping[f] = UNDEFINED_VALUE;
-            for(uint32_t c : coplanar_constraints_groups[cg])
-            {
-                uint32_t c0 = m_constraints[3*c+0];
-                uint32_t c1 = m_constraints[3*c+1];
-                uint32_t c2 = m_constraints[3*c+2];
-                if(genericPoint::pointInTriangle(*m_polyhedralization.m_facets[f].get_implicit_centroid(m_polyhedralization.m_vertices),*m_polyhedralization.m_vertices[c0],*m_polyhedralization.m_vertices[c1],*m_polyhedralization.m_vertices[c2], m_coplanar_groups_normals[cg]))
-                {
-                    m_facets_centroids_mapping[f] = c;
-                    break;
-                }
-            }
+//            m_polyhedralization.m_facets[f].calculate_implicit_centroid(m_approximated_vertices, m_polyhedralization.m_segments);
+//            m_facets_centroids_mapping[f] = UNDEFINED_VALUE;
+//            for(uint32_t c : coplanar_constraints_groups[cg])
+//            {
+//                uint32_t c0 = m_constraints[3*c+0];
+//                uint32_t c1 = m_constraints[3*c+1];
+//                uint32_t c2 = m_constraints[3*c+2];
+//                if(genericPoint::pointInTriangle(*m_polyhedralization.m_facets[f].get_implicit_centroid(m_polyhedralization.m_vertices),*m_polyhedralization.m_vertices[c0],*m_polyhedralization.m_vertices[c1],*m_polyhedralization.m_vertices[c2], m_coplanar_groups_normals[cg]))
+//                {
+//                    m_facets_centroids_mapping[f] = c;
+//                    break;
+//                }
+//            }
         }
     }
 }

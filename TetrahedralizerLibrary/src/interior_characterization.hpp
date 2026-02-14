@@ -11,7 +11,7 @@
 class InteriorCharacterizationHandle
 {
 public:
-    std::vector<uint32_t> calculate(Polyhedralization& polyhedralization, std::vector<uint32_t>& constraints, std::vector<double3>& approximated_vertices, std::vector<std::vector<uint32_t>>& coplanar_triangles, double polyhedron_in_multiplier);
+    std::vector<uint32_t> calculate(Polyhedralization& polyhedralization, std::vector<uint32_t>& constraints, std::vector<double3>& approximated_vertices);
 };
 
 //extern "C" LIBRARY_EXPORT void* CreateInteriorCharacterizationHandle();

@@ -27,7 +27,7 @@ void PolyhedralizationCreationHandle::calculate(vector<shared_ptr<genericPoint>>
     vector<uint32_t> polyhedrons_labels;
     {
         InteriorCharacterizationHandle IC;
-        polyhedrons_labels = IC.calculate(polyhedralization, constraints, approximated_vertices, coplanar_tirangles, 1.0);
+        polyhedrons_labels = IC.calculate(polyhedralization, constraints, approximated_vertices);
     }
     vector<vector<uint32_t>> new_polyhedrons;
     for(uint32_t i=0; i<polyhedrons_labels.size(); i++)

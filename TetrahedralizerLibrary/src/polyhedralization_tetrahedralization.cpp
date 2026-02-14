@@ -36,7 +36,7 @@ void PolyhedralizationTetrahedralizationHandle::polyhedralization_tetrahedraliza
             if(connect_vertex == UNDEFINED_VALUE) // add a point at the facet center
             {
                 connect_vertex = m_vertices.size();
-                m_vertices.push_back(m_facets[i].get_implicit_centroid(m_vertices));
+//                m_vertices.push_back(m_facets[i].get_implicit_centroid(m_vertices));
                 m_inserted_facets_centroids.push_back(i);
             }
             

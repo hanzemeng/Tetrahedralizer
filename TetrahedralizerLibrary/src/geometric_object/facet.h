@@ -9,13 +9,11 @@ class Facet
     public:
     std::vector<uint32_t> segments; // segments forming the facet
     uint32_t p0,p1,p2; // three explicit vetices that define the facet
-    double w0,w1; // w0+w1+w2==1 and w0*p0+w1*p1+w2*p2 is the facet centroid
     uint32_t ip0, ip1; // two incident polyhedrons
 
     Facet()
     {
         p0=p1=p2=ip0=ip1=UNDEFINED_VALUE;
-        w0=w1=1.0/3.0;
     }
     Facet(uint32_t s0, uint32_t s1, uint32_t s2, uint32_t p0, uint32_t p1, uint32_t p2, uint32_t cg)
     {
@@ -55,15 +53,13 @@ class Facet
         this->p0 = other.p0;
         this->p1 = other.p1;
         this->p2 = other.p2;
-        this->w0 = other.w0;
-        this->w1 = other.w1;
         this->ip0 = other.ip0;
         this->ip1 = other.ip1;
     }
     
     uint32_t write_to_byte_buffer_size()
     {
-        return write_vector_to_byte_buffer_size(segments) + 3*4 + 2*8 + 2*4;
+        return write_vector_to_byte_buffer_size(segments) + 3*4 + 2*4;
     }
     void write_to_byte_buffer(uint8_t* buffer)
     {
@@ -72,10 +68,8 @@ class Facet
         memcpy(buffer+sn+0*4, &p0, 4);
         memcpy(buffer+sn+1*4, &p1, 4);
         memcpy(buffer+sn+2*4, &p2, 4);
-        memcpy(buffer+sn+3*4, &w0, 8);
-        memcpy(buffer+sn+5*4, &w1, 8);
-        memcpy(buffer+sn+7*4, &ip0, 4);
-        memcpy(buffer+sn+8*4, &ip1, 4);
+        memcpy(buffer+sn+3*4, &ip0, 4);
+        memcpy(buffer+sn+4*4, &ip1, 4);
     }
     
     void increase_segments_indexes(uint32_t n)
@@ -187,27 +181,6 @@ class Facet
         {
             m_get_vertices_cache[v] = 0;
         }
-    }
-    void calculate_implicit_centroid(std::vector<double3>& approximated_vertices, std::vector<Segment>& segments)
-    {
-        get_vertices(segments, m_get_vertices_res);
-        double3 centroid;
-        for(uint32_t v : m_get_vertices_res)
-        {
-            centroid += approximated_vertices[v];
-        }
-        centroid /= (double)m_get_vertices_res.size();
-        double3 pp0 = approximated_vertices[p0];
-        double3 pp1 = approximated_vertices[p1];
-        double3 pp2 = approximated_vertices[p2];
-        auto [is_in, w] = barycentric_weight(pp0,pp1,pp2,centroid);
-        w0 = w.x;
-        w1 = w.y;
-    }
-    std::shared_ptr<genericPoint> get_implicit_centroid(std::vector<std::shared_ptr<genericPoint>>& vertices)
-    {
-        return std::make_shared<implicitPoint3D_BPT>
-        (vertices[p0]->toExplicit3D(),vertices[p1]->toExplicit3D(),vertices[p2]->toExplicit3D(),w0,w1);
     }
     std::pair<double3,double> get_plane_equation(std::vector<double3>& approximated_vertices)
     {
@@ -391,7 +364,6 @@ extern "C"
         const uint32_t* segments;
         uint32_t segments_count;
         uint32_t p0, p1, p2;
-        double w0, w1;
         uint32_t ip0, ip1;
             
         FacetInteropData& operator=(const Facet& other)
@@ -401,8 +373,6 @@ extern "C"
             this->p0 = other.p0;
             this->p1 = other.p1;
             this->p2 = other.p2;
-            this->w0 = other.w0;
-            this->w1 = other.w1;
             this->ip0 = other.ip0;
             this->ip1 = other.ip1;
             return *this;
@@ -415,8 +385,6 @@ extern "C"
             res.p0 = p0;
             res.p1 = p1;
             res.p2 = p2;
-            res.w0 = w0;
-            res.w1 = w1;
             res.ip0 = ip0;
             res.ip1 = ip1;
             return res;
