@@ -16,7 +16,7 @@ FacetsOrderingHandle::FacetsOrderingHandle(uint32_t candidate_facets_count,uint3
 
 // facet ip0 is coplanar group index, p0 p1 p2 is coplanar group triangle
 // order_tree[i+0] is coplanar group index, order_tree[i+1] is top node, order_tree[i+2] is bot node
-std::vector<uint32_t> FacetsOrderingHandle::order_facets(std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<double3>& approximated_vertices, std::vector<Segment>& segments, std::vector<Facet>& facets)
+std::vector<uint32_t> FacetsOrderingHandle::order_facets(std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<double3>& approximated_vertices, std::vector<Segment>& segments, std::vector<Facet>& facets, std::vector<uint32_t>& facets_coplanar_groups)
 {
     uint32_t vn = vertices.size();
     uint32_t sn = segments.size();
@@ -30,7 +30,7 @@ std::vector<uint32_t> FacetsOrderingHandle::order_facets(std::vector<std::shared
     {
         facets_indexes.push_back(i);
         facets_spheres.push_back(facets[i].get_bounding_sphere(approximated_vertices, segments, false));
-        uint32_t cg = facets[i].ip0;
+        uint32_t cg = facets_coplanar_groups[i];
         if(planes_equations.end() != planes_equations.find(cg))
         {
             continue;
@@ -39,18 +39,19 @@ std::vector<uint32_t> FacetsOrderingHandle::order_facets(std::vector<std::shared
     }
     
     shuffle(facets_indexes.begin(),facets_indexes.end(),m_gen);
-    order_facets(facets_indexes, vertices, approximated_vertices, segments, facets, res, facets_spheres, planes_equations);
+    order_facets(facets_indexes, vertices, approximated_vertices, segments, facets, facets_coplanar_groups, res, facets_spheres, planes_equations);
     
     vertices.resize(vn);
     approximated_vertices.resize(vn);
     segments.resize(sn);
     facets.resize(fn);
+    facets_coplanar_groups.resize(fn);
     return res;
 }
 
 // facet ip0 is coplanar group index, p0 p1 p2 is coplanar group triangle
 // order_tree[i+0] is coplanar group index, order_tree[i+1] is top node, order_tree[i+2] is bot node
-void FacetsOrderingHandle::order_facets(std::vector<uint32_t>& all_facets_indexes, std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<double3>& approximated_vertices, std::vector<Segment>& segments, std::vector<Facet>& facets,
+void FacetsOrderingHandle::order_facets(std::vector<uint32_t>& all_facets_indexes, std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<double3>& approximated_vertices, std::vector<Segment>& segments, std::vector<Facet>& facets, std::vector<uint32_t>& facets_coplanar_groups,
                              std::vector<uint32_t>& order_tree,
                              std::vector<std::pair<double3,double>>& facets_spheres, std::unordered_map<uint32_t, std::pair<double3,double>>& planes_equations)
 {
@@ -95,6 +96,7 @@ void FacetsOrderingHandle::order_facets(std::vector<uint32_t>& all_facets_indexe
             approximated_vertices.resize(approximated_vertices.size() - vn);
             segments.resize(segments.size() - sn);
             facets.resize(facets.size() - fn);
+            facets_coplanar_groups.resize(facets_coplanar_groups.size() - fn);
             facets_spheres.resize(facets_spheres.size() - fn);
         }
         last_depth = depth;
@@ -120,7 +122,7 @@ void FacetsOrderingHandle::order_facets(std::vector<uint32_t>& all_facets_indexe
         for(uint32_t i=0; i<i_n; i++)
         {
             uint32_t c = cur_facets[i];
-            uint32_t cg = facets[c].ip0;
+//            uint32_t cg = facets_coplanar_groups[c];
 //            if(m_vertices_cache.end() != m_vertices_cache.find(cg)) // checked a coplanar facet
 //            {
 //                continue;
@@ -137,7 +139,7 @@ void FacetsOrderingHandle::order_facets(std::vector<uint32_t>& all_facets_indexe
                     continue;
                 }
                 uint32_t nc = cur_facets[j];
-                int int_type = check_plane_facet_intersection(c, nc, vertices, segments, facets, facets_spheres, planes_equations);
+                int int_type = check_plane_facet_intersection(c, nc, vertices, segments, facets, facets_coplanar_groups, facets_spheres, planes_equations);
                 if(0 == int_type)
                 {
                     both.push_back(nc);
@@ -213,7 +215,7 @@ void FacetsOrderingHandle::order_facets(std::vector<uint32_t>& all_facets_indexe
         for(uint32_t j=j_n; j<cur_facets.size(); j++)
         {
             uint32_t nc = cur_facets[j];
-            int int_type = check_plane_facet_intersection(c, nc, vertices, segments, facets, facets_spheres, planes_equations);
+            int int_type = check_plane_facet_intersection(c, nc, vertices, segments, facets, facets_coplanar_groups, facets_spheres, planes_equations);
             if(0 == int_type)
             {
                 best_both.push_back(nc);
@@ -228,7 +230,7 @@ void FacetsOrderingHandle::order_facets(std::vector<uint32_t>& all_facets_indexe
             }
         }
         
-        uint32_t cg = facets[c].ip0;
+        uint32_t cg = facets_coplanar_groups[c];
         uint32_t c0 = facets[c].p0;
         uint32_t c1 = facets[c].p1;
         uint32_t c2 = facets[c].p2;
@@ -242,10 +244,11 @@ void FacetsOrderingHandle::order_facets(std::vector<uint32_t>& all_facets_indexe
             uint32_t nc2 = facets[nc].p2;
             
             uint32_t top_facet = facets.size();
-            facets.push_back(Facet(facets[nc]));
-            facets[top_facet].segments.clear();
+            facets.push_back(Facet(nc0, nc1, nc2));
             uint32_t bot_facet = facets.size();
-            facets.push_back(Facet(facets[top_facet]));
+            facets.push_back(Facet(nc0, nc1, nc2));
+            facets_coplanar_groups.push_back(facets_coplanar_groups[nc]);
+            facets_coplanar_groups.push_back(facets_coplanar_groups[nc]);
             
             uint32_t i0(UNDEFINED_VALUE), i1(UNDEFINED_VALUE);
             for(uint32_t s : facets[nc].segments)
@@ -324,10 +327,10 @@ void FacetsOrderingHandle::order_facets(std::vector<uint32_t>& all_facets_indexe
 
 // c is the plane, nc is the facet
 // 0 if intersect, 1 if facet above plane, -1 if facet below plane, 69 if coplanar
-int FacetsOrderingHandle::check_plane_facet_intersection(uint32_t c, uint32_t nc, std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<Segment>& segments, std::vector<Facet>& facets, std::vector<std::pair<double3,double>>& facets_spheres, std::unordered_map<uint32_t, std::pair<double3,double>>& planes_equations)
+int FacetsOrderingHandle::check_plane_facet_intersection(uint32_t c, uint32_t nc, std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<Segment>& segments, std::vector<Facet>& facets, std::vector<uint32_t>& facets_coplanar_groups, std::vector<std::pair<double3,double>>& facets_spheres, std::unordered_map<uint32_t, std::pair<double3,double>>& planes_equations)
 {
-    uint32_t cg = facets[c].ip0;
-    uint32_t ncg = facets[nc].ip0;
+    uint32_t cg = facets_coplanar_groups[c];
+    uint32_t ncg = facets_coplanar_groups[nc];
     if(cg == ncg)
     {
         return 69;

@@ -104,10 +104,10 @@ void FacetPartitionHandle::Calculate()
     unordered_map<uint32_t, vector<uint32_t>> coplanar_facets_groups; // only keep boundary facets
     for(uint32_t i=0; i<m_polyhedralization.m_facets.size(); i++)
     {
-        if(UNDEFINED_VALUE != m_polyhedralization.m_facets[i].ip1)
-        {
-            continue;
-        }
+//        if(UNDEFINED_VALUE != m_polyhedralization.m_facets[i].ip1)
+//        {
+//            continue;
+//        }
         uint32_t c0 = m_polyhedralization.m_facets[i].p0;
         uint32_t c1 = m_polyhedralization.m_facets[i].p1;
         uint32_t c2 = m_polyhedralization.m_facets[i].p2;

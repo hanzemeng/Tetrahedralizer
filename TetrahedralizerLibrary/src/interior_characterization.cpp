@@ -73,8 +73,8 @@ std::vector<uint32_t> InteriorCharacterizationHandle::calculate(Polyhedralizatio
     GCoptimizationGeneralGraph gc((GCoptimization::SiteID)polyhedralization.m_polyhedrons.size(), 2);
     for(uint32_t i=0; i<polyhedralization.m_facets.size(); i++)
     {
-        uint32_t p0 = polyhedralization.m_facets[i].ip0;
-        uint32_t p1 = polyhedralization.m_facets[i].ip1;
+        uint32_t p0 = polyhedralization.m_facets_incident_polyhedrons[2*i+0];
+        uint32_t p1 = polyhedralization.m_facets_incident_polyhedrons[2*i+1];
         if(UNDEFINED_VALUE==p0 || UNDEFINED_VALUE==p1)
         {
             continue;

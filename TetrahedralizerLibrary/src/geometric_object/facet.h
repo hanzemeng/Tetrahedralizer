@@ -9,13 +9,19 @@ class Facet
     public:
     std::vector<uint32_t> segments; // segments forming the facet
     uint32_t p0,p1,p2; // three explicit vetices that define the facet
-    uint32_t ip0, ip1; // two incident polyhedrons
 
     Facet()
     {
-        p0=p1=p2=ip0=ip1=UNDEFINED_VALUE;
+        p0=p1=p2=UNDEFINED_VALUE;
     }
-    Facet(uint32_t s0, uint32_t s1, uint32_t s2, uint32_t p0, uint32_t p1, uint32_t p2, uint32_t cg)
+    Facet(uint32_t p0, uint32_t p1, uint32_t p2)
+    {
+        this->p0 = p0;
+        this->p1 = p1;
+        this->p2 = p2;
+    }
+
+    Facet(uint32_t s0, uint32_t s1, uint32_t s2, uint32_t p0, uint32_t p1, uint32_t p2)
     {
         this->segments.push_back(s0);
         this->segments.push_back(s1);
@@ -23,29 +29,6 @@ class Facet
         this->p0 = p0;
         this->p1 = p1;
         this->p2 = p2;
-        this->ip0 = cg;
-    }
-    Facet(uint32_t s0, uint32_t s1, uint32_t s2, uint32_t p0, uint32_t p1, uint32_t p2, uint32_t ip0, uint32_t ip1)
-    {
-        this->segments.push_back(s0);
-        this->segments.push_back(s1);
-        this->segments.push_back(s2);
-        this->p0 = p0;
-        this->p1 = p1;
-        this->p2 = p2;
-        this->ip0 = ip0;
-        this->ip1 = ip1;
-    }
-    Facet(uint32_t s, uint32_t n, uint32_t p0, uint32_t p1, uint32_t p2, uint32_t cg)
-    {
-        for(uint32_t i=0; i<n; i++)
-        {
-            this->segments.push_back(i+s);
-        }
-        this->p0 = p0;
-        this->p1 = p1;
-        this->p2 = p2;
-        this->ip0 = cg;
     }
     Facet(const Facet& other)
     {
@@ -53,13 +36,11 @@ class Facet
         this->p0 = other.p0;
         this->p1 = other.p1;
         this->p2 = other.p2;
-        this->ip0 = other.ip0;
-        this->ip1 = other.ip1;
     }
     
     uint32_t write_to_byte_buffer_size()
     {
-        return write_vector_to_byte_buffer_size(segments) + 3*4 + 2*4;
+        return write_vector_to_byte_buffer_size(segments) + 3*4;
     }
     void write_to_byte_buffer(uint8_t* buffer)
     {
@@ -68,8 +49,6 @@ class Facet
         memcpy(buffer+sn+0*4, &p0, 4);
         memcpy(buffer+sn+1*4, &p1, 4);
         memcpy(buffer+sn+2*4, &p2, 4);
-        memcpy(buffer+sn+3*4, &ip0, 4);
-        memcpy(buffer+sn+4*4, &ip1, 4);
     }
     
     void increase_segments_indexes(uint32_t n)
@@ -364,7 +343,6 @@ extern "C"
         const uint32_t* segments;
         uint32_t segments_count;
         uint32_t p0, p1, p2;
-        uint32_t ip0, ip1;
             
         FacetInteropData& operator=(const Facet& other)
         {
@@ -373,8 +351,6 @@ extern "C"
             this->p0 = other.p0;
             this->p1 = other.p1;
             this->p2 = other.p2;
-            this->ip0 = other.ip0;
-            this->ip1 = other.ip1;
             return *this;
         }
         
@@ -385,8 +361,6 @@ extern "C"
             res.p0 = p0;
             res.p1 = p1;
             res.p2 = p2;
-            res.ip0 = ip0;
-            res.ip1 = ip1;
             return res;
         }
     };

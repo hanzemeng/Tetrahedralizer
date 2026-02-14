@@ -121,6 +121,7 @@ std::tuple<Polyhedralization, std::vector<double3>, std::vector<std::vector<uint
     
     vector<Segment> constraints_segments;
     vector<Facet> constraints_facets;
+    vector<uint32_t> constraints_facets_coplanar_groups;
     {
         vector<uint32_t> convex_hull_coplanar_groups;
         unordered_map<tuple<uint64_t,uint64_t,uint64_t,uint64_t>,vector<uint32_t>, iiii64_hash> convex_hull_planes; // plane equation, list of coplanar group indexes
@@ -220,7 +221,8 @@ std::tuple<Polyhedralization, std::vector<double3>, std::vector<std::vector<uint
                     uint32_t cg0 = coplanar_triangles[cg][0];
                     uint32_t cg1 = coplanar_triangles[cg][1];
                     uint32_t cg2 = coplanar_triangles[cg][2];
-                    constraints_facets.push_back(Facet(s0, s1, s2, cg0, cg1, cg2, cg));
+                    constraints_facets.push_back(Facet(s0, s1, s2, cg0, cg1, cg2));
+                    constraints_facets_coplanar_groups.push_back(cg);
                 }
             }
         }
@@ -261,7 +263,7 @@ std::tuple<Polyhedralization, std::vector<double3>, std::vector<std::vector<uint
             uint32_t cg1 = coplanar_triangles[i][1];
             uint32_t cg2 = coplanar_triangles[i][2];
             uint32_t f = polyhedralization.m_facets.size();
-            polyhedralization.m_facets.push_back(Facet(UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE,cg0,cg1,cg2,0,UNDEFINED_VALUE));
+            polyhedralization.m_facets.push_back(Facet(UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE,cg0,cg1,cg2));
             polyhedralization.m_facets[f].segments.clear();
             for(auto [k,v] : segments_occurrences)
             {
@@ -304,7 +306,7 @@ std::tuple<Polyhedralization, std::vector<double3>, std::vector<std::vector<uint
 //            facets_order[i] = t;
 //        }
         FacetsOrderingHandle FO(16,1024,512,42);
-        facets_order = FO.order_facets(vertices, approximated_vertices, constraints_segments, constraints_facets);
+        facets_order = FO.order_facets(vertices, approximated_vertices, constraints_segments, constraints_facets, constraints_facets_coplanar_groups);
         
 //        ofstream out_file("test.txt");
 //        out_file << facets_order.size() << " ";

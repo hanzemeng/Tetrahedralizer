@@ -21,6 +21,11 @@ void PolyhedralizationCreationHandle::calculate(vector<shared_ptr<genericPoint>>
         CHP_res = CHP.calculate(vertices, convex_hull, constraints);
     }
     auto& [polyhedralization, approximated_vertices, coplanar_tirangles] = CHP_res;
+    vector<uint32_t>().swap(polyhedralization.m_slice_facets_cache);
+    vector<std::tuple<uint32_t,uint32_t,uint32_t,uint32_t>>().swap(polyhedralization.m_slice_segments_cache);
+    vector<std::pair<uint32_t,int>>().swap(polyhedralization.m_slice_vertices_cache);
+    vector<std::vector<uint32_t>>().swap(polyhedralization.m_segments_incident_facets);
+    
     cout << "polyhedrons count: " << polyhedralization.m_polyhedrons.size() << "\n";
     polyhedralization.clear_auxiliary_data();
     

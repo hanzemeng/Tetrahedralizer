@@ -29,6 +29,7 @@ public:
     std::vector<uint32_t> m_slice_facets_cache;
     std::vector<std::tuple<uint32_t,uint32_t,uint32_t,uint32_t>> m_slice_segments_cache; // (slice index, intersection vertex, top segment, bottom segment)
     std::vector<std::pair<uint32_t,int>> m_slice_vertices_cache; // (slice index, orient)
+    std::vector<uint32_t> m_facets_incident_polyhedrons;
     std::vector<std::vector<uint32_t>> m_segments_incident_facets;
 };
 
