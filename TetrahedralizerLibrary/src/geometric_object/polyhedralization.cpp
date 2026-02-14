@@ -415,3 +415,11 @@ std::vector<uint8_t> Polyhedralization::to_bytes()
     
     return buffer;
 }
+
+void Polyhedralization::clear_auxiliary_data()
+{
+    vector<uint32_t>().swap(m_slice_facets_cache);
+    vector<std::tuple<uint32_t,uint32_t,uint32_t,uint32_t>>().swap(m_slice_segments_cache);
+    vector<std::pair<uint32_t,int>>().swap(m_slice_vertices_cache);
+    vector<std::vector<uint32_t>>().swap(m_segments_incident_facets);
+}

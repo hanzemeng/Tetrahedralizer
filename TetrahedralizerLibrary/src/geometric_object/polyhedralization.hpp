@@ -21,6 +21,8 @@ public:
     bool slice_facet_with_plane(uint32_t f, uint32_t c0, uint32_t c1, uint32_t c2);
     std::vector<uint8_t> to_bytes();
     
+    void clear_auxiliary_data();
+    
 
 //private:
     uint32_t m_slice_index;
