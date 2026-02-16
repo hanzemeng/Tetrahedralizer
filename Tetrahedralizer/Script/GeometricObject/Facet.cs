@@ -10,8 +10,6 @@ namespace Hanzzz.Tetrahedralizer
     {
         public List<int> segments; // segments forming the facet
         public int p0,p1,p2; // three explicit vetices that define the facet
-        public double w0,w1; // w0+w1+w2==1 and w0*p0+w1*p1+w2*p2 is the facet centroid
-        public int ip0, ip1; // two incident polyhedrons
 
         public Facet(BinaryReader reader)
         {
@@ -24,10 +22,6 @@ namespace Hanzzz.Tetrahedralizer
             p0 = reader.ReadInt32();
             p1 = reader.ReadInt32();
             p2 = reader.ReadInt32();
-            w0 = reader.ReadDouble();
-            w1 = reader.ReadDouble();
-            ip0 = reader.ReadInt32();
-            ip1 = reader.ReadInt32();
         }
 
         public Facet(FacetInteropData facetInteropData)
@@ -36,10 +30,6 @@ namespace Hanzzz.Tetrahedralizer
             p0 = facetInteropData.p0;
             p1 = facetInteropData.p1;
             p2 = facetInteropData.p2;
-            w0 = facetInteropData.w0;
-            w1 = facetInteropData.w1;
-            ip0 = facetInteropData.ip0;
-            ip1 = facetInteropData.ip1;
         }
     }
 
@@ -49,8 +39,6 @@ namespace Hanzzz.Tetrahedralizer
         public IntPtr segments;
         public int segmentCount;
         public int p0, p1, p2;
-        public double w0, w1;
-        public int ip0, ip1;
 
 
         public FacetInteropData(Facet facet, out GCHandle segmentsHandle)
@@ -61,10 +49,6 @@ namespace Hanzzz.Tetrahedralizer
             p0 = facet.p0;
             p1 = facet.p1;
             p2 = facet.p2;
-            w0 = facet.w0;
-            w1 = facet.w1;
-            ip0 = facet.ip0;
-            ip1 = facet.ip1;
         }
     }
 }

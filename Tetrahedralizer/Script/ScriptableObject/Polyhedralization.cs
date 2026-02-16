@@ -65,6 +65,12 @@ namespace Hanzzz.Tetrahedralizer
             {
                 m_segments.Add(new Segment(reader));
             }
+
+            //m_facetsCentroidsMapping = new List<int>();
+            //for(int i=0; i<facetsCount; i++)
+            //{
+            //    m_facetsCentroidsMapping.Add(reader.ReadInt32());
+            //}
         }
     
         public List<(Mesh mesh, Vector3 center)> ToMeshes()
@@ -87,6 +93,10 @@ namespace Hanzzz.Tetrahedralizer
             int triangleIndex;
             for(int i=0; i<polyhedrons.Count; i++)
             {
+                if(1507 != i)
+                {
+                    continue;
+                }
                 polyVertices.Clear();
                 polyTriangles.Clear();
                 triangleIndex = 0;
@@ -147,7 +157,6 @@ namespace Hanzzz.Tetrahedralizer
             bool[] shouldDrawFacets = GetFacetsExteriorFlags();
     
             List<Vector3> meshVertices = new List<Vector3>();
-            List<List<int>> facetsVerticesIndexes = new List<List<int>>();
             List<int> polyTriangles = new List<int>();
             int triangleIndex = 0;
             for(int i=0; i<polyhedrons.Count; i++)
@@ -160,10 +169,8 @@ namespace Hanzzz.Tetrahedralizer
                         continue;
                     }
     
-                    facetsVerticesIndexes.Add(new List<int>());
                     for(int k=0; k<polyhedronsFacets[facet].Count; k++)
                     {
-                        facetsVerticesIndexes[^1].Add(meshVertices.Count);
                         meshVertices.Add(vertices[polyhedronsFacets[facet][k]]);
                     }
                     if(m_facetsPointOut[facet])
@@ -186,6 +193,64 @@ namespace Hanzzz.Tetrahedralizer
                     }
                     triangleIndex += polyhedronsFacets[facet].Count;
                 }
+            }
+    
+            Vector3 center = Vector3.zero;
+            Mesh mesh = new Mesh();
+            mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            mesh.vertices = meshVertices.ToArray();
+            mesh.triangles = polyTriangles.ToArray();
+            mesh.RecalculateBounds();
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
+    
+            return (mesh, center);
+        }
+
+        public (Mesh mesh, Vector3 center) ToMeshFacets()
+        {
+            if(null == m_explicitVertices || 0 == m_explicitVertices.Count)
+            {
+                return (null, Vector3.zero);
+            }
+    
+            GenericPointApproximation genericPointApproximation = new GenericPointApproximation();
+            List<Vector3> vertices = TetrahedralizerUtility.PackVector3s(genericPointApproximation.CalculateGenericPointApproximation(m_explicitVertices, m_implicitVertices));
+            List<List<int>> polyhedronsFacets = GetFacetsVertices();
+    
+            List<Vector3> meshVertices = new List<Vector3>();
+            List<int> polyTriangles = new List<int>();
+            int triangleIndex = 0;
+            for(int i=0; i<polyhedronsFacets.Count; i++)
+            {
+                if(TetrahedralizerConstant.UNDEFINED_VALUE == m_facetsCentroidsMapping[i])
+                {
+                    continue;
+                }
+
+                for(int k=0; k<polyhedronsFacets[i].Count; k++)
+                {
+                    meshVertices.Add(vertices[polyhedronsFacets[i][k]]);
+                }
+                for(int k=1; k<polyhedronsFacets[i].Count-1; k++)
+                {
+                    polyTriangles.Add(triangleIndex);
+                    polyTriangles.Add(triangleIndex+k);
+                    polyTriangles.Add(triangleIndex+k+1);
+                }
+                triangleIndex += polyhedronsFacets[i].Count;
+
+                for(int k=0; k<polyhedronsFacets[i].Count; k++)
+                {
+                    meshVertices.Add(vertices[polyhedronsFacets[i][k]]);
+                }
+                for(int k=1; k<polyhedronsFacets[i].Count-1; k++)
+                {
+                    polyTriangles.Add(triangleIndex);
+                    polyTriangles.Add(triangleIndex+k+1);
+                    polyTriangles.Add(triangleIndex+k);
+                }
+                triangleIndex += polyhedronsFacets[i].Count;
             }
     
             Vector3 center = Vector3.zero;
@@ -261,28 +326,28 @@ namespace Hanzzz.Tetrahedralizer
 
         public void CalculateFacetsIncidentPolyhedrons()
         {
-            List<int> facetsIncident = Enumerable.Repeat(TetrahedralizerConstant.UNDEFINED_VALUE, 2*m_facets.Count).ToList();
-            List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedrons);
-            for(int i=0; i<polyhedrons.Count; i++)
-            {
-                List<int> polyhedron = polyhedrons[i];
-                foreach(int f in polyhedron)
-                {
-                    if(TetrahedralizerConstant.UNDEFINED_VALUE == facetsIncident[2*f+0])
-                    {
-                        facetsIncident[2*f+0] = i;
-                    }
-                    else
-                    {
-                        facetsIncident[2*f+1] = i;
-                    }
-                }
-            }
-            for(int i=0; i<facetsIncident.Count/2; i++)
-            {
-                m_facets[i].ip0 = facetsIncident[2*i+0];
-                m_facets[i].ip1 = facetsIncident[2*i+1];
-            }
+            //List<int> facetsIncident = Enumerable.Repeat(TetrahedralizerConstant.UNDEFINED_VALUE, 2*m_facets.Count).ToList();
+            //List<List<int>> polyhedrons = TetrahedralizerUtility.FlatIListToNestedList(m_polyhedrons);
+            //for(int i=0; i<polyhedrons.Count; i++)
+            //{
+            //    List<int> polyhedron = polyhedrons[i];
+            //    foreach(int f in polyhedron)
+            //    {
+            //        if(TetrahedralizerConstant.UNDEFINED_VALUE == facetsIncident[2*f+0])
+            //        {
+            //            facetsIncident[2*f+0] = i;
+            //        }
+            //        else
+            //        {
+            //            facetsIncident[2*f+1] = i;
+            //        }
+            //    }
+            //}
+            //for(int i=0; i<facetsIncident.Count/2; i++)
+            //{
+            //    m_facets[i].ip0 = facetsIncident[2*i+0];
+            //    m_facets[i].ip1 = facetsIncident[2*i+1];
+            //}
         }
     
         public void RemoveUnusedData(bool removeExplicitVertices)

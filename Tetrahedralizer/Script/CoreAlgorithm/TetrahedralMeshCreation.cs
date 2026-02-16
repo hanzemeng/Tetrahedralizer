@@ -94,14 +94,14 @@ namespace Hanzzz.Tetrahedralizer
                 polyhedralization.m_polyhedrons,polyhedralization.m_facets,polyhedralization.m_segments);
                 foreach(int f in ptRes.insertedFacetsCentroids)
                 {
-                    double w0 = polyhedralization.m_facets[f].w0;
-                    double w1 = polyhedralization.m_facets[f].w1;
-                    double w2 = 1d-w1-w0;
-                    Vector3 center = (float)w0*approximatedVertices[polyhedralization.m_facets[f].p0] + 
-                                     (float)w1*approximatedVertices[polyhedralization.m_facets[f].p1] + 
-                                     (float)w2*approximatedVertices[polyhedralization.m_facets[f].p2];
-                    approximatedVertices.Add(center);
-                    verticesIncidentFacets.Add(new List<int>{f});
+                    //double w0 = polyhedralization.m_facets[f].w0;
+                    //double w1 = polyhedralization.m_facets[f].w1;
+                    //double w2 = 1d-w1-w0;
+                    //Vector3 center = (float)w0*approximatedVertices[polyhedralization.m_facets[f].p0] + 
+                    //                 (float)w1*approximatedVertices[polyhedralization.m_facets[f].p1] + 
+                    //                 (float)w2*approximatedVertices[polyhedralization.m_facets[f].p2];
+                    //approximatedVertices.Add(center);
+                    //verticesIncidentFacets.Add(new List<int>{f});
                 }
 
                 HashSet<int> polyhedronVertices = new HashSet<int>();

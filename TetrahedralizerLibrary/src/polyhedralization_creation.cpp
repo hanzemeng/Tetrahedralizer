@@ -46,8 +46,8 @@ void PolyhedralizationCreationHandle::calculate(vector<shared_ptr<genericPoint>>
     polyhedralization.m_polyhedrons = new_polyhedrons;
     cout << "inside polyhedrons count: " << polyhedralization.m_polyhedrons.size() << "\n";
     
-//    vector<uint8_t> polyhedralization_bytes = polyhedralization.to_bytes();
-//    ofstream out_file("test.txt", std::ios::binary);
-//    out_file.write((char*)polyhedralization_bytes.data(), polyhedralization_bytes.size());
-//    out_file.close();
+    vector<uint8_t> polyhedralization_bytes = polyhedralization.to_bytes();
+    ofstream out_file("test.txt", std::ios::binary);
+    out_file.write((char*)polyhedralization_bytes.data(), polyhedralization_bytes.size());
+    out_file.close();
 }

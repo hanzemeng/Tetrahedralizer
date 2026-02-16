@@ -13,10 +13,7 @@ namespace Hanzzz.Tetrahedralizer
         [SerializeField] private bool m_drawPolyhedralizationAsIndividualGameObjects;
         [SerializeField] private Transform m_polyhedronsParent;
         [SerializeField] private Material m_polyhedronsMaterial;
-        [SerializeField] private Material m_polyhedronsTransparentMaterial;
         [SerializeField] [Range(0f,1f)] private float m_polyhedronsScale;
-
-        [SerializeField] private Transform m_dividePlane;
     
         public void Update()
         {
@@ -27,19 +24,6 @@ namespace Hanzzz.Tetrahedralizer
             foreach(Transform polyhedron in m_polyhedronsParent)
             {
                 polyhedron.localScale = m_polyhedronsScale * Vector3.one;
-            }
-
-            if(null == m_dividePlane)
-            {
-                return;
-            }
-            Plane plane = new Plane(m_dividePlane.up, m_dividePlane.position);
-            foreach(Transform polyhedron in m_polyhedronsParent)
-            {
-                if(polyhedron.TryGetComponent(out MeshRenderer meshRenderer))
-                {
-                    meshRenderer.sharedMaterial = plane.GetSide(polyhedron.position) ? m_polyhedronsMaterial : m_polyhedronsTransparentMaterial;
-                }
             }
         }
 

@@ -22,6 +22,7 @@ namespace Hanzzz.Tetrahedralizer
             mesh.RecalculateTangents();
             m_meshFiler.mesh = mesh;
 
+            m_plane.position = mesh.bounds.center;
             m_plane.up = Vector3.Cross((m_p1.position-m_p0.position).normalized, (m_p2.position-m_p0.position).normalized);
         }
     }
