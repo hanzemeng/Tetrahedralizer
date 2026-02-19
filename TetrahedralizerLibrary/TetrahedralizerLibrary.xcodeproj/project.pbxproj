@@ -71,6 +71,8 @@
 				polyhedralization_creation.hpp,
 				polyhedralization_tetrahedralization.cpp,
 				polyhedralization_tetrahedralization.hpp,
+				quickhull.cpp,
+				quickhull.hpp,
 				winding_number_approximation.cpp,
 				winding_number_approximation.hpp,
 			);

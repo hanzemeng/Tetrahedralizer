@@ -5,7 +5,7 @@
 #include "common_function.h"
 #include "geometric_object/facet.h"
 #include "geometric_object/segment.h"
-#include "delaunay_tetrahedralization.hpp"
+#include "quickhull.hpp"
 #include "convex_hull_partition.hpp"
 #include "interior_characterization.hpp"
 

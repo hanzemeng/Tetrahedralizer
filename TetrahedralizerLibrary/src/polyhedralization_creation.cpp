@@ -7,13 +7,15 @@ void PolyhedralizationCreationHandle::calculate(vector<shared_ptr<genericPoint>>
     auto t0 = chrono::steady_clock::now();
     vector<uint32_t> convex_hull;
     {
-        DelaunayTetrahedralizationHandle DT;
-        Tetrahedralization tetrahedralization = DT.calculate(vertices);
-        convex_hull = tetrahedralization.get_bounding_facets();
+        vector<double3> approximated_vertices;
+        approximate_verteices(approximated_vertices, vertices);
+        Quickhull QH;
+        convex_hull = QH.calculate(vertices, approximated_vertices);
     }
     auto t1 = chrono::steady_clock::now();
     cout << chrono::duration_cast<std::chrono::milliseconds>(t1-t0).count() << "\n";
     cout << "convex hull triangles: " << convex_hull.size()/3 << "\n";
+//    return;
     
     tuple<Polyhedralization, std::vector<double3>, std::vector<std::vector<uint32_t>>> CHP_res;
     {

@@ -26,6 +26,15 @@ inline void sort_ints(uint32_t& i0, uint32_t& i1, uint32_t& i2)
     }
 }
 
+inline uint32_t search_int(uint32_t i0, std::unordered_map<uint32_t, uint32_t>& map)
+{
+    auto it = map.find(i0);
+    if(it == map.end())
+    {
+        return UNDEFINED_VALUE;
+    }
+    return it->second;
+}
 inline uint32_t search_int(uint32_t i0, uint32_t i1, std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, ii32_hash>& map)
 {
     sort_ints(i0, i1);
@@ -47,6 +56,10 @@ inline uint32_t search_int(uint32_t i0, uint32_t i1, uint32_t i2, std::unordered
     return it->second;
 }
 
+inline void assign_int(uint32_t i0, uint32_t v, std::unordered_map<uint32_t, uint32_t>& map)
+{
+    map[i0] = v;
+}
 inline void assign_int(uint32_t i0, uint32_t i1, uint32_t v, std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, ii32_hash>& map)
 {
     sort_ints(i0, i1);
@@ -58,6 +71,14 @@ inline void assign_int(uint32_t i0, uint32_t i1, uint32_t i2, uint32_t v, std::u
     map[std::make_tuple(i0,i1,i2)] = v;
 }
 
+inline void remove_int(uint32_t i0, std::unordered_map<uint32_t, uint32_t>& map)
+{
+    auto it = map.find(i0);
+    if(it != map.end())
+    {
+        map.erase(it);
+    }
+}
 inline void remove_int(uint32_t i0, uint32_t i1, std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, ii32_hash>& map)
 {
     sort_ints(i0, i1);
