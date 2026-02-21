@@ -2,6 +2,7 @@
 #define double3_h
 
 #include <cmath>
+#include <cstring>
 
 class double3 {
 public:
