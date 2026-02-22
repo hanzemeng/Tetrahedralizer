@@ -37,3 +37,4 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frounding-math")
 # cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 # cmake --build build
 # ./Tetrahedralizer ~/Tetrahedralizer/thingi10k/32770.off
+# /usr/bin/time -v ./Tetrahedralizer ~/Tetrahedralizer/thingi10k/32770.off
