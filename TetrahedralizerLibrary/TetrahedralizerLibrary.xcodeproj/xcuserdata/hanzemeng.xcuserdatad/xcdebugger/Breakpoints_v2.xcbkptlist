@@ -14,8 +14,8 @@
             filePath = "src/quickhull.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "273"
-            endingLineNumber = "273"
+            startingLineNumber = "270"
+            endingLineNumber = "270"
             landmarkName = "Quickhull::calculate(vertices, approximated_vertices)"
             landmarkType = "7">
          </BreakpointContent>
@@ -30,8 +30,8 @@
             filePath = "src/quickhull.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "323"
-            endingLineNumber = "323"
+            startingLineNumber = "320"
+            endingLineNumber = "320"
             landmarkName = "Quickhull::calculate(vertices, approximated_vertices)"
             landmarkType = "7">
          </BreakpointContent>
@@ -46,8 +46,8 @@
             filePath = "src/quickhull.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "344"
-            endingLineNumber = "344"
+            startingLineNumber = "341"
+            endingLineNumber = "341"
             landmarkName = "Quickhull::calculate(vertices, approximated_vertices)"
             landmarkType = "7">
          </BreakpointContent>
@@ -62,8 +62,8 @@
             filePath = "src/quickhull.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "327"
-            endingLineNumber = "327"
+            startingLineNumber = "324"
+            endingLineNumber = "324"
             landmarkName = "Quickhull::calculate(vertices, approximated_vertices)"
             landmarkType = "7">
          </BreakpointContent>

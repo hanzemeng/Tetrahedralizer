@@ -139,15 +139,12 @@ std::vector<uint32_t> Quickhull::calculate(std::vector<std::shared_ptr<genericPo
         triangles.push_back(t0);
         triangles.push_back(t2);
         triangles.push_back(t1);
-        
         triangles.push_back(t0);
         triangles.push_back(t1);
         triangles.push_back(t3);
-        
         triangles.push_back(t1);
         triangles.push_back(t2);
         triangles.push_back(t3);
-        
         triangles.push_back(t0);
         triangles.push_back(t3);
         triangles.push_back(t2);

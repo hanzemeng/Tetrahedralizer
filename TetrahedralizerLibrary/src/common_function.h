@@ -197,9 +197,49 @@ inline double3 approximate_vertex(std::shared_ptr<genericPoint> vertices)
 }
 inline void approximate_verteices(std::vector<double3>& approximated_vertices, std::vector<std::shared_ptr<genericPoint>>& vertices)
 {
-    while(approximated_vertices.size() < vertices.size())
+//    while(approximated_vertices.size() < vertices.size())
+//    {
+//        approximated_vertices.push_back(approximate_vertex(vertices[approximated_vertices.size()]));
+//    }
+//    return;
+    uint32_t res_n = vertices.size();
+    uint32_t cur_n = approximated_vertices.size();
+    approximated_vertices.resize(res_n);
+    
+    if(res_n-cur_n < 1024)
     {
-        approximated_vertices.push_back(approximate_vertex(vertices[approximated_vertices.size()]));
+        for(uint32_t i=cur_n; i<res_n; i++)
+        {
+            approximated_vertices[i] = approximate_vertex(vertices[i]);
+        }
+        return;
+    }
+
+    uint32_t num_threads = std::thread::hardware_concurrency();
+    if(num_threads == 0)
+    {
+        num_threads = 2;
+    }
+
+    std::vector<std::thread> threads;
+    uint32_t chunk_size = (res_n-cur_n) / num_threads;
+
+    for(uint32_t i=0; i<num_threads; i++)
+    {
+        uint32_t start = cur_n + i*chunk_size;
+        uint32_t end = (i == num_threads-1) ? res_n : cur_n + (i+1)*chunk_size;
+        threads.emplace_back([start, end, &vertices, &approximated_vertices]()
+                            {
+                                for(uint32_t j=start; j<end; j++)
+                                {
+                                    approximated_vertices[j] = approximate_vertex(vertices[j]);
+                                }
+                            });
+    }
+
+    for(auto& t : threads)
+    {
+        t.join();
     }
 }
 
@@ -392,26 +432,6 @@ inline std::vector<uint32_t> create_constraints(uint32_t constraints_count, uint
         res.push_back(c2);
     }
     return res;
-}
-
-inline std::vector<uint32_t> vector_random_elements(const std::vector<uint32_t>& vector, size_t m)
-{
-    std::unordered_set<uint32_t> res;
-    if(0 == vector.size())
-    {
-        return std::vector<uint32_t>();
-    }
-    
-//    std::random_device rd;
-//    std::mt19937 gen(rd());
-    std::mt19937 gen(UNDEFINED_VALUE);
-    std::uniform_int_distribution<size_t> dist(0, vector.size()-1);
-    
-    for(uint32_t i=0; i<m; i++)
-    {
-        res.insert(vector[dist(gen)]);
-    }
-    return std::vector<uint32_t>(res.begin(),res.end());
 }
 
 inline std::pair<double3,double> get_plane_equation(double3 t0, double3 t1, double3 t2)

@@ -15,6 +15,7 @@
 #include <memory>
 #include <random>
 #include <fstream>
+#include <thread>
 #include <chrono>
 #include "geometric_object/double3.h"
 #include "indirect_predicates/implicit_point.h"

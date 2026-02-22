@@ -30,9 +30,6 @@ std::vector<uint32_t> InteriorCharacterizationHandle::calculate(Polyhedralizatio
         }
     }
     
-    vector<double> polyhedrons_winding_numbers;
-    polyhedrons_winding_numbers.reserve(polyhedralization.m_polyhedrons.size());
-    vector<uint32_t> vertices_cache = vector<uint32_t>(polyhedralization.m_vertices.size(), UNDEFINED_VALUE);
     vector<uint32_t> valid_constraints;
     valid_constraints.reserve(constraints.size());
     for(uint32_t i=0; i<constraints.size(); i++)
@@ -44,6 +41,10 @@ std::vector<uint32_t> InteriorCharacterizationHandle::calculate(Polyhedralizatio
         valid_constraints.push_back(constraints[i]);
     }
     WindingNumberApproximation WNA = WindingNumberApproximation(approximated_vertices, valid_constraints);
+    
+    vector<double3> polyhedrons_centroids;
+    polyhedrons_centroids.reserve(polyhedralization.m_polyhedrons.size());
+    vector<uint32_t> vertices_cache = vector<uint32_t>(polyhedralization.m_vertices.size(), UNDEFINED_VALUE);
     for(uint32_t i=0; i<polyhedralization.m_polyhedrons.size(); i++)
     {
         double3 centroid(0.0,0.0,0.0);
@@ -64,8 +65,36 @@ std::vector<uint32_t> InteriorCharacterizationHandle::calculate(Polyhedralizatio
             }
         }
         centroid /= (double)vertices_count;
-        
-        polyhedrons_winding_numbers.push_back(WNA.compute(centroid, approximated_vertices, valid_constraints));
+        polyhedrons_centroids.push_back(centroid);
+    }
+    
+    vector<double> polyhedrons_winding_numbers = vector<double>(polyhedralization.m_polyhedrons.size());
+    {
+        uint32_t num_threads = std::thread::hardware_concurrency();
+        if(num_threads == 0)
+        {
+            num_threads = 2;
+        }
+        std::vector<std::thread> threads;
+        uint32_t chunk_size = polyhedrons_winding_numbers.size() / num_threads;
+
+        for(uint32_t i=0; i<num_threads; i++)
+        {
+            uint32_t start = i*chunk_size;
+            uint32_t end = (i == num_threads-1) ? polyhedrons_winding_numbers.size() : (i+1)*chunk_size;
+            threads.emplace_back([start, end, &WNA, &approximated_vertices, &valid_constraints, &polyhedrons_centroids, &polyhedrons_winding_numbers]()
+                                {
+                                    for(uint32_t j=start; j<end; j++)
+                                    {
+                                        polyhedrons_winding_numbers[j] = WNA.compute(polyhedrons_centroids[j], approximated_vertices, valid_constraints);
+                                    }
+                                });
+        }
+
+        for(auto& t : threads)
+        {
+            t.join();
+        }
     }
     
     times.push_back(chrono::steady_clock::now());
