@@ -69,6 +69,14 @@ std::vector<uint32_t> InteriorCharacterizationHandle::calculate(Polyhedralizatio
     }
     
     vector<double> polyhedrons_winding_numbers = vector<double>(polyhedralization.m_polyhedrons.size());
+    if(polyhedrons_winding_numbers.size()<1024)
+    {
+        for(uint32_t j=0; j<polyhedrons_winding_numbers.size(); j++)
+        {
+            polyhedrons_winding_numbers[j] = WNA.compute(polyhedrons_centroids[j], approximated_vertices, valid_constraints);
+        }
+    }
+    else
     {
         uint32_t num_threads = std::thread::hardware_concurrency();
         if(num_threads == 0)
