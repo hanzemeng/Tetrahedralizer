@@ -32,10 +32,3 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2")
 set(CMAKE_CXX_FLAGS_MINSIZEREL "-Os")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frounding-math")
-
-
-# cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-# cmake --build build
-# /usr/bin/time -v ./Tetrahedralizer/TetrahedralizerLibrary/build/Tetrahedralizer ./thingi10k/32770.off
-# /usr/bin/time -v ./Tetrahedralizer/TetrahedralizerLibrary/build/Tetrahedralizer ./thingi10k/32770.off > ./thingi10k_report/32770.txt 2>&1
-# nohup python3 thingi10k_test.py &
