@@ -1,6 +1,3 @@
-#include "delaunay_tetrahedralization.hpp"
-#include "convex_hull_partition.hpp"
-#include "interior_characterization.hpp"
 #include "polyhedralization_creation.hpp"
 
 using namespace std;
@@ -133,8 +130,8 @@ int main(int argc, const char * argv[])
         vector<uint32_t> constraints = create_constraints(input_constraints.size()/3, input_constraints.data(), vertices.data(), true);
         Polyhedralization polyhedralization = PC.calculate(vertices, constraints);
         vector<uint8_t> polyhedralization_bytes = polyhedralization.to_bytes();
-        
-        ofstream out_file("test.txt", std::ios::binary);
+
+        ofstream out_file(filesystem::path(argv[1]).filename().replace_extension(".bin").string(), std::ios::binary);
         out_file.write((char*)polyhedralization_bytes.data(), polyhedralization_bytes.size());
         out_file.close();
     }

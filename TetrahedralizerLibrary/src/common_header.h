@@ -17,6 +17,7 @@
 #include <fstream>
 #include <thread>
 #include <chrono>
+#include <filesystem>
 #include "geometric_object/double3.h"
 #include "indirect_predicates/implicit_point.h"
 
