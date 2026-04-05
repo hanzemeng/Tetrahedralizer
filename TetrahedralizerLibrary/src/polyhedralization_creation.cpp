@@ -30,21 +30,25 @@ Polyhedralization PolyhedralizationCreationHandle::calculate(vector<shared_ptr<g
     cerr << "polyhedrons count: " << polyhedralization.m_polyhedrons.size() << "\n";
     polyhedralization.clear_auxiliary_data();
     
-    vector<uint32_t> polyhedrons_labels;
+    if(polyhedralization.m_polyhedrons.size()>1)
     {
-        InteriorCharacterizationHandle IC;
-        polyhedrons_labels = IC.calculate(polyhedralization, constraints, approximated_vertices);
-    }
-    vector<vector<uint32_t>> new_polyhedrons;
-    for(uint32_t i=0; i<polyhedrons_labels.size(); i++)
-    {
-        if(1 != polyhedrons_labels[i])
+        vector<uint32_t> polyhedrons_labels;
         {
-            continue;
+            InteriorCharacterizationHandle IC;
+            polyhedrons_labels = IC.calculate(polyhedralization, constraints, approximated_vertices);
         }
-        new_polyhedrons.push_back(std::move(polyhedralization.m_polyhedrons[i]));
+        vector<vector<uint32_t>> new_polyhedrons;
+        for(uint32_t i=0; i<polyhedrons_labels.size(); i++)
+        {
+            if(1 != polyhedrons_labels[i])
+            {
+                continue;
+            }
+            new_polyhedrons.push_back(std::move(polyhedralization.m_polyhedrons[i]));
+        }
+        polyhedralization.m_polyhedrons = new_polyhedrons;
     }
-    polyhedralization.m_polyhedrons = new_polyhedrons;
+
     cerr << "inside polyhedrons count: " << polyhedralization.m_polyhedrons.size() << "\n";
     return polyhedralization;
 }
