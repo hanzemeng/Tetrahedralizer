@@ -288,7 +288,7 @@ std::tuple<Polyhedralization, std::vector<double3>, std::vector<std::vector<uint
             polyhedralization.m_polyhedrons[0].push_back(f);
         }
     }
-    return make_tuple(polyhedralization, approximated_vertices, coplanar_triangles);
+
     polyhedralization.prepare_to_slice();
     
     times.push_back(chrono::steady_clock::now());
