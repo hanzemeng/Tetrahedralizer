@@ -288,23 +288,13 @@ std::tuple<Polyhedralization, std::vector<double3>, std::vector<std::vector<uint
             polyhedralization.m_polyhedrons[0].push_back(f);
         }
     }
-    
+    return make_tuple(polyhedralization, approximated_vertices, coplanar_triangles);
     polyhedralization.prepare_to_slice();
     
     times.push_back(chrono::steady_clock::now());
     vector<uint32_t> facets_order;
     if(0 != constraints_facets.size())
     {
-//        ifstream in_file("996816_slice_data.txt");
-//        uint32_t n;
-//        in_file >> n;
-//        facets_order.resize(n);
-//        for(uint32_t i=0; i<n; i++)
-//        {
-//            uint32_t t;
-//            in_file >> t;
-//            facets_order[i] = t;
-//        }
         FacetsOrderingHandle FO(16,1024,512,42);
         facets_order = FO.order_facets(vertices, approximated_vertices, constraints_segments, constraints_facets, constraints_facets_coplanar_groups);
         
@@ -358,7 +348,7 @@ std::tuple<Polyhedralization, std::vector<double3>, std::vector<std::vector<uint
     
     for (uint32_t i=1; i<times.size(); i++)
     {
-        cout << chrono::duration_cast<std::chrono::milliseconds>(times[i] - times[i-1]).count() << "\n";
+        cerr << chrono::duration_cast<std::chrono::milliseconds>(times[i] - times[i-1]).count() << "\n";
     }
     
     return make_tuple(polyhedralization, approximated_vertices, coplanar_triangles);

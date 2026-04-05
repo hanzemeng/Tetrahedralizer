@@ -14,7 +14,7 @@ class PolyhedralizationCreationHandle
 public:
     // vertices are unique
     // constraints may have duplicate or be degenerate, such constraints are skipped
-    void calculate(std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<uint32_t>& constraints);
+    Polyhedralization calculate(std::vector<std::shared_ptr<genericPoint>>& vertices, std::vector<uint32_t>& constraints);
 };
 
 #endif

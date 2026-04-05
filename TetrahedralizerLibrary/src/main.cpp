@@ -5,49 +5,35 @@
 
 using namespace std;
 
-int main(int argc, const char * argv[])
+pair<vector<double>, vector<uint32_t>> read_input(istream& in_file)
 {
-    if(argc < 2)
-    {
-        cerr << "Usage: Tetrahedralizer in_file\n";
-        return 1;
-    }
-    ifstream in_file(argv[1]);
-    if(!in_file.is_open())
-    {
-        std::cerr << "Fail to open " << argv[1] << '\n';
-        return 1;
-    }
-    
     string file_type;
     in_file >> file_type;
     uint32_t not_used;
-    
     vector<double> input_vertices;
     vector<uint32_t> input_constraints;
     {
         using point = tuple<double, double, double>;
-        map<point, uint32_t> unique_vertices;
-        unordered_map<uint32_t, uint32_t> duplicate_indices; // duplicate -> original
-        uint32_t index = 0; // tracks how many unique vertices we've encountered
-        
         uint32_t vn, cn;
         in_file >> vn >> cn >> not_used;
+        map<point, uint32_t> unique_vertices;
+        vector<uint32_t> vertices_mapping(vn);
         input_vertices.reserve(3*vn);
         input_constraints.reserve(3*cn);
+        
         for(uint32_t i=0; i<vn; i++)
         {
-            // If we have already seen this point, don't add to vertex vector and track relation
             point p;
             in_file >> get<0>(p) >> get<1>(p) >> get<2>(p);
             auto it = unique_vertices.find(p);
-            if (it==unique_vertices.end()) {
-                // New point
-                unique_vertices[p] = index; 
-                duplicate_indices[i] = index; // map original indices to themselves
-                index++;
-            } else {
-                duplicate_indices[i] = it->second;
+            if(it==unique_vertices.end())
+            {
+                vertices_mapping[i] = unique_vertices.size();
+                unique_vertices[p] = unique_vertices.size();
+            }
+            else
+            {
+                vertices_mapping[i] = it->second;
                 continue;
             }
             input_vertices.push_back(get<0>(p));
@@ -59,22 +45,117 @@ int main(int argc, const char * argv[])
         {
             uint32_t point_count,c0,c1,c2;
             in_file >> point_count;
-            if (point_count != 3) {
-                cerr << "Input constraint not a triangle\n";
-                return 1;
+            if(point_count != 3)
+            {
+                throw "Input constraint not a triangle";
             }
             in_file >> c0 >> c1 >> c2;
-            input_constraints.push_back(duplicate_indices[c0]);
-            input_constraints.push_back(duplicate_indices[c1]);
-            input_constraints.push_back(duplicate_indices[c2]);
+            input_constraints.push_back(vertices_mapping[c0]);
+            input_constraints.push_back(vertices_mapping[c1]);
+            input_constraints.push_back(vertices_mapping[c2]);
         }
     }
-    in_file.close();
     
+    return make_pair(input_vertices, input_constraints);
+}
 
-    PolyhedralizationCreationHandle PC;
-    vector<shared_ptr<genericPoint>> vertices = create_vertices(input_vertices.size()/3, input_vertices.data(), 0, nullptr);
-    vector<uint32_t> constraints = create_constraints(input_constraints.size()/3, input_constraints.data(), vertices.data(), true);
-    PC.calculate(vertices, constraints);
+pair<vector<double>, vector<uint32_t>> read_input_binary(istream& in_file)
+{
+    uint8_t header[3];
+    if(!in_file.read((char*)header, 3))
+    {
+        throw "Failed to read header";
+    }
+
+    uint32_t header_info[3];
+    if(!in_file.read((char*)(header_info), 12))
+    {
+        throw "Failed to read mesh dimensions";
+    }
+    
+    uint32_t vn = header_info[0];
+    uint32_t cn = header_info[1];
+    // header_info[2] is not_used
+
+    using point = tuple<double, double, double>;
+    map<point, uint32_t> unique_vertices;
+    vector<uint32_t> vertices_mapping(vn);
+    vector<double> input_vertices;
+    vector<uint32_t> input_constraints;
+    input_vertices.reserve(3 * vn);
+    input_constraints.reserve(3 * cn);
+
+    for(uint32_t i=0; i<vn; i++)
+    {
+        double coords[3];
+        in_file.read((char*)(coords), 24);
+        point p{coords[0], coords[1], coords[2]};
+
+        auto [it, inserted] = unique_vertices.try_emplace(p, unique_vertices.size());
+        vertices_mapping[i] = it->second;
+        if (inserted)
+        {
+            input_vertices.push_back(coords[0]);
+            input_vertices.push_back(coords[1]);
+            input_vertices.push_back(coords[2]);
+        }
+    }
+
+    for(uint32_t i=0; i<cn; i++)
+    {
+        uint32_t face_data[4]; // [point_count, c0, c1, c2]
+        in_file.read((char*)(face_data), 16);
+
+        if(face_data[0] != 3)
+        {
+            throw "Input constraint not a triangle";
+        }
+
+        input_constraints.push_back(vertices_mapping[face_data[1]]);
+        input_constraints.push_back(vertices_mapping[face_data[2]]);
+        input_constraints.push_back(vertices_mapping[face_data[3]]);
+    }
+
+    return make_pair(input_vertices, input_constraints);
+}
+
+int main(int argc, const char * argv[])
+{
+    if(argc >= 2)
+    {
+        ifstream in_file(argv[1]);
+        auto input = read_input(in_file);
+        in_file.close();
+        
+        auto [input_vertices, input_constraints] = input;
+        PolyhedralizationCreationHandle PC;
+        vector<shared_ptr<genericPoint>> vertices = create_vertices(input_vertices.size()/3, input_vertices.data(), 0, nullptr);
+        vector<uint32_t> constraints = create_constraints(input_constraints.size()/3, input_constraints.data(), vertices.data(), true);
+        Polyhedralization polyhedralization = PC.calculate(vertices, constraints);
+        vector<uint8_t> polyhedralization_bytes = polyhedralization.to_bytes();
+        
+        ofstream out_file("test.txt", std::ios::binary);
+        out_file.write((char*)polyhedralization_bytes.data(), polyhedralization_bytes.size());
+        out_file.close();
+    }
+    else
+    {
+        auto input = read_input_binary(std::cin);
+        auto [input_vertices, input_constraints] = input;
+        std::cerr << "Successfully read " << input_vertices.size()/3 << " vertices.\n";
+        PolyhedralizationCreationHandle PC;
+        std::vector<std::shared_ptr<genericPoint>> vertices = create_vertices(input_vertices.size()/3, input_vertices.data(), 0, nullptr);
+        std::vector<uint32_t> constraints = create_constraints(input_constraints.size()/3, input_constraints.data(), vertices.data(), true);
+        
+        Polyhedralization polyhedralization = PC.calculate(vertices, constraints);
+        std::vector<uint8_t> polyhedralization_bytes = polyhedralization.to_bytes();
+        
+        std::cout.write(
+            reinterpret_cast<const char*>(polyhedralization_bytes.data()),
+            polyhedralization_bytes.size()
+        );
+        std::cout.flush();
+    }
+
     return 0;
 }
