@@ -8,6 +8,20 @@ void Polyhedralization::prepare_to_slice()
     m_slice_segments_cache = vector<tuple<uint32_t,uint32_t,uint32_t,uint32_t>>(m_segments.size(), make_tuple(UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE,UNDEFINED_VALUE));
     m_slice_vertices_cache = vector<pair<uint32_t,int>>(m_vertices.size(), make_pair(UNDEFINED_VALUE,0));
     
+    calculate_facets_incident_polyhedrons();
+    
+    m_segments_incident_facets = vector<vector<uint32_t>>(m_segments.size());
+    for(uint32_t i=0; i<m_facets.size(); i++)
+    {
+        for(uint32_t s : m_facets[i].segments)
+        {
+            m_segments_incident_facets[s].push_back(i);
+        }
+    }
+}
+
+void Polyhedralization::calculate_facets_incident_polyhedrons()
+{
     m_facets_incident_polyhedrons = vector<uint32_t>(2*m_facets.size(), UNDEFINED_VALUE);
     for(uint32_t i=0; i<m_polyhedrons.size(); i++)
     {
@@ -21,14 +35,6 @@ void Polyhedralization::prepare_to_slice()
             {
                 m_facets_incident_polyhedrons[2*f+1] = i;
             }
-        }
-    }
-    m_segments_incident_facets = vector<vector<uint32_t>>(m_segments.size());
-    for(uint32_t i=0; i<m_facets.size(); i++)
-    {
-        for(uint32_t s : m_facets[i].segments)
-        {
-            m_segments_incident_facets[s].push_back(i);
         }
     }
 }

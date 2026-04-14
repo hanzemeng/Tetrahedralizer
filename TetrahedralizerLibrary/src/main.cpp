@@ -129,11 +129,67 @@ int main(int argc, const char * argv[])
         vector<shared_ptr<genericPoint>> vertices = create_vertices(input_vertices.size()/3, input_vertices.data(), 0, nullptr);
         vector<uint32_t> constraints = create_constraints(input_constraints.size()/3, input_constraints.data(), vertices.data(), true);
         Polyhedralization polyhedralization = PC.calculate(vertices, constraints);
-        vector<uint8_t> polyhedralization_bytes = polyhedralization.to_bytes();
 
-        ofstream out_file(filesystem::path(argv[1]).filename().replace_extension(".bin").string(), std::ios::binary);
-        out_file.write((char*)polyhedralization_bytes.data(), polyhedralization_bytes.size());
-        out_file.close();
+        
+        polyhedralization.calculate_facets_incident_polyhedrons();
+        uint32_t facets_count = 0;
+        for(uint32_t i=0; i<polyhedralization.m_facets.size(); i++)
+        {
+            uint32_t keep = 0;
+            if(UNDEFINED_VALUE == polyhedralization.m_facets_incident_polyhedrons[2*i+0])
+            {
+                keep++;
+            }
+            if(UNDEFINED_VALUE == polyhedralization.m_facets_incident_polyhedrons[2*i+1])
+            {
+                keep++;
+            }
+            if(1 != keep)
+            {
+                continue;
+            }
+            facets_count++;
+        }
+        
+        ofstream out_surface_file(filesystem::path(argv[1]).filename().replace_extension(".off").string());
+        out_surface_file << "OFF\n";
+        out_surface_file << polyhedralization.m_vertices.size() << " " << facets_count << " 0 \n";
+        
+        for(uint32_t i=0; i<polyhedralization.m_vertices.size(); i++)
+        {
+            double3 vertex = approximate_vertex(polyhedralization.m_vertices[i]);
+            out_surface_file << vertex.x << " " << vertex.y << " "<< vertex.z << "\n";
+        }
+        for(uint32_t i=0; i<polyhedralization.m_facets.size(); i++)
+        {
+            uint32_t keep = 0;
+            if(UNDEFINED_VALUE == polyhedralization.m_facets_incident_polyhedrons[2*i+0])
+            {
+                keep++;
+            }
+            if(UNDEFINED_VALUE == polyhedralization.m_facets_incident_polyhedrons[2*i+1])
+            {
+                keep++;
+            }
+            if(1 != keep)
+            {
+                continue;
+            }
+            vector<uint32_t> vs = polyhedralization.m_facets[i].get_sorted_vertices(polyhedralization.m_segments);
+            out_surface_file << vs.size();
+            for(uint32_t v : vs)
+            {
+                out_surface_file << " " << v;
+            }
+            out_surface_file << "\n";
+        }
+        out_surface_file.close();
+        
+//        vector<uint8_t> polyhedralization_bytes = polyhedralization.to_bytes();
+//
+//        ofstream out_file(filesystem::path(argv[1]).filename().replace_extension(".bin").string(), std::ios::binary);
+//        out_file.write((char*)polyhedralization_bytes.data(), polyhedralization_bytes.size());
+//        out_file.close();
     }
     else
     {

@@ -16,6 +16,7 @@ public:
     std::vector<uint32_t> m_inserted_vertices;
     
     void prepare_to_slice();
+    void calculate_facets_incident_polyhedrons();
     // 1 if above, -1 if below, 0 if split. new polyhedron appended to m_polyhedrons
     int slice_polyhedron_with_plane(uint32_t p, uint32_t c0, uint32_t c1, uint32_t c2);
     bool slice_facet_with_plane(uint32_t f, uint32_t c0, uint32_t c1, uint32_t c2);
