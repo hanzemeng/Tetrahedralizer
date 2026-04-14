@@ -157,11 +157,11 @@ int main(int argc, const char * argv[])
         out_surface_file << std::setprecision(std::numeric_limits<double>::max_digits10);
         for(uint32_t i=0; i<polyhedralization.m_vertices.size(); i++)
         {
-//            bigrational x,y,z;
-//            polyhedralization.m_vertices[i]->getExactXYZCoordinates(x, y, z);
-//            out_surface_file << x << " " << y << " "<< z << "\n";
-            double3 vertex = approximate_vertex(polyhedralization.m_vertices[i]);
-            out_surface_file << vertex.x << " " << vertex.y << " "<< vertex.z << "\n";
+            bigrational x,y,z;
+            polyhedralization.m_vertices[i]->getExactXYZCoordinates(x, y, z);
+            out_surface_file << x << " " << y << " "<< z << "\n";
+//            double3 vertex = approximate_vertex(polyhedralization.m_vertices[i]);
+//            out_surface_file << vertex.x << " " << vertex.y << " "<< vertex.z << "\n";
             
             
         }
@@ -181,9 +181,24 @@ int main(int argc, const char * argv[])
                 continue;
             }
             vector<uint32_t> vs = polyhedralization.m_facets[i].get_sorted_vertices(polyhedralization.m_segments);
-            uint32_t v0 = vs[0];
-            uint32_t v1 = vs[1];
-            uint32_t v2 = vs[2];
+            uint32_t v0,v1,v2;
+            bool is_good_facet = false;
+            for(uint32_t j=0; j<vs.size(); j++)
+            {
+                v0 = vs[j];
+                v1 = vs[(j+1)%vs.size()];
+                v2 = vs[(j+2)%vs.size()];
+                if(!is_collinear(v0, v1, v2, polyhedralization.m_vertices.data()))
+                {
+                    is_good_facet = true;
+                    break;
+                }
+            }
+            if(!is_good_facet)
+            {
+                throw "wtf";
+            }
+            
             int points_in = 0;
             for(uint32_t f : polyhedralization.m_polyhedrons[polyhedralization.m_facets_incident_polyhedrons[2*i+0]])
             {
@@ -208,17 +223,21 @@ int main(int argc, const char * argv[])
             out_surface_file << vs.size();
             if(1 == points_in)
             {
-                for(uint32_t j=0; j<vs.size(); j++)
+                for(int j=vs.size()-1; j>=0; j--)
                 {
                     out_surface_file << " " << vs[j];
                 }
             }
-            else
+            else if(-1 == points_in)
             {
                 for(uint32_t v : vs)
                 {
                     out_surface_file << " " << v;
                 }
+            }
+            else
+            {
+                throw "wtf";
             }
             
             out_surface_file << "\n";
