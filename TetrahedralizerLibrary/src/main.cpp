@@ -154,7 +154,7 @@ int main(int argc, const char * argv[])
         ofstream out_surface_file(filesystem::path(argv[1]).filename().replace_extension(".off").string());
         out_surface_file << "OFF\n";
         out_surface_file << polyhedralization.m_vertices.size() << " " << facets_count << " 0 \n";
-        
+        out_surface_file << std::setprecision(std::numeric_limits<double>::max_digits10);
         for(uint32_t i=0; i<polyhedralization.m_vertices.size(); i++)
         {
             double3 vertex = approximate_vertex(polyhedralization.m_vertices[i]);
