@@ -157,8 +157,13 @@ int main(int argc, const char * argv[])
         out_surface_file << std::setprecision(std::numeric_limits<double>::max_digits10);
         for(uint32_t i=0; i<polyhedralization.m_vertices.size(); i++)
         {
+//            bigrational x,y,z;
+//            polyhedralization.m_vertices[i]->getExactXYZCoordinates(x, y, z);
+//            out_surface_file << x << " " << y << " "<< z << "\n";
             double3 vertex = approximate_vertex(polyhedralization.m_vertices[i]);
             out_surface_file << vertex.x << " " << vertex.y << " "<< vertex.z << "\n";
+            
+            
         }
         for(uint32_t i=0; i<polyhedralization.m_facets.size(); i++)
         {
@@ -176,11 +181,46 @@ int main(int argc, const char * argv[])
                 continue;
             }
             vector<uint32_t> vs = polyhedralization.m_facets[i].get_sorted_vertices(polyhedralization.m_segments);
-            out_surface_file << vs.size();
-            for(uint32_t v : vs)
+            uint32_t v0 = vs[0];
+            uint32_t v1 = vs[1];
+            uint32_t v2 = vs[2];
+            int points_in = 0;
+            for(uint32_t f : polyhedralization.m_polyhedrons[polyhedralization.m_facets_incident_polyhedrons[2*i+0]])
             {
-                out_surface_file << " " << v;
+                if(i == f)
+                {
+                    continue;
+                }
+                polyhedralization.m_facets[f].get_vertices(polyhedralization.m_segments, Facet::m_get_vertices_res);
+                for(uint32_t v : Facet::m_get_vertices_res)
+                {
+                    points_in = orient3d(v0,v1,v2,v,polyhedralization.m_vertices.data());
+                    if(0 != points_in)
+                    {
+                        break;
+                    }
+                }
+                if(0 != points_in)
+                {
+                    break;
+                }
             }
+            out_surface_file << vs.size();
+            if(1 == points_in)
+            {
+                for(uint32_t j=0; j<vs.size(); j++)
+                {
+                    out_surface_file << " " << vs[j];
+                }
+            }
+            else
+            {
+                for(uint32_t v : vs)
+                {
+                    out_surface_file << " " << v;
+                }
+            }
+            
             out_surface_file << "\n";
         }
         out_surface_file.close();
